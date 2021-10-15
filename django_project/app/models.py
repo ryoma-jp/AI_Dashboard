@@ -6,12 +6,12 @@ from django.db import models
 # クラス：データセットファイル
 #---------------------------------------
 class DatasetFile(models.Model):
-    x_train = models.FileField(upload_to='dataset/')
-    y_train = models.FileField(upload_to='dataset/')
-    x_valid = models.FileField(upload_to='dataset/')
-    y_valid = models.FileField(upload_to='dataset/')
-    x_test = models.FileField(upload_to='dataset/')
-    y_test = models.FileField(upload_to='dataset/')
+    train_zip = models.FileField(upload_to='dataset/')
+    train_csv = models.FileField(upload_to='dataset/')
+    valid_zip = models.FileField(upload_to='dataset/')
+    valid_csv = models.FileField(upload_to='dataset/')
+    test_zip = models.FileField(upload_to='dataset/')
+    test_csv = models.FileField(upload_to='dataset/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 #---------------------------------------

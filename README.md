@@ -1135,6 +1135,7 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
 
 * [Subresource Integrity](https://developer.mozilla.org/ja/docs/Web/Security/Subresource_Integrity)
 * [iframeを使って画面遷移なしでフォーム送信する方法](https://produce-web.net/sendform-iframe/)
+* [<input type=”file”> で選択できるファイルの拡張子を制限する方法](https://webbibouroku.com/Blog/Article/html5-file-accept)
 
 ## JavaScript
 

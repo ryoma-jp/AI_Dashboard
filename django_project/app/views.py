@@ -56,41 +56,41 @@ def index(request):
             except ObjectDoesNotExist:
                 file = DatasetFile()
             
-            if ('x_train' in files):
-                dataset_file = request.FILES.getlist('x_train', False)[0]
+            if ('train_zip' in files):
+                dataset_file = request.FILES.getlist('train_zip', False)[0]
                 logging.debug('dataset_file: ')
                 logging.debug(dataset_file)
-                file.x_train = dataset_file
+                file.train_zip = dataset_file
         
-            if ('y_train' in files):
-                dataset_file = request.FILES.getlist('y_train', False)[0]
+            if ('train_csv' in files):
+                dataset_file = request.FILES.getlist('train_csv', False)[0]
                 logging.debug('dataset_file: ')
                 logging.debug(dataset_file)
-                file.y_train = dataset_file
+                file.train_csv = dataset_file
         
-            if ('x_valid' in files):
-                dataset_file = request.FILES.getlist('x_valid', False)[0]
+            if ('valid_zip' in files):
+                dataset_file = request.FILES.getlist('valid_zip', False)[0]
                 logging.debug('dataset_file: ')
                 logging.debug(dataset_file)
-                file.x_valid = dataset_file
+                file.valid_zip = dataset_file
         
-            if ('y_valid' in files):
-                dataset_file = request.FILES.getlist('y_valid', False)[0]
+            if ('valid_csv' in files):
+                dataset_file = request.FILES.getlist('valid_csv', False)[0]
                 logging.debug('dataset_file: ')
                 logging.debug(dataset_file)
-                file.y_valid = dataset_file
+                file.valid_csv = dataset_file
         
-            if ('x_test' in files):
-                dataset_file = request.FILES.getlist('x_test', False)[0]
+            if ('test_zip' in files):
+                dataset_file = request.FILES.getlist('test_zip', False)[0]
                 logging.debug('dataset_file: ')
                 logging.debug(dataset_file)
-                file.x_test = dataset_file
+                file.test_zip = dataset_file
         
-            if ('y_test' in files):
-                dataset_file = request.FILES.getlist('y_test', False)[0]
+            if ('test_csv' in files):
+                dataset_file = request.FILES.getlist('test_csv', False)[0]
                 logging.debug('dataset_file: ')
                 logging.debug(dataset_file)
-                file.y_test = dataset_file
+                file.test_csv = dataset_file
             
             file.save()
         

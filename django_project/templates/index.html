@@ -141,7 +141,11 @@
                   {% for field in dataset_file_form %}
                     <div class="mb-3">
                       <h5>{{ field.name }}</h5>
-                      <input type="file" class="form-control" name="{{ field.name }}" id="{{ field.id_for_label }}">
+                      {% if 'zip' in field.name %}
+                        <input type="file" accept=".zip" class="form-control" name="{{ field.name }}" id="{{ field.id_for_label }}">
+                      {% else %}
+                        <input type="file" accept=".csv" class="form-control" name="{{ field.name }}" id="{{ field.id_for_label }}">
+                      {% endif %}
                     </div>
                   {% endfor %}
                   <button type="submit" class="btn btn-primary ms-4">Upload</button>
@@ -149,23 +153,23 @@
                 
                 <p>アップロード済みのデータセット</p>
                 <ul>
-                  {% if dataset_file.0.x_train %}
-                    <li>[x_train] <a href="{{ dataset_file.0.x_train.url }}">{{ dataset_file.0.x_train.name }}</a></li>
+                  {% if dataset_file.0.train_zip %}
+                    <li>[train_zip] <a href="{{ dataset_file.0.train_zip.url }}">{{ dataset_file.0.train_zip.name }}</a></li>
                   {% endif %}
-                  {% if dataset_file.0.y_train %}
-                    <li>[y_train] <a href="{{ dataset_file.0.y_train.url }}">{{ dataset_file.0.y_train.name }}</a></li>
+                  {% if dataset_file.0.train_csv %}
+                    <li>[train_csv] <a href="{{ dataset_file.0.train_csv.url }}">{{ dataset_file.0.train_csv.name }}</a></li>
                   {% endif %}
-                  {% if dataset_file.0.x_valid %}
-                    <li>[x_valid] <a href="{{ dataset_file.0.x_valid.url }}">{{ dataset_file.0.x_valid.name }}</a></li>
+                  {% if dataset_file.0.valid_zip %}
+                    <li>[valid_zip] <a href="{{ dataset_file.0.valid_zip.url }}">{{ dataset_file.0.valid_zip.name }}</a></li>
                   {% endif %}
-                  {% if dataset_file.0.y_valid %}
-                    <li>[y_valid] <a href="{{ dataset_file.0.y_valid.url }}">{{ dataset_file.0.y_valid.name }}</a></li>
+                  {% if dataset_file.0.valid_csv %}
+                    <li>[valid_csv] <a href="{{ dataset_file.0.valid_csv.url }}">{{ dataset_file.0.valid_csv.name }}</a></li>
                   {% endif %}
-                  {% if dataset_file.0.x_test %}
-                    <li>[x_test] <a href="{{ dataset_file.0.x_test.url }}">{{ dataset_file.0.x_test.name }}</a></li>
+                  {% if dataset_file.0.test_zip %}
+                    <li>[test_zip] <a href="{{ dataset_file.0.test_zip.url }}">{{ dataset_file.0.test_zip.name }}</a></li>
                   {% endif %}
-                  {% if dataset_file.0.y_test %}
-                    <li>[y_test] <a href="{{ dataset_file.0.y_test.url }}">{{ dataset_file.0.y_test.name }}</a></li>
+                  {% if dataset_file.0.test_csv %}
+                    <li>[test_csv] <a href="{{ dataset_file.0.test_csv.url }}">{{ dataset_file.0.test_csv.name }}</a></li>
                   {% endif %}
                 </ul>
               {% endif %}
@@ -184,23 +188,23 @@
                   {% if dataset_file.0 %}
                     {{ dataset_selection.get_selection_display }}
                     <ul>
-                      {% if dataset_file.0.x_train %}
-                        <li>[x_train] <a href="{{ dataset_file.0.x_train.url }}">{{ dataset_file.0.x_train.name }}</a></li>
+                      {% if dataset_file.0.train_zip %}
+                        <li>[train_zip] <a href="{{ dataset_file.0.train_zip.url }}">{{ dataset_file.0.train_zip.name }}</a></li>
                       {% endif %}
-                      {% if dataset_file.0.y_train %}
-                        <li>[y_train] <a href="{{ dataset_file.0.y_train.url }}">{{ dataset_file.0.y_train.name }}</a></li>
+                      {% if dataset_file.0.train_csv %}
+                        <li>[train_csv] <a href="{{ dataset_file.0.train_csv.url }}">{{ dataset_file.0.train_csv.name }}</a></li>
                       {% endif %}
-                      {% if dataset_file.0.x_valid %}
-                        <li>[x_valid] <a href="{{ dataset_file.0.x_valid.url }}">{{ dataset_file.0.x_valid.name }}</a></li>
+                      {% if dataset_file.0.valid_zip %}
+                        <li>[valid_zip] <a href="{{ dataset_file.0.valid_zip.url }}">{{ dataset_file.0.valid_zip.name }}</a></li>
                       {% endif %}
-                      {% if dataset_file.0.y_valid %}
-                        <li>[y_valid] <a href="{{ dataset_file.0.y_valid.url }}">{{ dataset_file.0.y_valid.name }}</a></li>
+                      {% if dataset_file.0.valid_csv %}
+                        <li>[valid_csv] <a href="{{ dataset_file.0.valid_csv.url }}">{{ dataset_file.0.valid_csv.name }}</a></li>
                       {% endif %}
-                      {% if dataset_file.0.x_test %}
-                        <li>[x_test] <a href="{{ dataset_file.0.x_test.url }}">{{ dataset_file.0.x_test.name }}</a></li>
+                      {% if dataset_file.0.test_zip %}
+                        <li>[test_zip] <a href="{{ dataset_file.0.test_zip.url }}">{{ dataset_file.0.test_zip.name }}</a></li>
                       {% endif %}
-                      {% if dataset_file.0.y_test %}
-                        <li>[y_test] <a href="{{ dataset_file.0.y_test.url }}">{{ dataset_file.0.y_test.name }}</a></li>
+                      {% if dataset_file.0.test_csv %}
+                        <li>[test_csv] <a href="{{ dataset_file.0.test_csv.url }}">{{ dataset_file.0.test_csv.name }}</a></li>
                       {% endif %}
                     </ul>
                   {% else %}

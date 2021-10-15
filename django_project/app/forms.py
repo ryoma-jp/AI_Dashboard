@@ -4,9 +4,9 @@ from app.models import DatasetFile, DatasetSelection
 class DatasetFileForm(forms.ModelForm):
     class Meta:
         model = DatasetFile
-        fields = ('x_train', 'y_train',
-                  'x_valid', 'y_valid',
-                  'x_test', 'y_test', )
+        fields = ('train_zip', 'train_csv',
+                  'valid_zip', 'valid_csv',
+                  'test_zip', 'test_csv', )
 
 class DatasetSelectionForm(forms.ModelForm):
     class Meta:
