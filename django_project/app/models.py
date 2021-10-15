@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 # Create your models here.
 
@@ -6,12 +7,12 @@ from django.db import models
 # クラス：データセットファイル
 #---------------------------------------
 class DatasetFile(models.Model):
-    train_zip = models.FileField(upload_to='dataset/')
-    train_csv = models.FileField(upload_to='dataset/')
-    valid_zip = models.FileField(upload_to='dataset/')
-    valid_csv = models.FileField(upload_to='dataset/')
-    test_zip = models.FileField(upload_to='dataset/')
-    test_csv = models.FileField(upload_to='dataset/')
+    train_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
+    train_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
+    valid_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
+    valid_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
+    test_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
+    test_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 #---------------------------------------

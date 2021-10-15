@@ -1130,6 +1130,7 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
 * [【django】モデルのフィールドについて：フィールドの型・オプション一覧](https://office54.net/python/django/model-field-options)
 * [【Django】モデルフィールド：オプションnullとblankの違いについて](https://office54.net/python/django/null-blank-difference)
 * [DjangoのSECRET_KEYをバージョン管理対象外にする](https://qiita.com/haessal/items/abaef7ee4fdbd3b218f5)
+* [Django プロジェクトの settings.py に定義された変数を利用する](https://qiita.com/mizoe@github/items/da10fa3312545356c099)
 
 ## HTML
 

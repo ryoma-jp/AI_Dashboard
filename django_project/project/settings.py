@@ -157,3 +157,5 @@ else:
         filemode = 'a'
     )
 
+# Parameters for Machine Learning
+DATASET_DIR = os.environ.get('DATASET_DIR')
