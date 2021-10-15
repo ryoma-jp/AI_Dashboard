@@ -1,6 +1,4 @@
 import logging
-import threading
-import concurrent.futures
 
 from django.shortcuts import render
 from django.conf import settings
@@ -11,7 +9,7 @@ from app.forms import DatasetFileForm, DatasetSelectionForm
 from .machine_learning.lib.trainer.trainer import Trainer
 
 # --- executor for machine learning
-ml_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+ml_trainer = Trainer()
 
 # Create your views here.
 
@@ -99,25 +97,14 @@ def index(request):
         return dataset_file_form
     
     def _training_run(request):
-        def __thread_func(interval=1):
-            thread_id = threading.get_ident()
-            Trainer.Counter(interval)
-            
-            return
-        
         logging.debug('training_run: ')
         logging.debug(request.POST.keys())
         if ('training_run' in request.POST.keys()):
             dataset_selection = DatasetSelection.objects.all()
             if (len(dataset_selection) > 0):
                 logging.debug(dataset_selection[0].selection)
-                interval = 1
-                logging.debug(ml_executor._work_queue.empty())
-                logging.debug(ml_executor._threads)
-                if (ml_executor._work_queue.empty()):
-                    ml_executor.submit(__thread_func, interval)
-                else:
-                    logging.debug('ML thread queue is not empty')
+                if (ml_trainer.status == ml_trainer.STAT_IDLE):
+                    ml_trainer.Counter()
         
         return
     
