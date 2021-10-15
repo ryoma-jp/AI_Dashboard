@@ -1,3 +1,4 @@
+import os
 import logging
 
 from django.shortcuts import render
@@ -103,6 +104,27 @@ def index(request):
             dataset_selection = DatasetSelection.objects.all()
             if (len(dataset_selection) > 0):
                 logging.debug(dataset_selection[0].selection)
+                train_parameters = {
+                    'dataset_type': dataset_selection[0].selection,
+                    'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
+                    'train_zip': '',
+                    'train_csv': '',
+                    'valid_zip': '',
+                    'valid_csv': '',
+                    'test_zip': '',
+                    'test_csv': '',
+                }
+                
+                if (dataset_selection[0].selection == 'User data'):
+                    dataset_file = DatasetFile.objects.all()
+                    train_parameters['train_zip'] = os.path.basename(dataset_file[0].train_zip.name)
+                    train_parameters['train_csv'] = os.path.basename(dataset_file[0].train_csv.name)
+                    train_parameters['valid_zip'] = os.path.basename(dataset_file[0].valid_zip.name)
+                    train_parameters['valid_csv'] = os.path.basename(dataset_file[0].valid_csv.name)
+                    train_parameters['test_zip'] = os.path.basename(dataset_file[0].test_zip.name)
+                    train_parameters['test_csv'] = os.path.basename(dataset_file[0].test_csv.name)
+                
+                logging.debug(train_parameters)
                 if (ml_trainer.status == ml_trainer.STAT_IDLE):
                     ml_trainer.Counter()
         
