@@ -108,6 +108,14 @@ def index(request):
         
         return
     
+    def _reset_trainer(request):
+        logging.debug('reset_trainer: ')
+        logging.debug(request.POST.keys())
+        if ('reset_trainer' in request.POST.keys()):
+            ml_trainer.reset_status()
+        
+        return
+    
 #    logging.debug('request: ')
 #    logging.debug(request.__dict__)
 #
@@ -141,6 +149,9 @@ def index(request):
         logging.debug('dataset_selection_form')
         logging.debug(dataset_selection_form)
         _training_run(request)
+        
+        # --- 状態のリセット ---
+        _reset_trainer(request)
         
     else:
         dataset_file_form = DatasetFileForm()

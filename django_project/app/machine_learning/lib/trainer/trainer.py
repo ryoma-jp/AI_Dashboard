@@ -227,7 +227,12 @@ class Trainer():
 		self.status = self.STAT_DONE
 		
 		return
-
+	
+	# --- Reset status ---
+	def reset_status(self):
+		self.status = self.STAT_IDLE
+		return
+	
 #---------------------------------
 # クラス; ResNet学習モジュール
 #---------------------------------
