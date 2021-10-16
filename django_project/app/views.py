@@ -151,12 +151,27 @@ def index(request):
                         # --- Unknown dataset ---
                         logging.debug('[ERROR] Unknown dataset')
                         return
+                    x_train, x_val, x_test = dataset.normalization("z-score")
+                    y_train = dataset.train_labels
+                    y_val = dataset.validation_labels
+                    y_test = dataset.test_labels
+                    data_augmentation = {
+                        'rotation_range': 5,
+                        'width_shift_range': 0.2,
+                        'height_shift_range': 0.2,
+                        'zoom_range': 0.2,
+                        'channel_shift_range': 0.2,
+                        'horizontal_flip': True,
+                    }
                     
                     # --- Training Model ---
                     ml_trainer_status = MlTrainerStatus.TRAINING
                     ml_trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=train_parameters['model_dir'],
                         optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
                     logging.debug('Training Start')
+                    ml_trainer.fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+                        batch_size=100, da_params=data_augmentation, epochs=1)
+                    ml_trainer.save_model()
                     logging.debug('Training Done')
         
         return
