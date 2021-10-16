@@ -10,8 +10,14 @@ from app.forms import DatasetFileForm, DatasetSelectionForm
 from .machine_learning.lib.data_loader.data_loader import *
 from .machine_learning.lib.trainer.trainer import *
 
-# --- executor for machine learning
-ml_trainer = Trainer()
+# --- machine learning trainer ---
+class MlTrainerStatus():
+    IDLE = 0
+    PREPARING = 1
+    TRAINING = 2
+    DONE = 3
+ml_trainer = None
+ml_trainer_status = MlTrainerStatus.IDLE
 
 # Create your views here.
 
@@ -99,34 +105,37 @@ def index(request):
         return dataset_file_form
     
     def _training_run(request):
+        global ml_trainer_status
         logging.debug('training_run: ')
         logging.debug(request.POST.keys())
         if ('training_run' in request.POST.keys()):
             dataset_selection = DatasetSelection.objects.all()
             if (len(dataset_selection) > 0):
                 logging.debug(dataset_selection[0].selection)
-                train_parameters = {
-                    'dataset_type': dataset_selection[0].selection,
-                    'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
-                    'train_zip': '',
-                    'train_csv': '',
-                    'valid_zip': '',
-                    'valid_csv': '',
-                    'test_zip': '',
-                    'test_csv': '',
-                }
-                
-                if (dataset_selection[0].selection == 'User data'):
-                    dataset_file = DatasetFile.objects.all()
-                    train_parameters['train_zip'] = os.path.basename(dataset_file[0].train_zip.name)
-                    train_parameters['train_csv'] = os.path.basename(dataset_file[0].train_csv.name)
-                    train_parameters['valid_zip'] = os.path.basename(dataset_file[0].valid_zip.name)
-                    train_parameters['valid_csv'] = os.path.basename(dataset_file[0].valid_csv.name)
-                    train_parameters['test_zip'] = os.path.basename(dataset_file[0].test_zip.name)
-                    train_parameters['test_csv'] = os.path.basename(dataset_file[0].test_csv.name)
-                
-                logging.debug(train_parameters)
-                if (ml_trainer.status == ml_trainer.STAT_IDLE):
+                if (ml_trainer_status == MlTrainerStatus.IDLE):
+                    ml_trainer_status = MlTrainerStatus.PREPARING
+                    train_parameters = {
+                        'dataset_type': dataset_selection[0].selection,
+                        'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
+                        'train_zip': '',
+                        'train_csv': '',
+                        'valid_zip': '',
+                        'valid_csv': '',
+                        'test_zip': '',
+                        'test_csv': '',
+                        'model_dir': os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR),
+                    }
+                    
+                    if (dataset_selection[0].selection == 'User data'):
+                        dataset_file = DatasetFile.objects.all()
+                        train_parameters['train_zip'] = os.path.basename(dataset_file[0].train_zip.name)
+                        train_parameters['train_csv'] = os.path.basename(dataset_file[0].train_csv.name)
+                        train_parameters['valid_zip'] = os.path.basename(dataset_file[0].valid_zip.name)
+                        train_parameters['valid_csv'] = os.path.basename(dataset_file[0].valid_csv.name)
+                        train_parameters['test_zip'] = os.path.basename(dataset_file[0].test_zip.name)
+                        train_parameters['test_csv'] = os.path.basename(dataset_file[0].test_csv.name)
+                    
+                    logging.debug(train_parameters)
                     # --- Prepare Dataset ---
                     if (train_parameters['dataset_type'] == 'MNIST'):
                         logging.debug('Prepare dataset: MNIST')
@@ -144,7 +153,11 @@ def index(request):
                         return
                     
                     # --- Training Model ---
-                    ml_trainer.Counter()
+                    ml_trainer_status = MlTrainerStatus.TRAINING
+                    ml_trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=train_parameters['model_dir'],
+                        optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
+                    logging.debug('Training Start')
+                    logging.debug('Training Done')
         
         return
     

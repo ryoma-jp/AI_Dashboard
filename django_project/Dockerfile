@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 RUN apt update ; \
-      apt install -y postgresql gcc python3-dev musl-dev
+      apt install -y postgresql gcc python3-dev musl-dev graphviz
 
 RUN pip install --upgrade pip
 RUN pip install flake8
@@ -28,7 +28,7 @@ RUN mkdir -p ${APP_HOME}
 RUN mkdir -p ${APP_HOME}/static
 WORKDIR ${APP_HOME}
 
-RUN apt update ; apt -y install libpq-dev netcat
+RUN apt update ; apt -y install libpq-dev netcat graphviz
 COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --no-cache /wheels/*

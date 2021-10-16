@@ -4,3 +4,6 @@ gunicorn
 django-bootstrap5
 pandas
 matplotlib
+pydot
+pydotplus
+graphviz

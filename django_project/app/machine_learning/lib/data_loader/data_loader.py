@@ -121,8 +121,8 @@ class DataLoaderCIFAR10(DataLoader):
 			with tarfile.open(save_file) as tar:
 				tar.extractall(path=dataset_dir)
 			
-			return
-		
+			dataset_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
+			
 		# --- load training data ---
 		train_data_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
 		dict_data = unpickle(os.path.join(dataset_dir, train_data_list[0]))

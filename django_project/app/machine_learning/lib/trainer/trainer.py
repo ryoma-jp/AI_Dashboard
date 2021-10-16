@@ -18,11 +18,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 # クラス; 学習モジュール基底クラス
 #---------------------------------
 class Trainer():
-	# --- 学習ステータス ---
-	STAT_IDLE = 0
-	STAT_TRAINING = 1
-	STAT_DONE = 2
-	
 	# --- カスタムコールバック ---
 	class CustomCallback(keras.callbacks.Callback):
 		def on_epoch_end(self, epoch, logs=None):
@@ -39,9 +34,6 @@ class Trainer():
 		self.output_dir = output_dir
 		if (output_dir is not None):
 			os.makedirs(output_dir, exist_ok=True)
-		
-		# --- 学習ステータス ---
-		self.status = self.STAT_IDLE
 		
 		# --- モデル構築 ---
 		def _load_model(model_file):
@@ -209,29 +201,6 @@ class Trainer():
 			system_info.append(dict)
 		
 		return system_info
-	
-	# --- Counter (for test) ---
-	def Counter(self, interval=1):
-		import time
-		
-		self.status = self.STAT_TRAINING
-		
-		start = time.time()
-		end = start
-		
-		while ((end - start) <= 10):
-			time.sleep(interval)
-			end = time.time()
-			logging.debug('[counter] elapsed time: {}'.format(end-start))
-		
-		self.status = self.STAT_DONE
-		
-		return
-	
-	# --- Reset status ---
-	def reset_status(self):
-		self.status = self.STAT_IDLE
-		return
 	
 #---------------------------------
 # クラス; ResNet学習モジュール
