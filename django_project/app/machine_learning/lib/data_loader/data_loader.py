@@ -4,7 +4,10 @@
 # モジュールのインポート
 #---------------------------------
 import os
+import logging
 import numpy as np
+import requests
+import tarfile
 
 #---------------------------------
 # クラス; データ取得基底クラス
@@ -13,6 +16,16 @@ class DataLoader():
 	# --- コンストラクタ ---
 	def __init__(self):
 		return
+	
+	# --- ファイルダウンロード ---
+	def file_download(self, dir, url):
+		save_file = os.path.join(dir, os.path.basename(url))
+		content = requests.get(url).content
+		
+		with open(save_file, mode='wb') as f:
+			f.write(content)
+		
+		return save_file
 	
 	# --- 標準化・正規化 ---
 	#  * mode: 正規化手法
@@ -42,7 +55,7 @@ class DataLoader():
 			validation_norm = (self.validation_images - train_mean) / train_std
 			test_norm = (self.test_images - train_mean) / train_std
 		else:
-			print('[ERROR] Unknown data normalization mode: {}'.format(mode))
+			logging.debug('[ERROR] Unknown data normalization mode: {}'.format(mode))
 			quit()
 		
 		return train_norm, validation_norm, test_norm
@@ -81,12 +94,13 @@ class DataLoader():
 # クラス; CIFAR-10データセット取得
 #---------------------------------
 class DataLoaderCIFAR10(DataLoader):
-	def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False):
+	def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
 		"""
 			[引数説明]
 				* validation_split: validation dataとして使用する学習データの比率(0.0 ～ 1.0)
 				* flatten: 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
 				* one_hot: one hot形式(=True)かラベルインデックス(=False;default)かを選択する
+				* download: データをダウンロードする場合にTrueを指定
 		"""
 		
 		def unpickle(file):
@@ -97,7 +111,18 @@ class DataLoaderCIFAR10(DataLoader):
 		
 		# --- initialize super class ---
 		super().__init__()
-
+		
+		# --- download dataset and extract ---
+		if (download):
+			logging.debug('[DataLoaderCIFAR10] {}'.format(dataset_dir))
+			url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+			save_file = self.file_download(dataset_dir, url)
+			
+			with tarfile.open(save_file) as tar:
+				tar.extractall(path=dataset_dir)
+			
+			return
+		
 		# --- load training data ---
 		train_data_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
 		dict_data = unpickle(os.path.join(dataset_dir, train_data_list[0]))

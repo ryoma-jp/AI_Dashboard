@@ -7,7 +7,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from app.models import DatasetFile, DatasetSelection
 from app.forms import DatasetFileForm, DatasetSelectionForm
 
-from .machine_learning.lib.trainer.trainer import Trainer
+from .machine_learning.lib.data_loader.data_loader import *
+from .machine_learning.lib.trainer.trainer import *
 
 # --- executor for machine learning
 ml_trainer = Trainer()
@@ -126,6 +127,23 @@ def index(request):
                 
                 logging.debug(train_parameters)
                 if (ml_trainer.status == ml_trainer.STAT_IDLE):
+                    # --- Prepare Dataset ---
+                    if (train_parameters['dataset_type'] == 'MNIST'):
+                        logging.debug('Prepare dataset: MNIST')
+                        dataset = DataLoaderMNIST(train_parameters['dataset_dir_root'], validation_split=0.2, one_hot=True, download=True)
+                    elif (train_parameters['dataset_type'] == 'CIFAR-10'):
+                        logging.debug('Prepare dataset: CIFAR-10')
+                        dataset = DataLoaderCIFAR10(train_parameters['dataset_dir_root'], validation_split=0.2, one_hot=True, download=True)
+                    elif (train_parameters['dataset_type'] == 'User data'):
+                        # --- T.B.D ---
+                        logging.debug('Prepare dataset: User data')
+                        pass
+                    else:
+                        # --- Unknown dataset ---
+                        logging.debug('[ERROR] Unknown dataset')
+                        return
+                    
+                    # --- Training Model ---
                     ml_trainer.Counter()
         
         return
