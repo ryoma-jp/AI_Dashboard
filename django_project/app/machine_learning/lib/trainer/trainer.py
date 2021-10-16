@@ -4,6 +4,7 @@
 # モジュールのインポート
 #---------------------------------
 import os
+import gc
 import logging
 import numpy as np
 import pandas as pd
@@ -13,6 +14,11 @@ import tensorflow as tf
 from tensorflow.python.client import device_lib
 from tensorflow import keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+#---------------------------------
+# 環境変数設定
+#---------------------------------
+os.environ["TF_FORCE_GPU_ALLOW_GROWTH"]= "true"
 
 #---------------------------------
 # クラス; 学習モジュール基底クラス
@@ -178,6 +184,19 @@ class Trainer():
 		
 		# --- hdf5 ---
 		self.model.save(os.path.join(model_dir, 'hdf5', 'model.h5'))
+		
+		return
+	
+	# --- メモリリソース解放(セッションのクリア) ---
+	def release_memory(self):
+		from numba import cuda
+		
+		del self.model
+		keras.backend.clear_session()
+		gc.collect()
+		
+		cuda.select_device(0)
+		cuda.close()
 		
 		return
 		

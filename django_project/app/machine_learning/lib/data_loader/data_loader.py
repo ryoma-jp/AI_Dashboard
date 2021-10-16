@@ -115,11 +115,14 @@ class DataLoaderCIFAR10(DataLoader):
 		# --- download dataset and extract ---
 		if (download):
 			logging.debug('[DataLoaderCIFAR10] {}'.format(dataset_dir))
-			url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-			save_file = self.file_download(dataset_dir, url)
-			
-			with tarfile.open(save_file) as tar:
-				tar.extractall(path=dataset_dir)
+			if (not os.path.exists(os.path.join(dataset_dir, 'cifar-10-batches-py'))):
+				url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
+				save_file = self.file_download(dataset_dir, url)
+				
+				with tarfile.open(save_file) as tar:
+					tar.extractall(path=dataset_dir)
+			else:
+				logging.debug('CIFAR-10 dataset is exists (Skip Download)')
 			
 			dataset_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
 			

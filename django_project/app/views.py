@@ -105,6 +105,7 @@ def index(request):
         return dataset_file_form
     
     def _training_run(request):
+        global ml_trainer
         global ml_trainer_status
         logging.debug('training_run: ')
         logging.debug(request.POST.keys())
@@ -151,7 +152,7 @@ def index(request):
                         # --- Unknown dataset ---
                         logging.debug('[ERROR] Unknown dataset')
                         return
-                    x_train, x_val, x_test = dataset.normalization("z-score")
+                    x_train, x_val, x_test = dataset.normalization("max")
                     y_train = dataset.train_labels
                     y_val = dataset.validation_labels
                     y_test = dataset.test_labels
@@ -172,15 +173,20 @@ def index(request):
                     ml_trainer.fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
                         batch_size=100, da_params=data_augmentation, epochs=1)
                     ml_trainer.save_model()
+                    
+                    ml_trainer_status = MlTrainerStatus.DONE
                     logging.debug('Training Done')
-        
+                    
         return
     
     def _reset_trainer(request):
         logging.debug('reset_trainer: ')
         logging.debug(request.POST.keys())
         if ('reset_trainer' in request.POST.keys()):
-            ml_trainer.reset_status()
+            global ml_trainer
+            global ml_trainer_status
+            ml_trainer.release_memory()
+            ml_trainer_status = MlTrainerStatus.IDLE
         
         return
     

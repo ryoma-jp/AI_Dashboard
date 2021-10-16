@@ -1155,6 +1155,10 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
   * ``` docker-compose exec db /bin/bash```でデータベースコンテナに接続し，```psql --username=user_name --dbname=db_name```で起動
 * [PostgreSQLの基本的なコマンド](https://qiita.com/H-A-L/items/fe8cb0e0ee0041ff3ceb)
 
+## Tensorflow / Keras
+
+* [Keras: release memory after finish training process](https://stackoverflow.com/questions/51005147/keras-release-memory-after-finish-training-process/52354943)
+
 ## その他
 
 ### GitHubのMarkdownにPlantUMLを表示する方法
