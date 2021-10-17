@@ -189,15 +189,11 @@ class Trainer():
 	
 	# --- メモリリソース解放(セッションのクリア) ---
 	def release_memory(self):
-		from numba import cuda
 		
-		del self.model
 		keras.backend.clear_session()
+		del self.model
 		gc.collect()
-		
-		cuda.select_device(0)
-		cuda.close()
-		
+
 		return
 		
 	# --- ラベルインデックス取得 ---

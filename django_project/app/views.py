@@ -183,10 +183,11 @@ def index(request):
         logging.debug('reset_trainer: ')
         logging.debug(request.POST.keys())
         if ('reset_trainer' in request.POST.keys()):
-            global ml_trainer
-            global ml_trainer_status
-            ml_trainer.release_memory()
-            ml_trainer_status = MlTrainerStatus.IDLE
+            if (ml_trainer_status == MlTrainerStatus.DONE):
+                global ml_trainer
+                global ml_trainer_status
+                ml_trainer.release_memory()
+                ml_trainer_status = MlTrainerStatus.IDLE
         
         return
     
