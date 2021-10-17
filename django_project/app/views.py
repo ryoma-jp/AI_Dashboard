@@ -202,7 +202,8 @@ def index(request):
     try:
         dataset_selection = DatasetSelection.objects.get(pk=1)
     except ObjectDoesNotExist:
-        dataset_selection = None
+        dataset_selection = DatasetSelection()
+        dataset_selection.save()
     logging.debug('dataset_selection: ')
     logging.debug(dataset_selection)
     

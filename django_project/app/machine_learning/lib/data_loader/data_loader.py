@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import requests
 import tarfile
+import gzip
 
 #---------------------------------
 # クラス; データ取得基底クラス
@@ -168,7 +169,7 @@ class DataLoaderCIFAR10(DataLoader):
 #---------------------------------
 class DataLoaderMNIST(DataLoader):
 	# --- コンストラクタ ---
-	def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False):
+	def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
 		"""
 			[引数説明]
 				* validation_split: validation dataとして使用する学習データの比率(0.0 ～ 1.0)
@@ -179,6 +180,31 @@ class DataLoaderMNIST(DataLoader):
 		# --- initialize super class ---
 		super().__init__()
 		
+		# --- download dataset and extract ---
+		if (download):
+			logging.debug('[DataLoaderMNIST] {}'.format(dataset_dir))
+			mnist_files = [
+				'train-images-idx3-ubyte.gz',
+				'train-labels-idx1-ubyte.gz',
+				't10k-images-idx3-ubyte.gz',
+				't10k-labels-idx1-ubyte.gz'
+			]
+			
+			for mnist_file in mnist_files:
+				if (not os.path.exists(os.path.join(dataset_dir, mnist_file))):
+					url = 'http://yann.lecun.com/exdb/mnist/' + mnist_file
+					save_file = self.file_download(dataset_dir, url)
+					
+					with gzip.open(save_file, 'rb') as gz:
+						gz_content = gz.read()
+					
+					save_file = os.path.join(dataset_dir, mnist_file[:-3])
+					with open(save_file, 'wb') as f:
+						f.write(gz_content)
+					
+				else:
+					logging.debug('{} is exists (Skip Download)'.format(mnist_file))
+			
 		# --- load training data ---
 		f = open(os.path.join(dataset_dir, 'train-images-idx3-ubyte'))
 		byte_data = np.fromfile(f, dtype=np.uint8)
