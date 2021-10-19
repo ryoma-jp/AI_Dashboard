@@ -16,8 +16,10 @@ class MlTrainerStatus():
     PREPARING = 1
     TRAINING = 2
     DONE = 3
-ml_trainer = None
-ml_trainer_status = MlTrainerStatus.IDLE
+g_ml_trainer = {
+    'ml_trainer': None,
+    'ml_trainer_status': MlTrainerStatus.IDLE
+}
 
 # Create your views here.
 
@@ -104,17 +106,15 @@ def index(request):
         
         return dataset_file_form
     
-    def _training_run(request):
-        global ml_trainer
-        global ml_trainer_status
+    def _training_run(request, trainer):
         logging.debug('training_run: ')
         logging.debug(request.POST.keys())
         if ('training_run' in request.POST.keys()):
             dataset_selection = DatasetSelection.objects.all()
             if (len(dataset_selection) > 0):
                 logging.debug(dataset_selection[0].selection)
-                if (ml_trainer_status == MlTrainerStatus.IDLE):
-                    ml_trainer_status = MlTrainerStatus.PREPARING
+                if (trainer['ml_trainer_status'] == MlTrainerStatus.IDLE):
+                    trainer['ml_trainer_status'] = MlTrainerStatus.PREPARING
                     train_parameters = {
                         'dataset_type': dataset_selection[0].selection,
                         'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
@@ -166,28 +166,28 @@ def index(request):
                     }
                     
                     # --- Training Model ---
-                    ml_trainer_status = MlTrainerStatus.TRAINING
-                    ml_trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=train_parameters['model_dir'],
+                    trainer['ml_trainer_status'] = MlTrainerStatus.TRAINING
+                    trainer['ml_trainer'] = TrainerCNN(dataset.train_images.shape[1:], output_dir=train_parameters['model_dir'],
                         optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
                     logging.debug('Training Start')
-                    ml_trainer.fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+                    trainer['ml_trainer'].fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
                         batch_size=100, da_params=data_augmentation, epochs=1)
-                    ml_trainer.save_model()
+                    trainer['ml_trainer'].save_model()
                     
-                    ml_trainer_status = MlTrainerStatus.DONE
+                    trainer['ml_trainer_status'] = MlTrainerStatus.DONE
                     logging.debug('Training Done')
                     
         return
     
-    def _reset_trainer(request):
+    def _reset_trainer(request, trainer):
         logging.debug('reset_trainer: ')
         logging.debug(request.POST.keys())
         if ('reset_trainer' in request.POST.keys()):
-            if (ml_trainer_status == MlTrainerStatus.DONE):
-                global ml_trainer
-                global ml_trainer_status
-                ml_trainer.release_memory()
-                ml_trainer_status = MlTrainerStatus.IDLE
+            if (trainer['ml_trainer_status'] == MlTrainerStatus.DONE):
+                trainer['ml_trainer'].release_memory()
+                del trainer['ml_trainer']
+                trainer['ml_trainer'] = None
+                trainer['ml_trainer_status'] = MlTrainerStatus.IDLE
         
         return
     
@@ -224,10 +224,18 @@ def index(request):
         # --- 学習実行 ---
         logging.debug('dataset_selection_form')
         logging.debug(dataset_selection_form)
-        _training_run(request)
+        logging.debug('g_ml_trainer (before _training_run())')
+        logging.debug(g_ml_trainer)
+        _training_run(request, g_ml_trainer)
+        logging.debug('g_ml_trainer (after _training_run())')
+        logging.debug(g_ml_trainer)
         
         # --- 状態のリセット ---
-        _reset_trainer(request)
+        logging.debug('g_ml_trainer (before _reset_trainer())')
+        logging.debug(g_ml_trainer)
+        _reset_trainer(request, g_ml_trainer)
+        logging.debug('g_ml_trainer (after _reset_trainer())')
+        logging.debug(g_ml_trainer)
         
     else:
         dataset_file_form = DatasetFileForm()
