@@ -171,7 +171,7 @@ def index(request):
                         optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
                     logging.debug('Training Start')
                     trainer['ml_trainer'].fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
-                        batch_size=100, da_params=data_augmentation, epochs=1)
+                        batch_size=100, da_params=data_augmentation, epochs=100)
                     trainer['ml_trainer'].save_model()
                     
                     trainer['ml_trainer_status'] = MlTrainerStatus.DONE

@@ -108,8 +108,10 @@ class Trainer():
 		checkpoint_path = os.path.join(self.output_dir, 'checkpoints', 'model.ckpt')
 		cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
 		es_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto')
+		tensorboard_logdir = os.path.join(self.output_dir, 'logs')
+		tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
 		#callbacks = [cp_callback, es_callback]
-		callbacks = [cp_callback, self.CustomCallback()]
+		callbacks = [cp_callback, self.CustomCallback(), tensorboard_callback]
 		
 		if (da_params is not None):
 			# --- no tuning ---
