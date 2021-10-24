@@ -9,7 +9,7 @@ services:
     expose:
       - 8000
     ports:
-      - 6006
+      - 6006:6006
     env_file:
       - ./.env.dev
     depends_on:

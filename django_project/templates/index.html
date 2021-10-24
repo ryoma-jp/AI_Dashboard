@@ -230,6 +230,10 @@
                 <button type="submit" class="btn btn-primary" id="reset_trainer" name="reset_trainer" value="reset_trainer">Reset</button>
               </form>
               
+              <form class="m-3" method="POST">{% csrf_token %}
+                <button type="submit" class="btn btn-primary" id="launch_tensorboard" name="launch_tensorboard" value="launch_tensorboard">Launch Tensorboard</button>
+              </form>
+              
             </div>
            
           </div>

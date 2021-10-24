@@ -26,6 +26,19 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"]= "true"
 class Trainer():
 	# --- カスタムコールバック ---
 	class CustomCallback(keras.callbacks.Callback):
+		def __init__(self, **kwargs):
+			logging.debug('CustomCallback initialize')
+			logging.debug(kwargs)
+			self.flg_terminate = kwargs['flg_terminate']
+			
+			del kwargs['flg_terminate']
+			super().__init__(**kwargs)
+			
+		def on_batch_end(self, batch, logs=None):
+			if (self.flg_terminate):
+				print("[DEBUG] flg_terminate: {}".format(self.model.flg_terminate))
+				self.flg_terminate = False
+			
 		def on_epoch_end(self, epoch, logs=None):
 			keys = list(logs.keys())
 			log_str = ''
@@ -51,6 +64,9 @@ class Trainer():
 		self.model = _load_model(model_file)
 		if (self.model is not None):
 			self._compile_model(optimizer=optimizer, loss=loss)
+		
+		# --- 学習制御 ---
+		self.flg_terminate = False		# 中断時にTrueに設定
 		
 		return
 	
@@ -111,7 +127,7 @@ class Trainer():
 		tensorboard_logdir = os.path.join(self.output_dir, 'logs')
 		tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
 		#callbacks = [cp_callback, es_callback]
-		callbacks = [cp_callback, self.CustomCallback(), tensorboard_callback]
+		callbacks = [cp_callback, self.CustomCallback(flg_terminate=self.flg_terminate), tensorboard_callback]
 		
 		if (da_params is not None):
 			# --- no tuning ---
