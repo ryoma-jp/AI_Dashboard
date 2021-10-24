@@ -30,13 +30,17 @@ class Trainer():
 			logging.debug('CustomCallback initialize')
 			logging.debug(kwargs)
 			self.flg_terminate = kwargs['flg_terminate']
+			logging.debug('id(kwargs[\'flg_terminate\']: {}'.format(id(kwargs['flg_terminate'])))
+			logging.debug('id(self.flg_terminate: {}'.format(id(self.flg_terminate)))
 			
 			del kwargs['flg_terminate']
 			super().__init__(**kwargs)
 			
-		def on_batch_end(self, batch, logs=None):
+		def on_train_batch_end(self, batch, logs=None):
+			print("End batch {}".format(batch))
 			if (self.flg_terminate):
 				print("[DEBUG] flg_terminate: {}".format(self.model.flg_terminate))
+				self.model.stop_training = True
 				self.flg_terminate = False
 			
 		def on_epoch_end(self, epoch, logs=None):
@@ -181,6 +185,12 @@ class Trainer():
 		
 		return
 	
+	# --- 学習中断 ---
+	def suspend(self):
+		logging.debug('suspend called')
+		self.flg_terminate = True
+		return
+
 	# --- 推論 ---
 	def predict(self, x_test):
 		predictions = self.model.predict(x_test)

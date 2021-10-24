@@ -171,12 +171,20 @@ def index(request):
                         optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
                     logging.debug('Training Start')
                     trainer['ml_trainer'].fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
-                        batch_size=100, da_params=data_augmentation, epochs=100)
+                        batch_size=100, da_params=data_augmentation, epochs=10)
                     trainer['ml_trainer'].save_model()
                     
                     trainer['ml_trainer_status'] = MlTrainerStatus.DONE
                     logging.debug('Training Done')
                     
+        return
+    
+    def _suspend_trainer(request, trainer):
+        logging.debug('suspend_trainer: ')
+        logging.debug(request.POST.keys())
+        if ('suspend_trainer' in request.POST.keys()):
+            trainer['ml_trainer'].suspend()
+        
         return
     
     def _reset_trainer(request, trainer):
@@ -229,6 +237,9 @@ def index(request):
         _training_run(request, g_ml_trainer)
         logging.debug('g_ml_trainer (after _training_run())')
         logging.debug(g_ml_trainer)
+        
+        # --- 学習中断 ---
+        _suspend_trainer(request, g_ml_trainer)
         
         # --- 状態のリセット ---
         logging.debug('g_ml_trainer (before _reset_trainer())')
