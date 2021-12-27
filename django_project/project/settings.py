@@ -160,3 +160,7 @@ else:
 # Parameters for Machine Learning
 DATASET_DIR = os.environ.get('DATASET_DIR')
 MODEL_DIR = os.environ.get('MODEL_DIR')
+
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = ['http://*.localhost:1317']
+
