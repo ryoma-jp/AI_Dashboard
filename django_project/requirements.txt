@@ -1,4 +1,4 @@
-Django
+Django==3.2.10
 psycopg2-binary
 gunicorn
 django-bootstrap5
