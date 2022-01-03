@@ -3,15 +3,22 @@
 #---------------------------------
 # モジュールのインポート
 #---------------------------------
-import io
 import os
+import sys
+
+print(f'[DEBUG] {os.path.dirname(os.path.abspath(__file__))}')
+print(f'[DEBUG] {os.getcwd()}')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+print(f'[DEBUG] {sys.path}')
+
+import io
 import argparse
 import pandas as pd
 
-from data_loader.data_loader import DataLoaderMNIST
-from data_loader.data_loader import DataLoaderCIFAR10
+from lib.data_loader.data_loader import DataLoaderMNIST
+from lib.data_loader.data_loader import DataLoaderCIFAR10
 
-from trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
+from lib.trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
 
 #---------------------------------
 # 定数定義
@@ -28,6 +35,8 @@ def ArgParser():
 				formatter_class=argparse.RawTextHelpFormatter)
 
 	# --- 引数を追加 ---
+	parser.add_argument('--fifo', dest='fifo', type=str, default=None, required=False, \
+			help='学習制御用FIFO')
 	parser.add_argument('--data_type', dest='data_type', type=str, default='CIFAR-10', required=False, \
 			help='データ種別(MNIST, CIFAR-10)')
 	parser.add_argument('--dataset_dir', dest='dataset_dir', type=str, default=None, required=True, \
@@ -82,6 +91,7 @@ def main():
 	# --- 引数処理 ---
 	args = ArgParser()
 	print('[INFO] Arguments')
+	print('  * args.fifo = {}'.format(args.fifo))
 	print('  * args.data_type = {}'.format(args.data_type))
 	print('  * args.dataset_dir = {}'.format(args.dataset_dir))
 	print('  * args.model_type = {}'.format(args.model_type))
@@ -111,9 +121,9 @@ def main():
 	else:
 		one_hot = True
 	if (args.data_type == "MNIST"):
-		dataset = DataLoaderMNIST(args.dataset_dir, validation_split=0.2, one_hot=one_hot)
+		dataset = DataLoaderMNIST(args.dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
 	elif (args.data_type == "CIFAR-10"):
-		dataset = DataLoaderCIFAR10(args.dataset_dir, validation_split=0.2, one_hot=one_hot)
+		dataset = DataLoaderCIFAR10(args.dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
 	else:
 		print('[ERROR] Unknown data_type: {}'.format(args.data_type))
 		quit()
@@ -151,7 +161,7 @@ def main():
 	else:
 		print('[ERROR] Unknown model_type: {}'.format(args.model_type))
 		quit()
-	trainer.fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+	trainer.fit(args.fifo, x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
 		batch_size=args.batch_size, da_params=data_augmentation, epochs=args.epochs)
 	trainer.save_model()
 	

@@ -1,5 +1,6 @@
 import os
 import logging
+import subprocess
 
 from django.shortcuts import render
 from django.conf import settings
@@ -115,6 +116,13 @@ def index(request):
                 logging.debug(dataset_selection[0].selection)
                 if (trainer['ml_trainer_status'] == MlTrainerStatus.IDLE):
                     trainer['ml_trainer_status'] = MlTrainerStatus.PREPARING
+                    
+                    # --- Create FIFO ---
+                    fifo = '/tmp/fifo_trainer_ctl'
+                    if (not os.path.exists(fifo)):
+                        os.mkfifo(fifo)
+                    
+                    # --- Training Model ---
                     train_parameters = {
                         'dataset_type': dataset_selection[0].selection,
                         'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
@@ -127,6 +135,25 @@ def index(request):
                         'model_dir': os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR),
                     }
                     
+                    main_path = os.path.abspath('./app/machine_learning/main.py')
+                    logging.debug(f'main_path: {main_path}')
+                    logging.debug(f'current working directory: {os.getcwd()}')
+                    subproc = subprocess.Popen(['python', main_path, \
+                                                '--fifo', fifo, \
+                                                '--data_type', train_parameters['dataset_type'], \
+                                                '--dataset_dir', train_parameters['dataset_dir_root'], \
+                                                '--model_type', 'SimpleCNN', \
+                                                '--data_augmentation', '5,0.2,0.2,0.2,0.2,True', \
+                                                '--optimizer', 'momentum', \
+                                                '--batch_size', '100', \
+                                                '--initializer', 'he_normal', \
+                                                '--dropout_rate', '0.25', \
+                                                '--loss_func', 'categorical_crossentropy', \
+                                                '--epochs', '10', \
+                                                '--result_dir', train_parameters['model_dir']])
+                    logging.debug(f'subproc PID: {subproc.pid}')
+                    
+                    '''
                     if (dataset_selection[0].selection == 'User data'):
                         dataset_file = DatasetFile.objects.all()
                         train_parameters['train_zip'] = os.path.basename(dataset_file[0].train_zip.name)
@@ -166,6 +193,8 @@ def index(request):
                     }
                     
                     # --- Training Model ---
+                    main_path = os.path.abspath('./app/machine_learning/main.py')
+                    logging.debug(f'main_path: {main_path}')
                     trainer['ml_trainer_status'] = MlTrainerStatus.TRAINING
                     trainer['ml_trainer'] = TrainerCNN(dataset.train_images.shape[1:], output_dir=train_parameters['model_dir'],
                         optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
@@ -173,6 +202,7 @@ def index(request):
                     trainer['ml_trainer'].fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
                         batch_size=100, da_params=data_augmentation, epochs=10)
                     trainer['ml_trainer'].save_model()
+                    '''
                     
                     trainer['ml_trainer_status'] = MlTrainerStatus.DONE
                     logging.debug('Training Done')
@@ -183,7 +213,9 @@ def index(request):
         logging.debug('suspend_trainer: ')
         logging.debug(request.POST.keys())
         if ('suspend_trainer' in request.POST.keys()):
-            trainer['ml_trainer'].suspend()
+            fifo = '/tmp/fifo_trainer_ctl'
+            with open(fifo, 'w') as f:
+                f.write('stop\n')
         
         return
     

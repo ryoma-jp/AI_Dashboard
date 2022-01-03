@@ -4,6 +4,7 @@
 # モジュールのインポート
 #---------------------------------
 import os
+import fcntl
 import gc
 import logging
 import numpy as np
@@ -26,22 +27,32 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"]= "true"
 class Trainer():
 	# --- カスタムコールバック ---
 	class CustomCallback(keras.callbacks.Callback):
-		def __init__(self, **kwargs):
-			logging.debug('CustomCallback initialize')
-			logging.debug(kwargs)
-			self.flg_terminate = kwargs['flg_terminate']
-			logging.debug('id(kwargs[\'flg_terminate\']: {}'.format(id(kwargs['flg_terminate'])))
-			logging.debug('id(self.flg_terminate: {}'.format(id(self.flg_terminate)))
-			
-			del kwargs['flg_terminate']
-			super().__init__(**kwargs)
+		def __init__(self, fifo):
+			super().__init__()
+			self.fifo = fifo
 			
 		def on_train_batch_end(self, batch, logs=None):
-			print("End batch {}".format(batch))
-			if (self.flg_terminate):
-				print("[DEBUG] flg_terminate: {}".format(self.model.flg_terminate))
-				self.model.stop_training = True
-				self.flg_terminate = False
+			fd = os.open(self.fifo, os.O_RDONLY | os.O_NONBLOCK)
+			flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+			flags &= ~os.O_NONBLOCK
+			fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+			
+			try:
+				command = os.read(fd, 128)
+				command = command.decode()[:-1]
+				while (True):
+					buf = os.read(fd, 65536)
+					if not buf:
+						break
+			finally:
+				os.close(fd)
+			
+			if (command):
+				if (command == 'stop'):
+					print('End batch: recv command={}'.format(command))
+					self.model.stop_training = True
+				else:
+					print('End batch: recv unknown command={}'.format(command))
 			
 		def on_epoch_end(self, epoch, logs=None):
 			keys = list(logs.keys())
@@ -68,9 +79,6 @@ class Trainer():
 		self.model = _load_model(model_file)
 		if (self.model is not None):
 			self._compile_model(optimizer=optimizer, loss=loss)
-		
-		# --- 学習制御 ---
-		self.flg_terminate = False		# 中断時にTrueに設定
 		
 		return
 	
@@ -119,7 +127,7 @@ class Trainer():
 		return
 	
 	# --- 学習 ---
-	def fit(self, x_train, y_train, x_val=None, y_val=None, x_test=None, y_test=None,
+	def fit(self, fifo, x_train, y_train, x_val=None, y_val=None, x_test=None, y_test=None,
 			da_params=None,
 			batch_size=32, epochs=200,
 			verbose=0):
@@ -128,10 +136,11 @@ class Trainer():
 		checkpoint_path = os.path.join(self.output_dir, 'checkpoints', 'model.ckpt')
 		cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
 		es_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto')
+		custom_callback = self.CustomCallback(fifo)
 		tensorboard_logdir = os.path.join(self.output_dir, 'logs')
 		tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
 		#callbacks = [cp_callback, es_callback]
-		callbacks = [cp_callback, self.CustomCallback(flg_terminate=self.flg_terminate), tensorboard_callback]
+		callbacks = [cp_callback, custom_callback, tensorboard_callback]
 		
 		if (da_params is not None):
 			# --- no tuning ---
@@ -185,12 +194,6 @@ class Trainer():
 		
 		return
 	
-	# --- 学習中断 ---
-	def suspend(self):
-		logging.debug('suspend called')
-		self.flg_terminate = True
-		return
-
 	# --- 推論 ---
 	def predict(self, x_test):
 		predictions = self.model.predict(x_test)
