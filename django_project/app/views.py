@@ -153,57 +153,6 @@ def index(request):
                                                 '--result_dir', train_parameters['model_dir']])
                     logging.debug(f'subproc PID: {subproc.pid}')
                     
-                    '''
-                    if (dataset_selection[0].selection == 'User data'):
-                        dataset_file = DatasetFile.objects.all()
-                        train_parameters['train_zip'] = os.path.basename(dataset_file[0].train_zip.name)
-                        train_parameters['train_csv'] = os.path.basename(dataset_file[0].train_csv.name)
-                        train_parameters['valid_zip'] = os.path.basename(dataset_file[0].valid_zip.name)
-                        train_parameters['valid_csv'] = os.path.basename(dataset_file[0].valid_csv.name)
-                        train_parameters['test_zip'] = os.path.basename(dataset_file[0].test_zip.name)
-                        train_parameters['test_csv'] = os.path.basename(dataset_file[0].test_csv.name)
-                    
-                    logging.debug(train_parameters)
-                    # --- Prepare Dataset ---
-                    if (train_parameters['dataset_type'] == 'MNIST'):
-                        logging.debug('Prepare dataset: MNIST')
-                        dataset = DataLoaderMNIST(train_parameters['dataset_dir_root'], validation_split=0.2, one_hot=True, download=True)
-                    elif (train_parameters['dataset_type'] == 'CIFAR-10'):
-                        logging.debug('Prepare dataset: CIFAR-10')
-                        dataset = DataLoaderCIFAR10(train_parameters['dataset_dir_root'], validation_split=0.2, one_hot=True, download=True)
-                    elif (train_parameters['dataset_type'] == 'User data'):
-                        # --- T.B.D ---
-                        logging.debug('Prepare dataset: User data')
-                        pass
-                    else:
-                        # --- Unknown dataset ---
-                        logging.debug('[ERROR] Unknown dataset')
-                        return
-                    x_train, x_val, x_test = dataset.normalization("max")
-                    y_train = dataset.train_labels
-                    y_val = dataset.validation_labels
-                    y_test = dataset.test_labels
-                    data_augmentation = {
-                        'rotation_range': 5,
-                        'width_shift_range': 0.2,
-                        'height_shift_range': 0.2,
-                        'zoom_range': 0.2,
-                        'channel_shift_range': 0.2,
-                        'horizontal_flip': True,
-                    }
-                    
-                    # --- Training Model ---
-                    main_path = os.path.abspath('./app/machine_learning/main.py')
-                    logging.debug(f'main_path: {main_path}')
-                    trainer['ml_trainer_status'] = MlTrainerStatus.TRAINING
-                    trainer['ml_trainer'] = TrainerCNN(dataset.train_images.shape[1:], output_dir=train_parameters['model_dir'],
-                        optimizer="momentum", loss="categorical_crossentropy", initializer="he_normal")
-                    logging.debug('Training Start')
-                    trainer['ml_trainer'].fit(x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
-                        batch_size=100, da_params=data_augmentation, epochs=10)
-                    trainer['ml_trainer'].save_model()
-                    '''
-                    
                     trainer['ml_trainer_status'] = MlTrainerStatus.DONE
                     logging.debug('Training Done')
                     

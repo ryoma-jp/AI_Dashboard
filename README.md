@@ -86,6 +86,18 @@ $ source venv/bin/activate
 (venv)$ deactivate
 ```
 
+### 参考3) 実行ログの確認方法
+
+#### フロントエンド
+
+* ブラウザの検証機能（Google Chrome）や調査機能（Firefox）からコンソールを開く
+
+#### バックエンド
+
+```
+$ docker-compose logs -f <コンテナ名>
+```
+
 ## Docker上で上記Djangoプロジェクトのサーバを起動する
 
 Dockerfile，requirements.txt，docker-compose.yml，.env.devの作成とsettings.pyの編集を行う．  

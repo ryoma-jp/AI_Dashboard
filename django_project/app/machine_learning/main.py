@@ -4,13 +4,6 @@
 # モジュールのインポート
 #---------------------------------
 import os
-import sys
-
-print(f'[DEBUG] {os.path.dirname(os.path.abspath(__file__))}')
-print(f'[DEBUG] {os.getcwd()}')
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-print(f'[DEBUG] {sys.path}')
-
 import io
 import argparse
 import pandas as pd
