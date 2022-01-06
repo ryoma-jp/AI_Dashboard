@@ -34,6 +34,10 @@ WebサーバにはダウンしにくいといわれるNginxを，Djangoとの接
 ```docker-compose down -v```でコンテナ削除する際にボリュームも削除する．  
 ```docker-compose down```ではコンテナは削除されるがボリュームは削除されない為，データベースは維持できる．
 
+### ER図
+
+![ER Diagram](./figure/erd_ml_project_database.png)
+
 # 環境構築手順
 
 virtualenv上でDocker-Djangoプロジェクト(ベースツリー)を作成し，これをDocker上で動作するように改変した後，PostgreSQL/Gunicorn/Nginxを設定する流れで環境を構築する．  

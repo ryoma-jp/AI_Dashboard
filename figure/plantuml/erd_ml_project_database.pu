@@ -1,0 +1,43 @@
+@startuml
+' hide the spot
+hide circle
+
+' avoid problems with angled crows feet
+skinparam linetype ortho
+
+entity "Project" as project {
+  *project_id : number <<generated>>
+  --
+  name : text
+  description : text
+}
+
+entity "Dataset" as dataset {
+  *dataset_id : number <<generated>>
+  --
+  name : text
+  project : (class Project)
+  type : text
+  train_zip : file
+  train_csv : file
+  validation_zip : file
+  validation_csv : file
+  test_zip : file
+  test_csv : file
+}
+
+entity "Model" as model {
+  *model_id : number <<generated>>
+  --
+  name : text
+  project : (class Project)
+  dataset : (class Dataset)
+  model_dir : text
+  status : text
+}
+
+project ||-d-o{ dataset
+project ||-d-o{ model
+dataset }|-d-|{ model
+@enduml
+

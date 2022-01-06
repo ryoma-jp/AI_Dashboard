@@ -1,14 +1,21 @@
 from django import forms
-from app.models import DatasetFile, DatasetSelection
+from app.models import Project, CustomDataset, MlModel
 
-class DatasetFileForm(forms.ModelForm):
+class ProjectForm(forms.ModelForm):
     class Meta:
-        model = DatasetFile
-        fields = ('train_zip', 'train_csv',
+        model = Project
+        fields = ('name', 'description',)
+
+class CustomDatasetForm(forms.ModelForm):
+    class Meta:
+        model = CustomDataset
+        fields = ('name',
+                  'train_zip', 'train_csv',
                   'valid_zip', 'valid_csv',
                   'test_zip', 'test_csv', )
 
-class DatasetSelectionForm(forms.ModelForm):
+class MlModelForm(forms.ModelForm):
     class Meta:
-        model = DatasetSelection
-        fields = ('selection', )
+        model = MlModel
+        fields = ('name', 'description',)
+
