@@ -14,6 +14,16 @@ from .machine_learning.lib.trainer.trainer import *
 
 # Create your views here.
 
+
+""" Function: get_version
+ * return version text
+"""
+def get_version():
+    if (settings.DEBUG):
+        return 'Debug mode'
+    else:
+        return '[T.B.D] VerX.XX'
+
 """ Function: index
  * show main view
 """
@@ -220,10 +230,7 @@ def index(request):
         custom_dataset_form = CustomDatasetForm()
         models = MlModel.objects.all()
     
-    if (settings.DEBUG):
-        text = 'Debug mode'
-    else:
-        text = '[T.B.D] VerX.XX'
+    text = get_version()
     system_info = Trainer.GetSystemInfo()
     return render(request, 'index.html', {
                'projects': projects,
@@ -249,7 +256,8 @@ def project_new(request):
     else:
         form = ProjectForm()
     
-    return render(request, 'project_new.html', {'form': form})
+    text = get_version()
+    return render(request, 'project_new.html', {'form': form, 'text': text})
 
 """ Function: model_new
  * new model
@@ -262,11 +270,13 @@ def model_new(request, project_id):
         if (form.is_valid()):
             model = form.save(commit=False)
             model.project = project
+            model.status = model.STAT_IDLE
             model.save()
             
             return redirect('index')
     else:
         form = MlModelForm()
     
-    return render(request, 'model_new.html', {'form': form})
+    text = get_version()
+    return render(request, 'model_new.html', {'form': form, 'text': text})
 

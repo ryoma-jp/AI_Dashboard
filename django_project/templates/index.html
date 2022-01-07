@@ -64,14 +64,16 @@
               <p>{{ project.description }}</p>
               <a class="btn btn-primary" href="{% url 'model_new' project.id %}">新規モデル</a>
               {% if models|in_project:project %}
-                <table class="table table-bordered border-primary table-hover ms-4">
+                <p><table class="table table-bordered border-primary table-hover ms-4">
                 {% for model in models|in_project:project %}
                   <tr>
                     <td>{{ model.name }}</td>
                     <td>{{ model.description }}</td>
+                    <td>{{ model.dataset }}</td>
+                    <td>{{ model.status }}</td>
                   </tr>
                 {% endfor %}
-                </table>
+                </table></p>
               {% else %}
                 <p>No Models</p>
               {% endif %}

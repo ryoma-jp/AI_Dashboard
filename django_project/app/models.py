@@ -10,11 +10,6 @@ class Project(models.Model):
     name = models.CharField('ProjectName', max_length=128)
     description = models.TextField('Description', blank=True)
     
-    registerd_dataset = [
-        ("MNIST", "MNIST"),
-        ("CIFAR-10", "CIFAR-10"),
-    ]
-    
     def __str__(self):
         return self.name
 
@@ -44,14 +39,18 @@ class MlModel(models.Model):
     description = models.TextField('Description', blank=True)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
+    registerd_dataset = [
+        ("MNIST", "MNIST"),
+        ("CIFAR-10", "CIFAR-10"),
+    ]
+    dataset = models.CharField(max_length=64, choices=registerd_dataset, default='MNIST')
+    
     model_dir = models.TextField('ModelDir', blank=True)
     
-    MODEL_STATUS = (
-        ("IDLE", "IDLE"),
-        ("TRAINING", "TRAINING"),
-        ("DONE", "DONE"),
-    )
-    status = models.CharField(verbose_name="Model Status", choices=MODEL_STATUS, default=MODEL_STATUS[0][0], max_length=64)
+    STAT_IDLE = 'IDLE'
+    STAT_TRAINING = 'TRAINING'
+    STAT_DONE = 'DONE'
+    status = models.TextField('Status')
     
     def __str__(self):
         return self.name
