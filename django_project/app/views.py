@@ -14,6 +14,14 @@ from .machine_learning.lib.trainer.trainer import *
 
 # Create your views here.
 
+""" Class: Sidebar active status
+"""
+class SidebarActiveStatus():
+    def __init__(self):
+        self.index = ''
+        self.dataset = ''
+        self.training = ''
+
 
 """ Function: get_version
  * return version text
@@ -230,16 +238,22 @@ def index(request):
         custom_dataset_form = CustomDatasetForm()
         models = MlModel.objects.all()
     
+    sidebar_status = SidebarActiveStatus()
+    sidebar_status.index = 'active'
     text = get_version()
     system_info = Trainer.GetSystemInfo()
-    return render(request, 'index.html', {
-               'projects': projects,
-               'project_form': project_form,
-               'custom_dataset': custom_dataset,
-               'custom_dataset_form': custom_dataset_form,
-               'models': models,
-               'text': text,
-               'system_info': system_info})
+    
+    context = {
+        'projects': projects,
+        'project_form': project_form,
+        'custom_dataset': custom_dataset,
+        'custom_dataset_form': custom_dataset_form,
+        'models': models,
+        'sidebar_status': sidebar_status,
+        'text': text,
+        'system_info': system_info
+    }
+    return render(request, 'index.html', context)
 
 
 """ Function: project_new
@@ -257,7 +271,12 @@ def project_new(request):
         form = ProjectForm()
     
     text = get_version()
-    return render(request, 'project_new.html', {'form': form, 'text': text})
+    
+    context = {
+        'form': form,
+        'text': text,
+    }
+    return render(request, 'project_new.html', context)
 
 """ Function: model_new
  * new model
@@ -278,5 +297,38 @@ def model_new(request, project_id):
         form = MlModelForm()
     
     text = get_version()
-    return render(request, 'model_new.html', {'form': form, 'text': text})
+    
+    context = {
+        'form': form,
+        'text': text
+    }
+    return render(request, 'model_new.html', context)
+
+""" Function: dataset
+ * dataset top
+"""
+def dataset(request):
+    sidebar_status = SidebarActiveStatus()
+    sidebar_status.dataset = 'active'
+    text = get_version()
+    
+    context = {
+        'sidebar_status': sidebar_status,
+        'text': text
+    }
+    return render(request, 'dataset.html', context)
+
+""" Function: training
+ * training top
+"""
+def training(request):
+    sidebar_status = SidebarActiveStatus()
+    sidebar_status.training = 'active'
+    text = get_version()
+    
+    context = {
+        'sidebar_status': sidebar_status,
+        'text': text
+    }
+    return render(request, 'training.html', context)
 

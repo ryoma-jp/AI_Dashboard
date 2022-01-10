@@ -146,7 +146,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Logging
 if (DEBUG):
     logging.basicConfig(
-        level = logging.DEBUG,
+        level = logging.INFO,
         format = '%(asctime)s %(levelname)s %(threadName)s %(message)s',
     )
 else:
