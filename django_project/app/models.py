@@ -16,7 +16,7 @@ class Project(models.Model):
 #---------------------------------------
 # クラス：データセット
 #---------------------------------------
-class CustomDataset(models.Model):
+class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
@@ -38,12 +38,7 @@ class MlModel(models.Model):
     name = models.CharField('ModelName', max_length=128)
     description = models.TextField('Description', blank=True)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
-    
-    registerd_dataset = [
-        ("MNIST", "MNIST"),
-        ("CIFAR-10", "CIFAR-10"),
-    ]
-    dataset = models.CharField(max_length=64, choices=registerd_dataset, default='MNIST')
+    dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.CASCADE)
     
     model_dir = models.TextField('ModelDir', blank=True)
     

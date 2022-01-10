@@ -6,8 +6,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 
-from app.models import Project, CustomDataset, MlModel
-from app.forms import ProjectForm, CustomDatasetForm, MlModelForm
+from app.models import Project, Dataset, MlModel
+from app.forms import ProjectForm, DatasetForm, MlModelForm
 
 from .machine_learning.lib.data_loader.data_loader import *
 from .machine_learning.lib.trainer.trainer import *
@@ -229,13 +229,13 @@ def index(request):
             dataset_selection = DatasetSelection()
         '''
         project_form = ProjectForm()
-        custom_dataset = CustomDataset.objects.all()
-        custom_dataset_form = CustomDatasetForm()
+        dataset = Dataset.objects.all()
+        dataset_form = DatasetForm()
         models = MlModel.objects.all()
     else:
         project_form = ProjectForm()
-        custom_dataset = CustomDataset.objects.all()
-        custom_dataset_form = CustomDatasetForm()
+        dataset = Dataset.objects.all()
+        dataset_form = DatasetForm()
         models = MlModel.objects.all()
     
     sidebar_status = SidebarActiveStatus()
@@ -246,8 +246,8 @@ def index(request):
     context = {
         'projects': projects,
         'project_form': project_form,
-        'custom_dataset': custom_dataset,
-        'custom_dataset_form': custom_dataset_form,
+        'dataset': dataset,
+        'dataset_form': dataset_form,
         'models': models,
         'sidebar_status': sidebar_status,
         'text': text,
@@ -265,6 +265,9 @@ def project_new(request):
         if (form.is_valid()):
             project = form.save(commit=False)
             project.save()
+            
+            Dataset.objects.create(name='MNIST', project=project)
+            Dataset.objects.create(name='CIFAR-10', project=project)
             
             return redirect('index')
     else:
@@ -308,11 +311,15 @@ def model_new(request, project_id):
  * dataset top
 """
 def dataset(request):
+    project = Project.objects.all()
+    dataset = Dataset.objects.all()
     sidebar_status = SidebarActiveStatus()
     sidebar_status.dataset = 'active'
     text = get_version()
     
     context = {
+        'project': project,
+        'dataset': dataset,
         'sidebar_status': sidebar_status,
         'text': text
     }

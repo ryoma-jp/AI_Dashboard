@@ -1,14 +1,14 @@
 from django import forms
-from app.models import Project, CustomDataset, MlModel
+from app.models import Project, Dataset, MlModel
 
 class ProjectForm(forms.ModelForm):
     class Meta:
         model = Project
         fields = ('name', 'description',)
 
-class CustomDatasetForm(forms.ModelForm):
+class DatasetForm(forms.ModelForm):
     class Meta:
-        model = CustomDataset
+        model = Dataset
         fields = ('name',
                   'train_zip', 'train_csv',
                   'valid_zip', 'valid_csv',

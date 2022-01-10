@@ -6,69 +6,39 @@
 <div class="container-fluid">
   <div class="row">
   
-        <!-- Dataset tab -->
-        <div id="dataset" class="tab-pane">
-          <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">Dataset</h1>
-          </div>
-          <h1 class="h3">Select Dataset</h1>
-          <div class="d-flex col-md-4">
-            <!--
-            {% for field in dataset_selection_form %}
-              <form id="{{ field.id_for_label }}_form" method="POST">{% csrf_token %}
-                <select class="form-select" name="{{ field.html_name }}" id="{{ field.id_for_label }}" onchange="onchangeDataset(this.id, this.value)">
-                  {% for opt in dataset_selection_form.selection %}
-                    {{ opt }}
-                  {% endfor %}
-                </select>
-              </form>
-            {% endfor %}
-            -->
-          </div>
-          
-          <!--
-          {% if dataset_selection.get_selection_display == "User data" %}
-            <p><h1 class="h4">Upload Dataset Files</h4></p>
-            <form class="m-3" method="POST" enctype="multipart/form-data">{% csrf_token %}
-              {% for field in dataset_file_form %}
-                <div class="mb-3">
-                  <h5>{{ field.name }}</h5>
-                  {% if 'zip' in field.name %}
-                    <input type="file" accept=".zip" class="form-control" name="{{ field.name }}" id="{{ field.id_for_label }}">
-                  {% else %}
-                    <input type="file" accept=".csv" class="form-control" name="{{ field.name }}" id="{{ field.id_for_label }}">
-                  {% endif %}
-                </div>
-              {% endfor %}
-              <p><button type="submit" class="btn btn-primary ms-4">Upload</button></p>
-            </form>
-            
-            <p>アップロード済みのデータセット</p>
-            <ul>
-              {% if dataset_file.0.train_zip %}
-                <li>[train_zip] <a href="{{ dataset_file.0.train_zip.url }}">{{ dataset_file.0.train_zip.name }}</a></li>
-              {% endif %}
-              {% if dataset_file.0.train_csv %}
-                <li>[train_csv] <a href="{{ dataset_file.0.train_csv.url }}">{{ dataset_file.0.train_csv.name }}</a></li>
-              {% endif %}
-              {% if dataset_file.0.valid_zip %}
-                <li>[valid_zip] <a href="{{ dataset_file.0.valid_zip.url }}">{{ dataset_file.0.valid_zip.name }}</a></li>
-              {% endif %}
-              {% if dataset_file.0.valid_csv %}
-                <li>[valid_csv] <a href="{{ dataset_file.0.valid_csv.url }}">{{ dataset_file.0.valid_csv.name }}</a></li>
-              {% endif %}
-              {% if dataset_file.0.test_zip %}
-                <li>[test_zip] <a href="{{ dataset_file.0.test_zip.url }}">{{ dataset_file.0.test_zip.name }}</a></li>
-              {% endif %}
-              {% if dataset_file.0.test_csv %}
-                <li>[test_csv] <a href="{{ dataset_file.0.test_csv.url }}">{{ dataset_file.0.test_csv.name }}</a></li>
-              {% endif %}
-            </ul>
-          {% endif %}
-          -->
-        </div>
-       
+    <!-- Dataset tab -->
+    <div id="dataset" class="tab-pane">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Dataset</h1>
       </div>
+      <h1 class="h3">Select Project</h1>
+      {% if project %}
+        <h1 class="h3">Dataset List</h1>
+        {% if dataset %}
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">URL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for data_ in dataset %}
+                <tr>
+                  <td>{{ data_.name }}</td>
+                  <td>---</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p>No Dataset registered</p>
+        {% endif %}
+      {% else %}
+        <p>No Projects</p>
+      {% endif %}
+    </div>
+    
   </div>
 </div>
 {% endblock %}
