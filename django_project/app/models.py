@@ -10,6 +10,11 @@ class Project(models.Model):
     name = models.CharField('ProjectName', max_length=128)
     description = models.TextField('Description', blank=True)
     
+    # --- for Dataset view ---
+    dataset_view_selected = models.CharField('Selected Status in Dataset View',
+                                max_length=10,
+                                default='unchecked')  # checked or unchecked
+    
     def __str__(self):
         return self.name
 

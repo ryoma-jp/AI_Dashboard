@@ -12,9 +12,27 @@
         <h1 class="h2">Dataset</h1>
       </div>
       <h1 class="h3">Select Project</h1>
+      
       {% if project %}
+        <form method="post">
+          {% csrf_token %}
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if dataset_view_dropdown_selected %}
+                  {{ dataset_view_dropdown_selected.name }}
+                {% else %}
+                  Select Project
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for project_ in project %}
+                <li><button class="dropdown-item" type="submit" name="dataset_view_dropdown" value="{{ project_.name }}">{{ project_.name }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+        </form>
         <h1 class="h3">Dataset List</h1>
-        {% if dataset %}
+        {% if dataset|in_project:dataset_view_dropdown_selected %}
           <table class="table table-hover">
             <thead>
               <tr>
@@ -23,7 +41,7 @@
               </tr>
             </thead>
             <tbody>
-              {% for data_ in dataset %}
+              {% for data_ in dataset|in_project:dataset_view_dropdown_selected %}
                 <tr>
                   <td>{{ data_.name }}</td>
                   <td>---</td>

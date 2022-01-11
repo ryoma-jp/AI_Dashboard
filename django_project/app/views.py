@@ -311,19 +311,37 @@ def model_new(request, project_id):
  * dataset top
 """
 def dataset(request):
-    project = Project.objects.all()
-    dataset = Dataset.objects.all()
-    sidebar_status = SidebarActiveStatus()
-    sidebar_status.dataset = 'active'
-    text = get_version()
-    
-    context = {
-        'project': project,
-        'dataset': dataset,
-        'sidebar_status': sidebar_status,
-        'text': text
-    }
-    return render(request, 'dataset.html', context)
+    if (request.method == 'POST'):
+        if ('dataset_view_dropdown' in request.POST):
+            dropdown = request.POST.getlist('dataset_view_dropdown')
+            for project in Project.objects.all():
+                if (project.name in dropdown):
+                    project.dataset_view_selected = 'checked'
+                else:
+                    project.dataset_view_selected = 'unchecked'
+                project.save()
+        return redirect('dataset')
+    else:
+        project = Project.objects.all()
+        dataset = Dataset.objects.all()
+        sidebar_status = SidebarActiveStatus()
+        sidebar_status.dataset = 'active'
+        text = get_version()
+        
+        dataset_view_dropdown_selected = None
+        for project_ in project:
+            if (project_.dataset_view_selected == 'checked'):
+                dataset_view_dropdown_selected = project_
+                break
+        
+        context = {
+            'project': project,
+            'dataset': dataset,
+            'sidebar_status': sidebar_status,
+            'text': text,
+            'dataset_view_dropdown_selected': dataset_view_dropdown_selected
+        }
+        return render(request, 'dataset.html', context)
 
 """ Function: training
  * training top
