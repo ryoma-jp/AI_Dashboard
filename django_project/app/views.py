@@ -285,6 +285,11 @@ def project_new(request):
  * new model
 """
 def model_new(request, project_id):
+    # logging.info('-------------------------------------')
+    # logging.info(request.method)
+    # logging.info(request.POST)
+    # logging.info('-------------------------------------')
+    
     project = get_object_or_404(Project, pk=project_id)
     
     if (request.method == 'POST'):
@@ -292,6 +297,10 @@ def model_new(request, project_id):
         if (form.is_valid()):
             model = form.save(commit=False)
             model.project = project
+            
+            selected_model = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
+            model.dataset = get_object_or_404(Dataset.objects.all().filter(project=project, name=selected_model))
+            
             model.status = model.STAT_IDLE
             model.save()
             
@@ -299,9 +308,13 @@ def model_new(request, project_id):
     else:
         form = MlModelForm()
     
+    model_new_dropdown_selected = None
+    dataset = Dataset.objects.all().filter(project=project)
     text = get_version()
     
     context = {
+        'model_new_dropdown_selected': model_new_dropdown_selected,
+        'dataset': dataset,
         'form': form,
         'text': text
     }

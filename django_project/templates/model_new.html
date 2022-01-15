@@ -5,9 +5,42 @@
 <div class="container-fluid">
   <h2> New Model</h2>
   <form method="post">
-      {% csrf_token %}
-      {% bootstrap_form form %}
-      {% bootstrap_button button_type="submit" content="追加" %}
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    
+    <div class="dropdown">
+      <button type="button" class="btn btn-primary dropdown-toggle" id="model_new_dataset_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        {% if model_new_dropdown_selected %}
+          {{ model_new_dropdown_selected.name }}
+        {% else %}
+          Select Dataset
+        {% endif %}
+      </button>
+      <ul class="dropdown-menu" area-labelledby="model_new_dataset_dropdown" id="model_new_dataset_dropdown_list">
+      {% for dataset_ in dataset %}
+        <li><button type="button" class="dropdown-item" value="{{ dataset_.name }}">{{ dataset_.name }}</button></li>
+      {% endfor %}
+      </ul>
+        <script>
+          // id=model_new_dataset_dropdown_listのdropdown-menu内のliタグに対してリスナにクリックイベントを追加する
+          dropdown_list = document.querySelector('#model_new_dataset_dropdown_list')
+          dropdown_list.querySelectorAll('li').forEach( function(el) {
+            el.addEventListener('click', function() {
+              // console.log('Click dropdown item');
+              // console.log(el.textContent);
+              
+              display = document.getElementById('model_new_dataset_dropdown');
+              display.innerText = el.textContent;
+              
+              ele = document.getElementById('model_new_dataset_dropdown_submit')
+              ele.value = el.textContent;
+            });
+          });
+        </script>
+        <input type="hidden" name="model_new_dataset_dropdown_submit" id="model_new_dataset_dropdown_submit" value="">
+    </div>
+    
+    {% bootstrap_button button_type="submit" content="追加" %}
   </form>
 </div>
 {% endblock %}
