@@ -17,7 +17,6 @@ entity "Dataset" as dataset {
   --
   name : text
   project : (class Project)
-  type : text
   train_zip : file
   train_csv : file
   validation_zip : file
@@ -30,6 +29,7 @@ entity "Model" as model {
   *model_id : number <<generated>>
   --
   name : text
+  description : text
   project : (class Project)
   dataset : (class Dataset)
   model_dir : text
@@ -40,4 +40,3 @@ project ||-d-o{ dataset
 project ||-d-o{ model
 dataset }|-d-|{ model
 @enduml
-
