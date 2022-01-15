@@ -15,6 +15,11 @@ class Project(models.Model):
                                 max_length=10,
                                 default='unchecked')  # checked or unchecked
     
+    # --- for Training view ---
+    training_view_selected = models.CharField('Selected Status in Training View',
+                                max_length=10,
+                                default='unchecked')  # checked or unchecked
+    
     def __str__(self):
         return self.name
 
@@ -51,6 +56,11 @@ class MlModel(models.Model):
     STAT_TRAINING = 'TRAINING'
     STAT_DONE = 'DONE'
     status = models.TextField('Status')
+    
+    # --- for Training view ---
+    training_view_selected = models.CharField('Selected Status in Training View',
+                                max_length=10,
+                                default='unchecked')  # checked or unchecked
     
     def __str__(self):
         return self.name

@@ -6,65 +6,110 @@
 <div class="container-fluid">
   <div class="row">
   
-        <!-- Training tab -->
-        <div id="training" class="tab-pane">
-          <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            <h1 class="h2">Training</h1>
-          </div>
-          <h1 class="h3">Parameters</h1>
-          <!--
-          <table class="table table-bordered border-primary table-hover ms-4">
-            <tr><td>Dataset</td>
-            {% if dataset_selection.get_selection_display == "User data" %}
-              <td>
-              {% if dataset_file.0 %}
-                {{ dataset_selection.get_selection_display }}
-                <ul>
-                  {% if dataset_file.0.train_zip %}
-                    <li>[train_zip] <a href="{{ dataset_file.0.train_zip.url }}">{{ dataset_file.0.train_zip.name }}</a></li>
-                  {% endif %}
-                  {% if dataset_file.0.train_csv %}
-                    <li>[train_csv] <a href="{{ dataset_file.0.train_csv.url }}">{{ dataset_file.0.train_csv.name }}</a></li>
-                  {% endif %}
-                  {% if dataset_file.0.valid_zip %}
-                    <li>[valid_zip] <a href="{{ dataset_file.0.valid_zip.url }}">{{ dataset_file.0.valid_zip.name }}</a></li>
-                  {% endif %}
-                  {% if dataset_file.0.valid_csv %}
-                    <li>[valid_csv] <a href="{{ dataset_file.0.valid_csv.url }}">{{ dataset_file.0.valid_csv.name }}</a></li>
-                  {% endif %}
-                  {% if dataset_file.0.test_zip %}
-                    <li>[test_zip] <a href="{{ dataset_file.0.test_zip.url }}">{{ dataset_file.0.test_zip.name }}</a></li>
-                  {% endif %}
-                  {% if dataset_file.0.test_csv %}
-                    <li>[test_csv] <a href="{{ dataset_file.0.test_csv.url }}">{{ dataset_file.0.test_csv.name }}</a></li>
-                  {% endif %}
-                </ul>
-              {% else %}
-                {{ dataset_selection.get_selection_display }}
-                <ul>
-                  <li>no dataset uploaded</li>
-                </ul>
-              {% endif %}
-              </td>
-            {% else %}
-              <td>
-                {{ dataset_selection.get_selection_display }}
-              </td>
-            {% endif %}
-            </tr>
-          </table>
-          -->
-          
-          <form class="m-4" method="POST">{% csrf_token %}
-            <button type="submit" class="btn btn-primary mx-3" id="training_run" name="training_run" value="training_run">Run</button>
-            <button type="submit" class="btn btn-primary mx-3" id="suspend_trainer" name="suspend_trainer" value="suspend_trainer">Suspend</button>
-            <button type="submit" class="btn btn-primary mx-3" id="reset_trainer" name="reset_trainer" value="reset_trainer">Reset</button>
-            <button type="submit" class="btn btn-primary mx-3" id="launch_tensorboard" name="launch_tensorboard" value="launch_tensorboard">Launch Tensorboard</button>
-          </form>
-          
-        </div>
-       
+    <!-- Training tab -->
+    <div id="training" class="tab-pane">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Training</h1>
       </div>
+          
+      <h1 class="h3">Select Project</h1>
+      {% if project %}
+        <form method="post">
+          {% csrf_token %}
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if project_dropdown_selected %}
+                  {{ project_dropdown_selected.name }}
+                {% else %}
+                  Select Project
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for project_ in project %}
+                <li><button class="dropdown-item" type="submit" name="training_view_project_dropdown" value="{{ project_.name }}">{{ project_.name }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+        </form>
+        
+        <h1 class="h3">Select Model</h1>
+        {% if model|in_project:project_dropdown_selected %}
+          <form method="post">
+            {% csrf_token %}
+              <div class="btn-group">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  {% if model_dropdown_selected %}
+                    {{ model_dropdown_selected.name }}
+                  {% else %}
+                    Select Model
+                  {% endif %}
+                </button>
+                <ul class="dropdown-menu">
+                {% for model_ in model %}
+                  <li><button class="dropdown-item" type="submit" name="training_view_model_dropdown" value="{{ model_.name }}">{{ model_.name }}</button></li>
+                {% endfor %}
+                </ul>
+              </div>
+          </form>
+        {% else %}
+          <p>No Model registered</p>
+        {% endif %}
+      {% else %}
+        <p>No Projects</p>
+      {% endif %}
+
+
+      <!--
+      <table class="table table-bordered border-primary table-hover ms-4">
+        <tr><td>Dataset</td>
+        {% if dataset_selection.get_selection_display == "User data" %}
+          <td>
+          {% if dataset_file.0 %}
+            {{ dataset_selection.get_selection_display }}
+            <ul>
+              {% if dataset_file.0.train_zip %}
+                <li>[train_zip] <a href="{{ dataset_file.0.train_zip.url }}">{{ dataset_file.0.train_zip.name }}</a></li>
+              {% endif %}
+              {% if dataset_file.0.train_csv %}
+                <li>[train_csv] <a href="{{ dataset_file.0.train_csv.url }}">{{ dataset_file.0.train_csv.name }}</a></li>
+              {% endif %}
+              {% if dataset_file.0.valid_zip %}
+                <li>[valid_zip] <a href="{{ dataset_file.0.valid_zip.url }}">{{ dataset_file.0.valid_zip.name }}</a></li>
+              {% endif %}
+              {% if dataset_file.0.valid_csv %}
+                <li>[valid_csv] <a href="{{ dataset_file.0.valid_csv.url }}">{{ dataset_file.0.valid_csv.name }}</a></li>
+              {% endif %}
+              {% if dataset_file.0.test_zip %}
+                <li>[test_zip] <a href="{{ dataset_file.0.test_zip.url }}">{{ dataset_file.0.test_zip.name }}</a></li>
+              {% endif %}
+              {% if dataset_file.0.test_csv %}
+                <li>[test_csv] <a href="{{ dataset_file.0.test_csv.url }}">{{ dataset_file.0.test_csv.name }}</a></li>
+              {% endif %}
+            </ul>
+          {% else %}
+            {{ dataset_selection.get_selection_display }}
+            <ul>
+              <li>no dataset uploaded</li>
+            </ul>
+          {% endif %}
+          </td>
+        {% else %}
+          <td>
+            {{ dataset_selection.get_selection_display }}
+          </td>
+        {% endif %}
+        </tr>
+      </table>
+      -->
+      
+      <form class="m-4" method="POST">{% csrf_token %}
+        <button type="submit" class="btn btn-primary mx-3" id="training_run" name="training_run" value="training_run">Run</button>
+        <button type="submit" class="btn btn-primary mx-3" id="suspend_trainer" name="suspend_trainer" value="suspend_trainer">Suspend</button>
+        <button type="submit" class="btn btn-primary mx-3" id="reset_trainer" name="reset_trainer" value="reset_trainer">Reset</button>
+        <button type="submit" class="btn btn-primary mx-3" id="launch_tensorboard" name="launch_tensorboard" value="launch_tensorboard">Launch Tensorboard</button>
+      </form>
+      
+    </div>
   </div>
 </div>
 {% endblock %}

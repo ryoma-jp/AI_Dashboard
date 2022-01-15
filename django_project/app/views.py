@@ -360,13 +360,55 @@ def dataset(request):
  * training top
 """
 def training(request):
-    sidebar_status = SidebarActiveStatus()
-    sidebar_status.training = 'active'
-    text = get_version()
-    
-    context = {
-        'sidebar_status': sidebar_status,
-        'text': text
-    }
-    return render(request, 'training.html', context)
+    if (request.method == 'POST'):
+        if ('training_view_project_dropdown' in request.POST):
+            dropdown = request.POST.getlist('training_view_project_dropdown')
+            for project in Project.objects.all():
+                if (project.name in dropdown):
+                    project.training_view_selected = 'checked'
+                else:
+                    project.training_view_selected = 'unchecked'
+                project.save()
+                
+        if ('training_view_model_dropdown' in request.POST):
+            dropdown = request.POST.getlist('training_view_model_dropdown')
+            for model in MlModel.objects.all():
+                if (model.name in dropdown):
+                    model.training_view_selected = 'checked'
+                else:
+                    model.training_view_selected = 'unchecked'
+                model.save()
+                
+        return redirect('training')
+    else:
+        sidebar_status = SidebarActiveStatus()
+        sidebar_status.training = 'active'
+        text = get_version()
+        
+        project = Project.objects.all()
+        
+        project_dropdown_selected = None
+        for project_ in project:
+            if (project_.training_view_selected == 'checked'):
+                project_dropdown_selected = project_
+        
+        if (project_dropdown_selected):
+            model = MlModel.objects.filter(project=project_dropdown_selected)
+            model_dropdown_selected = None
+            for model_ in model:
+                if (model_.training_view_selected == 'checked'):
+                    model_dropdown_selected = model_
+        else:
+            model = MlModel.objects.all()
+            model_dropdown_selected = None
+        
+        context = {
+            'project': project,
+            'model': model,
+            'sidebar_status': sidebar_status,
+            'text': text,
+            'project_dropdown_selected': project_dropdown_selected,
+            'model_dropdown_selected': model_dropdown_selected
+        }
+        return render(request, 'training.html', context)
 
