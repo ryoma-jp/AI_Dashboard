@@ -299,7 +299,7 @@ def model_new(request, project_id):
             model.project = project
             
             selected_model = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
-            model.dataset = get_object_or_404(Dataset.objects.all().filter(project=project, name=selected_model))
+            model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_model))
             
             model.status = model.STAT_IDLE
             model.save()
