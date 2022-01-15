@@ -115,73 +115,6 @@ def index(request):
         
         return dataset_file_form
     
-    def _training_run(request):
-        logging.debug('training_run: ')
-        logging.debug(request.POST.keys())
-        if ('training_run' in request.POST.keys()):
-            dataset_selection = DatasetSelection.objects.all()
-            if (len(dataset_selection) > 0):
-                logging.debug(dataset_selection[0].selection)
-                    
-                # --- Create FIFO ---
-                fifo = '/tmp/fifo_trainer_ctl'
-                if (not os.path.exists(fifo)):
-                    os.mkfifo(fifo)
-                
-                # --- Training Model ---
-                train_parameters = {
-                    'dataset_type': dataset_selection[0].selection,
-                    'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
-                    'train_zip': '',
-                    'train_csv': '',
-                    'valid_zip': '',
-                    'valid_csv': '',
-                    'test_zip': '',
-                    'test_csv': '',
-                    'model_dir': os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR),
-                }
-                
-                main_path = os.path.abspath('./app/machine_learning/main.py')
-                logging.debug(f'main_path: {main_path}')
-                logging.debug(f'current working directory: {os.getcwd()}')
-                subproc = subprocess.Popen(['python', main_path, \
-                                            '--fifo', fifo, \
-                                            '--data_type', train_parameters['dataset_type'], \
-                                            '--dataset_dir', train_parameters['dataset_dir_root'], \
-                                            '--model_type', 'SimpleCNN', \
-                                            '--data_augmentation', '5,0.2,0.2,0.2,0.2,True', \
-                                            '--optimizer', 'momentum', \
-                                            '--batch_size', '100', \
-                                            '--initializer', 'he_normal', \
-                                            '--dropout_rate', '0.25', \
-                                            '--loss_func', 'categorical_crossentropy', \
-                                            '--epochs', '10', \
-                                            '--result_dir', train_parameters['model_dir']])
-                logging.debug(f'subproc PID: {subproc.pid}')
-                logging.debug('Training Done')
-                    
-        return
-    
-    def _suspend_trainer(request):
-        logging.debug('suspend_trainer: ')
-        logging.debug(request.POST.keys())
-        if ('suspend_trainer' in request.POST.keys()):
-            fifo = '/tmp/fifo_trainer_ctl'
-            with open(fifo, 'w') as f:
-                f.write('stop\n')
-        
-        return
-    
-    def _reset_trainer(request):
-        logging.debug('reset_trainer: ')
-        logging.debug(request.POST.keys())
-        '''
-        if ('reset_trainer' in request.POST.keys()):
-            trainer.release_memory()
-        '''
-        return
-    
-    
     projects = Project.objects.all()
     if (projects):
         '''
@@ -360,6 +293,82 @@ def dataset(request):
  * training top
 """
 def training(request):
+    def _training_run():
+        project = Project.objects.all()
+        selected_project = None
+        for project_ in project:
+            if (project_.training_view_selected == 'checked'):
+                selected_project = project_
+                break
+        
+        selected_model = None
+        if (selected_project):
+            model = MlModel.objects.filter(project=selected_project)
+            for model_ in model:
+                if (model_.training_view_selected == 'checked'):
+                    selected_model = model_
+        
+        if (selected_model):
+            logging.debug(selected_model)
+                
+            # --- Create FIFO ---
+            fifo = '/tmp/fifo_trainer_ctl'
+            if (not os.path.exists(fifo)):
+                os.mkfifo(fifo)
+            
+            # --- Training Model ---
+            train_parameters = {
+                'dataset_type': selected_model.dataset.name,
+                'dataset_dir_root': os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR),
+                'train_zip': '',
+                'train_csv': '',
+                'valid_zip': '',
+                'valid_csv': '',
+                'test_zip': '',
+                'test_csv': '',
+                'model_dir': os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR),
+            }
+            
+            main_path = os.path.abspath('./app/machine_learning/main.py')
+            logging.debug(f'main_path: {main_path}')
+            logging.debug(f'current working directory: {os.getcwd()}')
+            subproc = subprocess.Popen(['python', main_path, \
+                                        '--fifo', fifo, \
+                                        '--data_type', train_parameters['dataset_type'], \
+                                        '--dataset_dir', train_parameters['dataset_dir_root'], \
+                                        '--model_type', 'SimpleCNN', \
+                                        '--data_augmentation', '5,0.2,0.2,0.2,0.2,True', \
+                                        '--optimizer', 'momentum', \
+                                        '--batch_size', '100', \
+                                        '--initializer', 'he_normal', \
+                                        '--dropout_rate', '0.25', \
+                                        '--loss_func', 'categorical_crossentropy', \
+                                        '--epochs', '10', \
+                                        '--result_dir', train_parameters['model_dir']])
+            logging.debug(f'subproc PID: {subproc.pid}')
+            logging.debug('Training Done')
+                    
+        return
+    
+    def _stop_trainer():
+        fifo = '/tmp/fifo_trainer_ctl'
+        with open(fifo, 'w') as f:
+            f.write('stop\n')
+        return
+    
+    def _reset_trainer(request):
+        logging.debug('reset_trainer: ')
+        logging.debug(request.POST.keys())
+        '''
+        if ('reset_trainer' in request.POST.keys()):
+            trainer.release_memory()
+        '''
+        return
+    
+    # logging.info('-------------------------------------')
+    # logging.info(request.method)
+    # logging.info(request.POST)
+    # logging.info('-------------------------------------')
     if (request.method == 'POST'):
         if ('training_view_project_dropdown' in request.POST):
             dropdown = request.POST.getlist('training_view_project_dropdown')
@@ -370,7 +379,7 @@ def training(request):
                     project.training_view_selected = 'unchecked'
                 project.save()
                 
-        if ('training_view_model_dropdown' in request.POST):
+        elif ('training_view_model_dropdown' in request.POST):
             dropdown = request.POST.getlist('training_view_model_dropdown')
             for model in MlModel.objects.all():
                 if (model.name in dropdown):
@@ -379,6 +388,16 @@ def training(request):
                     model.training_view_selected = 'unchecked'
                 model.save()
                 
+        elif ('training_run' in request.POST):
+            _training_run()
+        
+        elif ('stop_trainer' in request.POST):
+            _stop_trainer()
+        
+        else:
+            logging.warning('Unknown POST command:')
+            logging.warning(request.POST)
+        
         return redirect('training')
     else:
         sidebar_status = SidebarActiveStatus()
