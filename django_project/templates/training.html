@@ -51,6 +51,49 @@
                 </ul>
               </div>
           </form>
+          
+          {% if model_dropdown_selected %}
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <tr>
+                <td>Name</td>
+                <td>{{ model_dropdown_selected.name }}</td>
+              </tr>
+              <tr>
+                <td>Description</td>
+                <td>{{ model_dropdown_selected.description }}</td>
+              </tr>
+              <tr>
+                <td>Project</td>
+                <td>{{ model_dropdown_selected.project.name }}</td>
+              </tr>
+              <tr>
+                <td>Dataset</td>
+                <td>{{ model_dropdown_selected.dataset.name }}</td>
+              </tr>
+              <tr>
+                <td>Status</td>
+                <td>{{ model_dropdown_selected.status }}</td>
+              </tr>
+              <tr>
+                <td>Training PID(debug)</td>
+                {% if model_dropdown_selected.training_pid %}
+                  <td>{{ model_dropdown_selected.training_pid }}</td>
+                {% else %}
+                  <td>--- (Not Training)</td>
+                {% endif %}
+              </tr>
+              <tr>
+                <td>Tensorboard PID(debug)</td>
+                {% if model_dropdown_selected.tensorboard_pid %}
+                  <td>{{ model_dropdown_selected.tensorboard_pid }}</td>
+                {% else %}
+                  <td>--- (Not Training)</td>
+                {% endif %}
+              </tr>
+            </table></p>
+          {% else %}
+            <p>Unknown Model</p>
+          {% endif %}
         {% else %}
           <p>No Model registered</p>
         {% endif %}
@@ -102,12 +145,14 @@
       </table>
       -->
       
-      <form class="m-4" method="POST">{% csrf_token %}
-        <button type="submit" class="btn btn-primary mx-3" id="training_run" name="training_run" value="training_run">Run</button>
-        <button type="submit" class="btn btn-primary mx-3" id="stop_trainer" name="stop_trainer" value="stop_trainer">Stop</button>
-        <button type="submit" class="btn btn-primary mx-3" id="reset_trainer" name="reset_trainer" value="reset_trainer">Reset</button>
-        <button type="submit" class="btn btn-primary mx-3" id="launch_tensorboard" name="launch_tensorboard" value="launch_tensorboard">Launch Tensorboard</button>
-      </form>
+      <div class="m-4">
+        <form method="POST">{% csrf_token %}
+          <button type="submit" class="btn btn-primary mx-3" id="training_run" name="training_run" value="training_run">Run</button>
+          <button type="submit" class="btn btn-primary mx-3" id="stop_trainer" name="stop_trainer" value="stop_trainer">Stop</button>
+          <button type="submit" class="btn btn-primary mx-3" id="reset_trainer" name="reset_trainer" value="reset_trainer">Reset</button>
+        </form>
+        <a class="btn btn-primary mx-3" href="http://localhost:6006/" role="button" target="_blank" rel="noopener noreferrer">Open Tensorboard</a>
+      </div>
       
     </div>
   </div>

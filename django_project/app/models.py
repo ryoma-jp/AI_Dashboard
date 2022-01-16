@@ -62,5 +62,9 @@ class MlModel(models.Model):
                                 max_length=10,
                                 default='unchecked')  # checked or unchecked
     
+    # --- for Training control ---
+    training_pid = models.IntegerField('Training worker PID', null=True, default=None)
+    tensorboard_pid = models.IntegerField('Tensorboard worker PID', null=True, default=None)
+    
     def __str__(self):
         return self.name

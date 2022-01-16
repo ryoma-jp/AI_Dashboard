@@ -332,7 +332,7 @@ def training(request):
             main_path = os.path.abspath('./app/machine_learning/main.py')
             logging.debug(f'main_path: {main_path}')
             logging.debug(f'current working directory: {os.getcwd()}')
-            subproc = subprocess.Popen(['python', main_path, \
+            subproc_training = subprocess.Popen(['python', main_path, \
                                         '--fifo', fifo, \
                                         '--data_type', train_parameters['dataset_type'], \
                                         '--dataset_dir', train_parameters['dataset_dir_root'], \
@@ -343,11 +343,21 @@ def training(request):
                                         '--initializer', 'he_normal', \
                                         '--dropout_rate', '0.25', \
                                         '--loss_func', 'categorical_crossentropy', \
-                                        '--epochs', '10', \
+                                        '--epochs', '400', \
                                         '--result_dir', train_parameters['model_dir']])
-            logging.debug(f'subproc PID: {subproc.pid}')
-            logging.debug('Training Done')
-                    
+            logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
+            
+            subproc_tensorboard = subprocess.Popen(['tensorboard', \
+                                        '--logdir', train_parameters['model_dir'], \
+                                        '--port', '6006'])
+            logging.info(f'subproc: Tensorboard worker PID: {subproc_tensorboard.pid}')
+            
+            # --- Update status and Register PID to MlModel database ---
+            selected_model.status = MlModel.STAT_TRAINING
+            selected_model.training_pid = subproc_training.pid
+            selected_model.tensorboard_pid = subproc_tensorboard.pid
+            selected_model.save()
+            
         return
     
     def _stop_trainer():
