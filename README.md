@@ -4,6 +4,43 @@
 WebサーバにはダウンしにくいといわれるNginxを，Djangoとの接続には推奨されている(らしい)Gunicornを使用する．  
 機械学習ではデータセットやモデルの学習結果，試行錯誤のパターンなど複雑で大量のデータ管理が必要となることから，PostgreSQLを使用する．
 
+# ToDo
+
+ToDoのメモ．思いついたら順次追加する．
+
+* [x] MNIST/CIFAR-10データセットを用いた画像分類モデルの学習
+* 学習中断
+  * [x] 中断処理
+  * [ ] 中断時のステータス更新（MlModel.status, MlModel.training_pid）
+* [x] Tensorboard起動及びリンク
+* Tensorboard終了
+  * [ ] 終了処理(プロセスKill)，MlModel.tensorboard_pid更新
+* 学習終了処理
+  * [ ] ステータス更新(MlModel.status, MlModel.training_pid)
+* プロジェクト操作
+  * [x] 追加
+  * [ ] 変更
+  * [ ] 削除
+* MLモデル操作
+  * [x] 追加
+  * [ ] 変更
+  * [ ] 削除
+* ディレクトリ構造
+  * [ ] モデルごとの分割
+* データセット操作
+  * [x] プリセット(MNIST, CIFAR-10)
+  * カスタムデータセット
+    * [ ] 追加
+    * [ ] 削除
+* データセット分析
+  * [ ] 画像表示
+  * [ ] 統計量表示
+* ダウンロード
+  * [ ] 学習済みモデルのダウンロード(Keras H5)
+  * [ ] 学習済みモデルのダウンロード(Saved Model)
+  * [ ] 学習済みモデルのダウンロード(TensorFlow Lite)
+
+
 # 使用方法
 
 ## サーバ起動
@@ -1151,8 +1188,12 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
 ## HTML
 
 * [Subresource Integrity](https://developer.mozilla.org/ja/docs/Web/Security/Subresource_Integrity)
+  * SRIハッシュの生成方法  
+  ```
+  $ cat FILENAME.js | openssl dgst -sha384 -binary | openssl base64 -A
+  ```
 * [iframeを使って画面遷移なしでフォーム送信する方法](https://produce-web.net/sendform-iframe/)
-* [<input type=”file”> で選択できるファイルの拡張子を制限する方法](https://webbibouroku.com/Blog/Article/html5-file-accept)
+* [input type=”file”で選択できるファイルの拡張子を制限する方法](https://webbibouroku.com/Blog/Article/html5-file-accept)
 
 ## JavaScript
 
