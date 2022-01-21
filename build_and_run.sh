@@ -35,11 +35,17 @@ if [ ! ${STAT_COLLECTSTATIC} -eq 0 ]; then
 	exit
 fi
 
-docker-compose exec web python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@myproject.com', 'mXlBZn1bEe')"
-STAT_BUILD=$?
-if [ ! ${STAT_BUILD} -eq 0 ]; then
-	echo "[ERROR] createsuperuser is failed: (exit-status = ${STAT_BUILD})"
-	exit
+sql_data=`docker-compose run db ls /var/lib/postgresql/data/`
+if [ sql_data ]; then
+	echo "[INFO] skip superuser creation"
+else
+	docker-compose exec web python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@myproject.com', 'mXlBZn1bEe')"
+	STAT_BUILD=$?
+	if [ ! ${STAT_BUILD} -eq 0 ]; then
+		echo "[ERROR] createsuperuser is failed: (exit-status = ${STAT_BUILD})"
+		exit
+	fi
 fi
+
 docker-compose ps
 
