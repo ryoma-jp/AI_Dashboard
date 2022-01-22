@@ -8,7 +8,7 @@
     {% csrf_token %}
     {% bootstrap_form form %}
     
-    <div class="dropdown">
+    <div class="dropdown my-3">
       <button type="button" class="btn btn-primary dropdown-toggle" id="model_new_dataset_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
         {% if model_new_dropdown_selected %}
           {{ model_new_dropdown_selected.name }}
@@ -41,6 +41,7 @@
     </div>
     
     {% bootstrap_button button_type="submit" content="追加" %}
+    <a class="btn btn-primary" href="{% url 'index' %}" role="button">キャンセル</a>
   </form>
 </div>
 {% endblock %}

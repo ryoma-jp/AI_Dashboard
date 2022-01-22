@@ -24,14 +24,24 @@
               <a class="btn btn-primary" href="{% url 'model_new' project.id %}">新規モデル</a>
               {% if models|in_project:project %}
                 <p><table class="table table-bordered border-primary table-hover ms-4">
-                {% for model in models|in_project:project %}
-                  <tr>
-                    <td>{{ model.name }}</td>
-                    <td>{{ model.description }}</td>
-                    <td>{{ model.dataset }}</td>
-                    <td>{{ model.status }}</td>
-                  </tr>
-                {% endfor %}
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">Name</th>
+                      <th scope="col">Description</th>
+                      <th scope="col">Dataset</th>
+                      <th scope="col">Training Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                  {% for model in models|in_project:project %}
+                    <tr>
+                      <td>{{ model.name }}</td>
+                      <td>{{ model.description }}</td>
+                      <td>{{ model.dataset }}</td>
+                      <td>{{ model.status }}</td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
                 </table></p>
               {% else %}
                 <p>No Models</p>

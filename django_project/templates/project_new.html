@@ -5,9 +5,10 @@
 <div class="container-fluid">
   <h2> New Project</h2>
   <form method="post">
-      {% csrf_token %}
-      {% bootstrap_form form %}
-      {% bootstrap_button button_type="submit" content="追加" %}
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    {% bootstrap_button button_type="submit" content="追加" %}
+    <a class="btn btn-primary" href="{% url 'index' %}" role="button">キャンセル</a>
   </form>
 </div>
 {% endblock %}
