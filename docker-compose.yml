@@ -6,6 +6,9 @@ services:
     command: gunicorn project.wsgi:application --bind 0.0.0.0:8000 -t 86400 --workers 4
     volumes:
       - static_volume:/home/app/web/static
+      - type: bind
+        source: "./django_project/media/"
+        target: "/home/app/web/media"
     expose:
       - 8000
     ports:
@@ -20,6 +23,7 @@ services:
           devices:
            - driver: nvidia
              capabilities: [utility, compute, video]
+
   db:
     image: postgres:13.4-alpine
     volumes:
