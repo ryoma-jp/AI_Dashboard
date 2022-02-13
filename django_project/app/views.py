@@ -131,13 +131,7 @@ def model_new(request, project_id):
 def dataset(request):
     if (request.method == 'POST'):
         if ('dataset_view_dropdown' in request.POST):
-            dropdown = request.POST.getlist('dataset_view_dropdown')
-            for project in Project.objects.all():
-                if (project.name in dropdown):
-                    project.dataset_view_selected = 'checked'
-                else:
-                    project.dataset_view_selected = 'unchecked'
-                project.save()
+            request.session['dataset_view_dropdown_selected'] = request.POST.getlist('dataset_view_dropdown')[0]
         return redirect('dataset')
     else:
         project = Project.objects.all()
@@ -146,12 +140,16 @@ def dataset(request):
         sidebar_status.dataset = 'active'
         text = get_version()
         
-        dataset_view_dropdown_selected = None
-        for project_ in project:
-            if (project_.dataset_view_selected == 'checked'):
-                dataset_view_dropdown_selected = project_
-                break
+        project_name = request.session.get('dataset_view_dropdown_selected', None)
+        if (project_name is not None):
+            dataset_view_dropdown_selected = Project.objects.get(name=project_name)
+        else:
+            dataset_view_dropdown_selected = None
         
+        # logging.info('-------------------------------------')
+        # logging.info(project_name)
+        # logging.info(dataset_view_dropdown_selected)
+        # logging.info('-------------------------------------')
         context = {
             'project': project,
             'dataset': dataset,
@@ -166,19 +164,11 @@ def dataset(request):
 """
 def training(request):
     def _training_run():
-        project = Project.objects.all()
-        selected_project = None
-        for project_ in project:
-            if (project_.training_view_selected == 'checked'):
-                selected_project = project_
-                break
+        project_name = request.session.get('training_view_selected_project', None)
+        selected_project = Project.objects.get(name=project_name)
         
-        selected_model = None
-        if (selected_project):
-            model = MlModel.objects.filter(project=selected_project)
-            for model_ in model:
-                if (model_.training_view_selected == 'checked'):
-                    selected_model = model_
+        model_name = request.session.get('training_view_selected_model', None)
+        selected_model = MlModel.objects.get(name=model_name, project=selected_project)
         
         if (selected_model):
             logging.debug(selected_model)
@@ -253,22 +243,10 @@ def training(request):
     # logging.info('-------------------------------------')
     if (request.method == 'POST'):
         if ('training_view_project_dropdown' in request.POST):
-            dropdown = request.POST.getlist('training_view_project_dropdown')
-            for project in Project.objects.all():
-                if (project.name in dropdown):
-                    project.training_view_selected = 'checked'
-                else:
-                    project.training_view_selected = 'unchecked'
-                project.save()
+            request.session['training_view_selected_project'] = request.POST.getlist('training_view_project_dropdown')[0]
                 
         elif ('training_view_model_dropdown' in request.POST):
-            dropdown = request.POST.getlist('training_view_model_dropdown')
-            for model in MlModel.objects.all():
-                if (model.name in dropdown):
-                    model.training_view_selected = 'checked'
-                else:
-                    model.training_view_selected = 'unchecked'
-                model.save()
+            request.session['training_view_selected_model'] = request.POST.getlist('training_view_model_dropdown')[0]
                 
         elif ('training_run' in request.POST):
             _training_run()
@@ -287,18 +265,20 @@ def training(request):
         text = get_version()
         
         project = Project.objects.all()
-        
-        project_dropdown_selected = None
-        for project_ in project:
-            if (project_.training_view_selected == 'checked'):
-                project_dropdown_selected = project_
+        project_name = request.session.get('training_view_selected_project', None)
+        if (project_name is not None):
+            project_dropdown_selected = Project.objects.get(name=project_name)
+        else:
+            project_dropdown_selected = None
         
         if (project_dropdown_selected):
             model = MlModel.objects.filter(project=project_dropdown_selected)
-            model_dropdown_selected = None
-            for model_ in model:
-                if (model_.training_view_selected == 'checked'):
-                    model_dropdown_selected = model_
+            
+            model_name = request.session.get('training_view_selected_model', None)
+            if (model_name is not None):
+                model_dropdown_selected = MlModel.objects.get(name=model_name, project=project_dropdown_selected)
+            else:
+                model_dropdown_selected = None
         else:
             model = MlModel.objects.all()
             model_dropdown_selected = None

@@ -10,16 +10,6 @@ class Project(models.Model):
     name = models.CharField('ProjectName', max_length=128)
     description = models.TextField('Description', blank=True)
     
-    # --- for Dataset view ---
-    dataset_view_selected = models.CharField('Selected Status in Dataset View',
-                                max_length=10,
-                                default='unchecked')  # checked or unchecked
-    
-    # --- for Training view ---
-    training_view_selected = models.CharField('Selected Status in Training View',
-                                max_length=10,
-                                default='unchecked')  # checked or unchecked
-    
     def __str__(self):
         return self.name
 
@@ -56,11 +46,6 @@ class MlModel(models.Model):
     STAT_TRAINING = 'TRAINING'
     STAT_DONE = 'DONE'
     status = models.TextField('Status')
-    
-    # --- for Training view ---
-    training_view_selected = models.CharField('Selected Status in Training View',
-                                max_length=10,
-                                default='unchecked')  # checked or unchecked
     
     # --- for Training control ---
     training_pid = models.IntegerField('Training worker PID', null=True, default=None)
