@@ -42,12 +42,12 @@ def main():
 	
 	# --- デフォルトパラメータ生成(MNIST) ---
 	mnist_params = MlParams_MNIST()
-	with open(os.path.join(args.output_dir, 'default_parameter_mnist.json'), 'w') as f:
+	with open(os.path.join(args.output_dir, 'config_mnist.json'), 'w') as f:
 		json.dump(mnist_params.params, f)
 	
 	# --- デフォルトパラメータ生成(CIFAR-10) ---
 	cifar10_params = MlParams_CIFAR10()
-	with open(os.path.join(args.output_dir, 'default_parameter_cifar10.json'), 'w') as f:
+	with open(os.path.join(args.output_dir, 'config_cifar10.json'), 'w') as f:
 		json.dump(cifar10_params.params, f)
 
 	return
