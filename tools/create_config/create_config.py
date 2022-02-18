@@ -17,7 +17,7 @@ from ml_params import MlParams_MNIST, MlParams_CIFAR10
 #   * 引数処理関数
 #---------------------------------
 def ArgParser():
-	parser = argparse.ArgumentParser(description='機械学習モデル学習時のデフォルトパラメータファイル(json)を生成するツール',
+	parser = argparse.ArgumentParser(description='機械学習用設定ファイル(json)を生成するツール',
 				formatter_class=argparse.RawTextHelpFormatter)
 
 	# --- 引数を追加 ---
