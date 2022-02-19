@@ -6,7 +6,7 @@
 import os
 import argparse
 import json
-from ml_params import MlParams_MNIST, MlParams_CIFAR10
+from ml_params import MlParams, MlParams_MNIST, MlParams_CIFAR10
 
 #---------------------------------
 # 定数定義
@@ -40,15 +40,20 @@ def main():
 	# --- 出力ディレクトリ生成 ---
 	os.makedirs(args.output_dir, exist_ok=True)
 	
+	# --- デフォルトパラメータ生成(Blank) ---
+	blank_params = MlParams()
+	with open(os.path.join(args.output_dir, 'config_blank.json'), 'w') as f:
+		json.dump(blank_params.params, f, ensure_ascii=False, indent=4)
+	
 	# --- デフォルトパラメータ生成(MNIST) ---
 	mnist_params = MlParams_MNIST()
 	with open(os.path.join(args.output_dir, 'config_mnist.json'), 'w') as f:
-		json.dump(mnist_params.params, f)
+		json.dump(mnist_params.params, f, ensure_ascii=False, indent=4)
 	
 	# --- デフォルトパラメータ生成(CIFAR-10) ---
 	cifar10_params = MlParams_CIFAR10()
 	with open(os.path.join(args.output_dir, 'config_cifar10.json'), 'w') as f:
-		json.dump(cifar10_params.params, f)
+		json.dump(cifar10_params.params, f, ensure_ascii=False, indent=4)
 
 	return
 

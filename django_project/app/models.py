@@ -41,6 +41,7 @@ class MlModel(models.Model):
     dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.CASCADE)
     
     model_dir = models.TextField('ModelDir', blank=True)
+    config_path = models.TextField('Config Path', blank=True)
     
     STAT_IDLE = 'IDLE'
     STAT_TRAINING = 'TRAINING'

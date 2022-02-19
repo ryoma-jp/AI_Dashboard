@@ -9,6 +9,8 @@ WebサーバにはダウンしにくいといわれるNginxを，Djangoとの接
 ToDoのメモ．思いついたら順次追加する．
 
 * [x] MNIST/CIFAR-10データセットを用いた画像分類モデルの学習
+* 学習設定
+  * [ ] モデルごとの学習パラメータ設定
 * 学習中断
   * [x] 中断処理
   * [ ] 中断時のステータス更新（MlModel.status, MlModel.training_pid）
@@ -57,6 +59,12 @@ ToDoのメモ．思いついたら順次追加する．
         ```
         $ source venv/bin/activate
         (venv) $ python3 tools/create_local_settings/create_local_settings.py --output_file django_project/project/local_settings.py
+        (venv) $ deactivate
+        ```
+    1. configファイル生成
+        ```
+        $ source venv/bin/activate
+        (venv) $ $ python3 tools/create_config/create_config.py --output_dir django_project/media/config/
         (venv) $ deactivate
         ```
 1. サーバ起動

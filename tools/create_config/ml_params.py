@@ -8,32 +8,86 @@ class MlParams():
 	def __init__(self):
 		self.params = {
 			'env': {
-				'fifo': '/tmp/fifo_trainer_ctl',
-				'result_dir': None,
-				'tensorboard_port': 6006,
+				'fifo': {
+					'description': 'Trainer control FIFO',
+					'value': '/tmp/fifo_trainer_ctl',
+				},
+				'result_dir': {
+					'description': 'Directory into training result files(model, log, and etc)',
+					'value': None,
+				},
+				'tensorboard_port': {
+					'description': 'PORT using Tensorboard',
+					'value': 6006,
+				},
 			},
 			'dataset': {
-				'data_type': None,
-				'dataset_dir': None,
+				'dataset_name': {
+					'description': 'Dataset name',
+					'value': None,
+				},
+				'dataset_dir': {
+					'description': 'Dataset directory',
+					'value': None,
+				},
 				'data_augmentation': {
-					'rotation_range': 5,
-					'width_shift_range': 0.2,
-					'height_shift_range': 0.2,
-					'zoom_range': 0.2,
-					'channel_shift_range': 0.2,
-					'horizontal_flip': True
+					'rotation_range': {
+						'description': 'Rotation range',
+						'value': 5,
+					},
+					'hshift_range': {
+						'description': 'Horizontal shift range',
+						'value': 0.2,
+					},
+					'vshift_range': {
+						'description': 'Vertical shift range',
+						'value': 0.2,
+					},
+					'zoom_range': {
+						'description': 'Zoom range',
+						'value': 0.2,
+					},
+					'channel_shift_range': {
+						'description': 'Channel shift range',
+						'value': 0.2,
+					},
+					'horizontal_flip': {
+						'description': 'Enable horizontal flip',
+						'value': True,
+					},
 				},
 			},
 			'model': {
-				'model_type': 'SimpleCNN',
+				'model_type': {
+					'description': 'Model Structure',
+					'value': 'SimpleCNN',
+				},
 			},
-			'hyper_parameters': {
-				'optimizer': 'momentum',
-				'batch_size': 100,
-				'initializer': 'he_normal',
-				'dropout_rate': 0.25,
-				'loss_func': 'categorical_crossentropy',
-				'epochs': 400,
+			'training_parameter': {
+				'optimizer': {
+					'description': 'Optimizer',
+					'value': 'momentum',
+				},
+				'batch_size': {
+					'description': 'Batch size',
+					'value': 100,
+				},
+				'initializer': {
+					'description': 'Weight initializer',
+					'value': 'he_normal',
+				},
+				'dropout_rate': {
+					'description': 'Dropout rate',
+					'value': 0.25,
+				},
+				'loss_func': {
+					'description': 'Loss Function',
+					'value': 'categorical_crossentropy',
+				},
+				'epochs': {
+					'description': 'Epochs',
+					'value': 400,
+				},
 			},
 		}
 
@@ -44,7 +98,7 @@ class MlParams():
 class MlParams_MNIST(MlParams):
 	def __init__(self):
 		super().__init__()
-		self.params['dataset']['data_type'] = 'MNIST'
+		self.params['dataset']['dataset_name']['value'] = 'MNIST'
 
 #---------------------------------
 # クラス: MlParams_CIFAR10
@@ -53,5 +107,5 @@ class MlParams_MNIST(MlParams):
 class MlParams_CIFAR10(MlParams):
 	def __init__(self):
 		super().__init__()
-		self.params['dataset']['data_type'] = 'CIFAR-10'
+		self.params['dataset']['dataset_name']['value'] = 'CIFAR-10'
 

@@ -1,6 +1,7 @@
 import os
 import logging
 import subprocess
+import json
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -103,9 +104,24 @@ def model_new(request, project_id):
             model = form.save(commit=False)
             model.project = project
             
+            # --- get dataset object ---
             selected_model = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
             model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_model))
             
+            # --- load config ---
+            if (model.dataset.name == 'MNIST'):
+                config_file = 'config_mnist.json'
+            elif (model.dataset.name == 'CIFAR-10'):
+                config_file = 'config_cifar10.json'
+            else:
+                config_file = 'config_blank.json'
+            with open(os.path.join(settings.MEDIA_ROOT, settings.CONFIG_DIR, config_file), 'r') as f:
+                dict_config = json.load(f)
+            # logging.info('-------------------------------------')
+            # logging.info(dict_config)
+            # logging.info('-------------------------------------')
+            
+            # --- save database ---
             model.status = model.STAT_IDLE
             model.save()
             
