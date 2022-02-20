@@ -225,7 +225,7 @@ def training(request):
                 'valid_csv': '',
                 'test_zip': '',
                 'test_csv': '',
-                'model_dir': os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR),
+                'model_dir': selected_model.model_dir,
             }
             
             main_path = os.path.abspath('./app/machine_learning/main.py')
