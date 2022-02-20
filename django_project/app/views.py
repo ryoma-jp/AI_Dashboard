@@ -2,6 +2,7 @@ import os
 import logging
 import subprocess
 import json
+import hashlib
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -69,11 +70,21 @@ def project_new(request):
     if (request.method == 'POST'):
         form = ProjectForm(request.POST)
         if (form.is_valid()):
+            # --- save database ---
             project = form.save(commit=False)
+            project.hash = hashlib.sha256(project.name.encode()).hexdigest()
             project.save()
             
+            # logging.info('-------------------------------------')
+            # logging.info(project.hash)
+            # logging.info('-------------------------------------')
+            
+            # --- create default dataset ---
             Dataset.objects.create(name='MNIST', project=project)
             Dataset.objects.create(name='CIFAR-10', project=project)
+            
+            # --- create project directory ---
+            os.makedirs(os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
             
             return redirect('index')
     else:
@@ -107,6 +118,13 @@ def model_new(request, project_id):
             # --- get dataset object ---
             selected_model = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
             model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_model))
+            model.hash = hashlib.sha256(model.name.encode()).hexdigest()
+            
+            # --- create model directory ---
+            project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
+            model_dir = os.path.join(project_dir, model.hash)
+            os.makedirs(model_dir)
+            model.model_dir = model_dir
             
             # --- load config ---
             if (model.dataset.name == 'MNIST'):
@@ -117,6 +135,9 @@ def model_new(request, project_id):
                 config_file = 'config_blank.json'
             with open(os.path.join(settings.MEDIA_ROOT, settings.CONFIG_DIR, config_file), 'r') as f:
                 dict_config = json.load(f)
+            with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
+                json.dump(dict_config, f, ensure_ascii=False, indent=4)
+            
             # logging.info('-------------------------------------')
             # logging.info(dict_config)
             # logging.info('-------------------------------------')

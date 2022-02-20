@@ -7,8 +7,9 @@ from django.conf import settings
 # クラス：プロジェクト
 #---------------------------------------
 class Project(models.Model):
-    name = models.CharField('ProjectName', max_length=128)
+    name = models.CharField('ProjectName', max_length=128, unique=True)
     description = models.TextField('Description', blank=True)
+    hash = models.CharField('Project hash', max_length=128)
     
     def __str__(self):
         return self.name
@@ -37,11 +38,11 @@ class Dataset(models.Model):
 class MlModel(models.Model):
     name = models.CharField('ModelName', max_length=128)
     description = models.TextField('Description', blank=True)
+    hash = models.CharField('Model hash', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.CASCADE)
     
-    model_dir = models.TextField('ModelDir', blank=True)
-    config_path = models.TextField('Config Path', blank=True)
+    model_dir = models.CharField('Model Directory', max_length=1024)
     
     STAT_IDLE = 'IDLE'
     STAT_TRAINING = 'TRAINING'
