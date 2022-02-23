@@ -5,7 +5,17 @@
 <div class="container-fluid">
   <h2> Edit Model Parameter</h2>
     
-  <a class="btn btn-primary" href="{% url 'training' %}" role="button">Back</a>
+  <form method="POST">{% csrf_token %}
+    <div class="mb-3"><label class="form-label">Optimizer</label><input type="text" name="optimizer" class="form-control" value="{{ config.training_parameter.optimizer.value }}" placeholder="{{ config.training_parameter.optimizer.description }}" required></div>
+    <div class="mb-3"><label class="form-label">Initializer</label><input type="text" name="initializer" class="form-control" value="{{ config.training_parameter.initializer.value }}" placeholder="{{ config.training_parameter.initializer.description }}" required></div>
+    <div class="mb-3"><label class="form-label">Loss Function</label><input type="text" name="loss_func" class="form-control" value="{{ config.training_parameter.loss_func.value }}" placeholder="{{ config.training_parameter.loss_func.description }}" required></div>
+    <div class="mb-3"><label class="form-label">Dropout Rate</label><input type="text" name="dropout_rate" class="form-control" value="{{ config.training_parameter.dropout_rate.value }}" placeholder="{{ config.training_parameter.dropout_rate.description }}" required></div>
+    <div class="mb-3"><label class="form-label">Epochs</label><input type="text" name="epochs" class="form-control" value="{{ config.training_parameter.epochs.value }}" placeholder="{{ config.training_parameter.epochs.description }}" required></div>
+    <div class="mb-3"><label class="form-label">Batch size</label><input type="text" name="batch_size" class="form-control" value="{{ config.training_parameter.batch_size.value }}" placeholder="{{ config.training_parameter.batch_size.description }}" required></div>
+    
+    <button type="submit" class="btn btn-primary mx-3" id="apply_parameters" name="apply_parameters" value="apply_parameters">Apply</button>
+    <a class="btn btn-primary" href="{% url 'training' %}" role="button">Back</a>
+  </form>
 </div>
 {% endblock %}
 

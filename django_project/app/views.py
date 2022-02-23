@@ -170,11 +170,38 @@ def model_new(request, project_id):
  * edit model paramter
 """
 def model_paraemter_edit(request, model_id):
-    text = get_version()
-    context = {
-        'text': text
-    }
-    return render(request, 'model_parameter_edit.html', context)
+    # --- load model(id=model_id) ---
+    model = MlModel.objects.get(pk=model_id)
+    
+    # --- load config ---
+    with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+        config_data = json.load(f)
+        
+    # logging.info('-------------------------------------')
+    # logging.info(request)
+    # logging.info(request.POST)
+    # logging.info('-------------------------------------')
+    
+    if (request.method == 'POST'):
+        if ('apply_parameters' in request.POST):
+            # --- save config ---
+            config_data['training_parameter']['optimizer']['value'] = request.POST['optimizer']
+            config_data['training_parameter']['batch_size']['value'] = int(request.POST['batch_size'])
+            config_data['training_parameter']['initializer']['value'] = request.POST['initializer']
+            config_data['training_parameter']['dropout_rate']['value'] = float(request.POST['dropout_rate'])
+            config_data['training_parameter']['loss_func']['value'] = request.POST['loss_func']
+            config_data['training_parameter']['epochs']['value'] = int(request.POST['epochs'])
+            with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+        
+        return redirect('model_paraemter_edit', model_id)
+    else:
+        text = get_version()
+        context = {
+            'config': config_data,
+            'text': text
+        }
+        return render(request, 'model_parameter_edit.html', context)
 
 """ Function: dataset
  * dataset top
