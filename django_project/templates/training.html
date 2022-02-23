@@ -71,6 +71,10 @@
                 <td>{{ model_dropdown_selected.dataset.name }}</td>
               </tr>
               <tr>
+                <td>Parameters</td>
+                <td><a href="{% url 'model_paraemter_edit' model_dropdown_selected.id %}">Detail</a></td>
+              </tr>
+              <tr>
                 <td>Status</td>
                 <td>{{ model_dropdown_selected.status }}</td>
               </tr>

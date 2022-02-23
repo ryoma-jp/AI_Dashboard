@@ -166,6 +166,16 @@ def model_new(request, project_id):
     }
     return render(request, 'model_new.html', context)
 
+""" Function: model_paraemter_edit
+ * edit model paramter
+"""
+def model_paraemter_edit(request, model_id):
+    text = get_version()
+    context = {
+        'text': text
+    }
+    return render(request, 'model_parameter_edit.html', context)
+
 """ Function: dataset
  * dataset top
 """
