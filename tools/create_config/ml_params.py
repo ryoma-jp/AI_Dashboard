@@ -30,17 +30,21 @@ class MlParams():
 					'description': 'Dataset directory',
 					'value': None,
 				},
+				'norm': {
+					'description': 'Normalization method',
+					'value': 'z-score',
+				},
 				'data_augmentation': {
 					'rotation_range': {
 						'description': 'Rotation range',
 						'value': 5,
 					},
-					'hshift_range': {
-						'description': 'Horizontal shift range',
+					'width_shift_range': {
+						'description': 'Width range for horizontal shift',
 						'value': 0.2,
 					},
-					'vshift_range': {
-						'description': 'Vertical shift range',
+					'height_shift_range': {
+						'description': 'Height range for vertical shift',
 						'value': 0.2,
 					},
 					'zoom_range': {

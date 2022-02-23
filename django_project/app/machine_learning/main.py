@@ -1,10 +1,45 @@
 #! -*- coding: utf-8 -*-
+'''DeepLearning学習処理の実装サンプル
+
+引数に指定する設定ファイルで指定されたパラメータに従い，DeepLearningモデルの学習を実行する実装サンプル．
+
+設定ファイルで指定するパラメータ:
+
+  * env: 環境設定
+    * fifo: 学習制御用のFIFOパス
+    * result_dir: 結果を格納するディレクトリ
+  * dataset: データセット関連の設定
+    * dataset_name: データセット名(Preset: MNIST, CIFAR-10)
+    * dataset_dir: データセットを格納したディレクトリ
+    * norm: 正規化方式(max, max-min, z-score)
+    * data_augmentation: DataAugmentation関連の設定
+      * rotation_range: 画像の回転[deg]
+      * width_shift_range: 水平方向の画像幅に対するシフト率[0.0-1.0]
+      * height_shift_range: 垂直方向の画像高さに対するシフト率[0.0-1.0]
+      * zoom_range: 拡大率[%]
+      * channel_shift_range: チャネル(RGB)のシフト率[0.0-1.0]
+      * horizontal_flip: 水平方向反転有無(True or False)
+  * model: 学習するモデル関連の設定
+    * model_type: モデル種別(MLP, SimpleCNN, DeepCNN, SimpleResNet, DeepResNet)
+  * training_parameter: ハイパーパラメータ
+    * optimizer: 最適化方式(momentum, adam, sgd, adam_lrs, sgd, lrs)
+    * batch_size: バッチサイズ
+    * epochs: EPOCH数
+    * initializer: 重みの初期化アルゴリズム
+        glrot_uniform: Xavierの一様分布
+        glrot_normal: Xavierの正規分布
+        he_uniform: Heの一様分布
+        he_normal: Heの正規分布
+    * droptout_rate: ドロップアウトによる欠落率[0.0-1.0]
+    * loss_func: 損失関数(tf.keras.lossesのメンバを指定)
+    
+'''
 
 #---------------------------------
 # モジュールのインポート
 #---------------------------------
 import os
-import io
+import json
 import argparse
 import pandas as pd
 
@@ -21,52 +56,12 @@ from lib.trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
 # 関数
 #---------------------------------
 def ArgParser():
-	parser = argparse.ArgumentParser(description='TensorFlowの学習実装サンプル\n'
-													'  * No.01: MNISTデータセットを用いた全結合NN学習サンプル\n'
-													'  * No.02: CIFAR-10データセットを用いたCNN学習サンプル\n'
-													'  * No.03: CIFAR-10データセットを用いたResNet学習サンプル',
+	parser = argparse.ArgumentParser(description='TensorFlowの学習実装サンプル',
 				formatter_class=argparse.RawTextHelpFormatter)
 
 	# --- 引数を追加 ---
-	parser.add_argument('--fifo', dest='fifo', type=str, default=None, required=False, \
-			help='学習制御用FIFO')
-	parser.add_argument('--data_type', dest='data_type', type=str, default='CIFAR-10', required=False, \
-			help='データ種別(MNIST, CIFAR-10)')
-	parser.add_argument('--dataset_dir', dest='dataset_dir', type=str, default=None, required=True, \
-			help='データセットディレクトリ')
-	parser.add_argument('--model_type', dest='model_type', type=str, default='ResNet', required=False, \
-			help='モデル種別(MLP, SimpleCNN, DeepCNN, SimpleResNet, DeepResNet)')
-	parser.add_argument('--data_augmentation', dest='data_augmentation', type=str, default=None, required=False, \
-			help='Data Augmentationパラメータをカンマ区切りで指定\n'
-					'  rotation_range,width_shift_range,height_shift_range,horizontal_flip\n'
-					'    rotation_range: 回転範囲をdeg単位で指定\n'
-					'    width_shift_range: 水平方向のシフト範囲を画像横幅に対する割合で指定\n'
-					'    height_shift_range: 垂直方向のシフト範囲を画像縦幅に対する割合で指定\n'
-					'    horizontal_flip: 水平方向の反転有無(True or False)')
-	parser.add_argument('--optimizer', dest='optimizer', type=str, default='adam', required=False, \
-			help='Optimizer(adam(default), sgd, adam_lrs, sgd, lrs)\n'
-					'  * lrs: Learning Rate Scheduler')
-	parser.add_argument('--batch_size', dest='batch_size', type=int, default=32, required=False, \
-			help='ミニバッチサイズ')
-	parser.add_argument('--initializer', dest='initializer', type=str, default="glorot_uniform", required=False, \
-			help='重みの初期化\n'
-					'  glrot_uniform: Xavierの一様分布\n'
-					'  glrot_normal: Xavierの正規分布\n'
-					'  he_uniform: Heの一様分布\n'
-					'  he_normal: Heの正規分布')
-	parser.add_argument('--data_norm', dest='data_norm', type=str, default="max", required=False, \
-			help='データの正規化手法\n'
-					'  max: データの絶対値の最大が1.0となるように正規化(最大値で除算)\n'
-					'  max-min: データの最大が1.0最小が0.0となるように正規化(最大値と最小値を用いて算出)\n'
-					'  z-score: 標準化(平均と標準偏差を用いて算出)\n')
-	parser.add_argument('--dropout_rate', dest='dropout_rate', type=float, default=0.0, required=False, \
-			help='Dropoutで欠落させるデータの割合')
-	parser.add_argument('--loss_func', dest='loss_func', type=str, default='sparse_categorical_crossentropy', required=False, \
-			help='コスト関数(tf.keras.lossesのメンバを指定)')
-	parser.add_argument('--epochs', dest='epochs', type=int, default=200, required=False, \
-			help='学習EPOCH数')
-	parser.add_argument('--result_dir', dest='result_dir', type=str, default='./result', required=False, \
-			help='学習結果の出力先ディレクトリ')
+	parser.add_argument('--config', dest='config', type=str, default=None, required=True, \
+			help='設定ファイル(*.json)')
 
 	args = parser.parse_args()
 
@@ -84,41 +79,40 @@ def main():
 	# --- 引数処理 ---
 	args = ArgParser()
 	print('[INFO] Arguments')
-	print('  * args.fifo = {}'.format(args.fifo))
-	print('  * args.data_type = {}'.format(args.data_type))
-	print('  * args.dataset_dir = {}'.format(args.dataset_dir))
-	print('  * args.model_type = {}'.format(args.model_type))
-	print('  * args.data_augmentation = {}'.format(args.data_augmentation))
-	print('  * args.optimizer = {}'.format(args.optimizer))
-	print('  * args.batch_size = {}'.format(args.batch_size))
-	print('  * args.initializer = {}'.format(args.initializer))
-	print('  * args.data_norm = {}'.format(args.data_norm))
-	print('  * args.dropout_rate = {}'.format(args.dropout_rate))
-	print('  * args.loss_func = {}'.format(args.loss_func))
-	print('  * args.epochs = {}'.format(args.epochs))
-	print('  * args.result_dir = {}'.format(args.result_dir))
+	print('  * args.config = {}'.format(args.config))
 	
-	# --- Data Augmentationパラメータを辞書型に変換 ---
-	if (args.data_augmentation is not None):
-		dict_keys = ['rotation_range', 'width_shift_range', 'height_shift_range', 'zoom_range', 'channel_shift_range', 'horizontal_flip']
-		df_da_params = pd.read_csv(io.StringIO(args.data_augmentation), header=None, skipinitialspace=True).values[0]
-		
-		data_augmentation = {}
-		for (key, da_param) in zip(dict_keys, df_da_params):
-			data_augmentation[key] = da_param
-	else:
-		data_augmentaion = None
+	# --- configファイルをロード ---
+	with open(args.config, 'r') as f:
+		config_data = json.load(f)
 	
-	if (args.loss_func == "sparse_categorical_crossentropy"):
+	# --- 設定パラメータを取得 ---
+	fifo = config_data['env']['fifo']['value']
+	result_dir = config_data['env']['result_dir']['value']
+	data_augmentation = {}
+	for (key, value) in config_data['dataset']['data_augmentation'].items():
+		data_augmentation[key] = value['value']
+	data_type = config_data['dataset']['dataset_name']['value']
+	dataset_dir = config_data['dataset']['dataset_dir']['value']
+	data_norm = config_data['dataset']['norm']['value']
+	model_type = config_data['model']['model_type']['value']
+	loss_func = config_data['training_parameter']['loss_func']['value']
+	optimizer = config_data['training_parameter']['optimizer']['value']
+	initializer = config_data['training_parameter']['initializer']['value']
+	dropout_rate = config_data['training_parameter']['dropout_rate']['value']
+	batch_size = config_data['training_parameter']['batch_size']['value']
+	epochs = config_data['training_parameter']['epochs']['value']
+	
+	# --- データセット読み込み
+	if (loss_func == "sparse_categorical_crossentropy"):
 		one_hot = False
 	else:
 		one_hot = True
-	if (args.data_type == "MNIST"):
-		dataset = DataLoaderMNIST(args.dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
-	elif (args.data_type == "CIFAR-10"):
-		dataset = DataLoaderCIFAR10(args.dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
+	if (data_type == "MNIST"):
+		dataset = DataLoaderMNIST(dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
+	elif (data_type == "CIFAR-10"):
+		dataset = DataLoaderCIFAR10(dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
 	else:
-		print('[ERROR] Unknown data_type: {}'.format(args.data_type))
+		print('[ERROR] Unknown data_type: {}'.format(data_type))
 		quit()
 		
 	print_ndarray_shape(dataset.train_images)
@@ -128,34 +122,37 @@ def main():
 	print_ndarray_shape(dataset.test_images)
 	print_ndarray_shape(dataset.test_labels)
 	
-	x_train, x_val, x_test = dataset.normalization(args.data_norm)
+	x_train, x_val, x_test = dataset.normalization(data_norm)
 	y_train = dataset.train_labels
 	y_val = dataset.validation_labels
 	y_test = dataset.test_labels
 	output_dims = dataset.output_dims
 	
-	if (args.model_type == 'MLP'):
-		trainer = TrainerMLP(dataset.train_images.shape[1:], output_dir=args.result_dir,
-			optimizer=args.optimizer, initializer=args.initializer)
-	elif (args.model_type == 'SimpleCNN'):
-		trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=args.result_dir,
-			optimizer=args.optimizer, loss=args.loss_func, initializer=args.initializer)
-	elif (args.model_type == 'DeepCNN'):
-		trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=args.result_dir,
-			optimizer=args.optimizer, loss=args.loss_func, initializer=args.initializer, model_type='deep_model')
-	elif (args.model_type == 'SimpleResNet'):
-		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims, output_dir=args.result_dir,
+	# --- モデル取得 ---
+	if (model_type == 'MLP'):
+		trainer = TrainerMLP(dataset.train_images.shape[1:], output_dir=result_dir,
+			optimizer=optimizer, initializer=initializer)
+	elif (model_type == 'SimpleCNN'):
+		trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=result_dir,
+			optimizer=optimizer, loss=loss_func, initializer=initializer)
+	elif (model_type == 'DeepCNN'):
+		trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=result_dir,
+			optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model')
+	elif (model_type == 'SimpleResNet'):
+		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims, output_dir=result_dir,
 			model_type='custom', 
-			optimizer=args.optimizer, loss=args.loss_func, initializer=args.initializer, dropout_rate=args.dropout_rate)
-	elif (args.model_type == 'DeepResNet'):
-		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims, output_dir=args.result_dir,
+			optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
+	elif (model_type == 'DeepResNet'):
+		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims, output_dir=result_dir,
 			model_type='custom_deep', 
-			optimizer=args.optimizer, loss=args.loss_func, initializer=args.initializer, dropout_rate=args.dropout_rate)
+			optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
 	else:
-		print('[ERROR] Unknown model_type: {}'.format(args.model_type))
+		print('[ERROR] Unknown model_type: {}'.format(model_type))
 		quit()
-	trainer.fit(args.fifo, x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
-		batch_size=args.batch_size, da_params=data_augmentation, epochs=args.epochs)
+	
+	# --- 学習 ---
+	trainer.fit(fifo, x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+		batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
 	trainer.save_model()
 	
 	predictions = trainer.predict(x_test)
