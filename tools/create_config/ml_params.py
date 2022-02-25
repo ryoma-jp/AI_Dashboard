@@ -1,114 +1,181 @@
 #! -*- coding: utf-8 -*-
 
-#---------------------------------
-# クラス: MlParams
-#   * 学習パラメータの基底クラス(パラメータテンプレート)
-#---------------------------------
 class MlParams():
+	"""Class MlParams
+	
+	* 環境設定や学習パラメータの基底クラス(パラメータテンプレート)
+	* 各パラメータは下記のキーで構成する
+	  * description: パラメータの説明
+	  * value: パラメータの値
+	  * configurable: ブラウザ上での設定変更可否(True：変更可，False:変更不可)
+	  * selectable: パラメータ変更時の選択可否(True：ドロップダウンで変更，False:テキストボックスで変更)
+	                configurable=Trueのときのみ有効
+	  * items: ドロップダウンで選択するアイテムのリスト
+	            selectable=Trueのときのみ有効
+	"""
+	
 	def __init__(self):
 		self.params = {
 			'env': {
 				'fifo': {
+					'name': 'FIFO',
 					'description': 'Trainer control FIFO',
 					'value': '/tmp/fifo_trainer_ctl',
+					'configurable': False,
 				},
 				'result_dir': {
+					'name': 'Result Directory',
 					'description': 'Directory into training result files(model, log, and etc)',
 					'value': None,
+					'configurable': False,
 				},
 				'tensorboard_port': {
+					'name': 'Tensorboard PORT',
 					'description': 'PORT using Tensorboard',
 					'value': 6006,
+					'configurable': False,
 				},
 			},
 			'dataset': {
 				'dataset_name': {
+					'name': 'Dataset Name',
 					'description': 'Dataset name',
 					'value': None,
+					'configurable': False,
 				},
 				'dataset_dir': {
+					'name': 'Dataset Directory',
 					'description': 'Dataset directory',
 					'value': None,
+					'configurable': False,
 				},
 				'norm': {
+					'name': 'Normalization',
 					'description': 'Normalization method',
 					'value': 'z-score',
+					'configurable': True,
+					'selectable': True,
+					'items': ['max', 'max-min', 'z-score'],
 				},
 				'data_augmentation': {
 					'rotation_range': {
+						'name': 'Rotation Range',
 						'description': 'Rotation range',
 						'value': 5,
+						'configurable': True,
+						'selectable': False,
 					},
 					'width_shift_range': {
+						'name': 'Width Shift Range',
 						'description': 'Width range for horizontal shift',
 						'value': 0.2,
+						'configurable': True,
+						'selectable': False,
 					},
 					'height_shift_range': {
+						'name': 'Height Shift Range',
 						'description': 'Height range for vertical shift',
 						'value': 0.2,
+						'configurable': True,
+						'selectable': False,
 					},
 					'zoom_range': {
+						'name': 'Zoom Range',
 						'description': 'Zoom range',
 						'value': 0.2,
+						'configurable': True,
+						'selectable': False,
 					},
 					'channel_shift_range': {
+						'name': 'Channel Shift Range',
 						'description': 'Channel shift range',
 						'value': 0.2,
+						'configurable': True,
+						'selectable': False,
 					},
 					'horizontal_flip': {
+						'name': 'Horizontal Flip',
 						'description': 'Enable horizontal flip',
 						'value': True,
+						'configurable': True,
+						'selectable': True,
+						'items': [True, False],
 					},
 				},
 			},
 			'model': {
 				'model_type': {
+					'name': 'Model Type',
 					'description': 'Model Structure',
 					'value': 'SimpleCNN',
+					'configurable': True,
+					'selectable': True,
+					'items': ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet'],
 				},
 			},
 			'training_parameter': {
 				'optimizer': {
+					'name': 'Optimizer',
 					'description': 'Optimizer',
 					'value': 'momentum',
+					'configurable': True,
+					'selectable': True,
+					'items': ['momentum', 'adam', 'sgd', 'adam_lrs', 'sgd, lrs'],
 				},
 				'batch_size': {
+					'name': 'Batch Size',
 					'description': 'Batch size',
 					'value': 100,
+					'configurable': True,
+					'selectable': False,
 				},
 				'initializer': {
+					'name': 'Initializer',
 					'description': 'Weight initializer',
 					'value': 'he_normal',
+					'configurable': True,
+					'items': ['glrot_uniform', 'glrot_normal', 'he_uniform', 'he_normal'],
 				},
 				'dropout_rate': {
+					'name': 'Dropout Rate',
 					'description': 'Dropout rate',
 					'value': 0.25,
+					'configurable': True,
+					'selectable': False,
 				},
 				'loss_func': {
+					'name': 'Loss Function',
 					'description': 'Loss Function',
 					'value': 'categorical_crossentropy',
+					'configurable': True,
+					'items': ['binary_crossentropy', 'categorical_crossentropy', 'sparse_categorical_crossentropy'],
 				},
 				'epochs': {
+					'name': 'EPOCHs',
 					'description': 'Epochs',
 					'value': 400,
+					'configurable': True,
+					'selectable': False,
 				},
 			},
 		}
 
-#---------------------------------
-# クラス: MlParams_MNIST
-#   * MNISTデータセットによる識別モデル学習時のパラメータ
-#---------------------------------
 class MlParams_MNIST(MlParams):
+	"""Class MlParams_MNIST
+	
+	* MNISTデータセットによる識別モデル学習時のパラメータ
+	"""
+	
 	def __init__(self):
 		super().__init__()
 		self.params['dataset']['dataset_name']['value'] = 'MNIST'
 
-#---------------------------------
-# クラス: MlParams_CIFAR10
-#   * CIFAR10データセットによる識別モデル学習時のパラメータ
-#---------------------------------
 class MlParams_CIFAR10(MlParams):
+	"""Class MlParams_CIFAR10
+	
+	* CIFAR-10データセットによる識別モデル学習時のパラメータ
+	"""
+	
 	def __init__(self):
 		super().__init__()
 		self.params['dataset']['dataset_name']['value'] = 'CIFAR-10'
