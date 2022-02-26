@@ -6,6 +6,126 @@
   <h2>Edit Model Parameter</h2>
     
   <form method="POST">{% csrf_token %}
+    <h3>Dataset</h3>
+    {% for key, value in config.dataset.items %}
+      {% if value.configurable %}
+          {% if value.selectable %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="dropdown mb-3">
+              <button type="button" class="btn btn-primary dropdown-toggle" id="{{ key }}_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ value.value }}
+              </button>
+              <ul class="dropdown-menu" area-labelledby="{{ key }}_dropdown" id="{{ key }}_dropdown_list">
+              {% for item in value.items %}
+                <li><button type="button" class="dropdown-item" value="{{ item }}">{{ item }}</button></li>
+              {% endfor %}
+              </ul>
+                <script>
+                  dropdown_list = document.querySelector("#{{ key }}_dropdown_list")
+                  dropdown_list.querySelectorAll('li').forEach( function(el) {
+                    el.addEventListener('click', function() {
+                      // console.log('Click dropdown item');
+                      // console.log(el.textContent);
+                      
+                      display = document.getElementById("{{ key }}_dropdown");
+                      display.innerText = el.textContent;
+                      
+                      ele = document.getElementById("{{ key }}")
+                      ele.value = el.textContent;
+                    });
+                  });
+                </script>
+                <input type="hidden" name="{{ key }}" id="{{ key }}" value="">
+            </div>
+          {% else %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="mb-3">
+              <input type="text" name="{{ key }}" class="form-control" value="{{ value.value }}" placeholder="{{ value.description }}" required>
+            </div>
+          {% endif %}
+      {% endif %}
+    {% endfor %}
+    <h4>Data Augmentation</h4>
+    {% for key, value in config.dataset.data_augmentation.items %}
+      {% if value.configurable %}
+          {% if value.selectable %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="dropdown mb-3">
+              <button type="button" class="btn btn-primary dropdown-toggle" id="{{ key }}_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ value.value }}
+              </button>
+              <ul class="dropdown-menu" area-labelledby="{{ key }}_dropdown" id="{{ key }}_dropdown_list">
+              {% for item in value.items %}
+                <li><button type="button" class="dropdown-item" value="{{ item }}">{{ item }}</button></li>
+              {% endfor %}
+              </ul>
+                <script>
+                  dropdown_list = document.querySelector("#{{ key }}_dropdown_list")
+                  dropdown_list.querySelectorAll('li').forEach( function(el) {
+                    el.addEventListener('click', function() {
+                      // console.log('Click dropdown item');
+                      // console.log(el.textContent);
+                      
+                      display = document.getElementById("{{ key }}_dropdown");
+                      display.innerText = el.textContent;
+                      
+                      ele = document.getElementById("{{ key }}")
+                      ele.value = el.textContent;
+                    });
+                  });
+                </script>
+                <input type="hidden" name="{{ key }}" id="{{ key }}" value="">
+            </div>
+          {% else %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="mb-3">
+              <input type="text" name="{{ key }}" class="form-control" value="{{ value.value }}" placeholder="{{ value.description }}" required>
+            </div>
+          {% endif %}
+      {% endif %}
+    {% endfor %}
+    
+    <h3>Model</h3>
+    {% for key, value in config.model.items %}
+      {% if value.configurable %}
+          {% if value.selectable %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="dropdown mb-3">
+              <button type="button" class="btn btn-primary dropdown-toggle" id="{{ key }}_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ value.value }}
+              </button>
+              <ul class="dropdown-menu" area-labelledby="{{ key }}_dropdown" id="{{ key }}_dropdown_list">
+              {% for item in value.items %}
+                <li><button type="button" class="dropdown-item" value="{{ item }}">{{ item }}</button></li>
+              {% endfor %}
+              </ul>
+                <script>
+                  dropdown_list = document.querySelector("#{{ key }}_dropdown_list")
+                  dropdown_list.querySelectorAll('li').forEach( function(el) {
+                    el.addEventListener('click', function() {
+                      // console.log('Click dropdown item');
+                      // console.log(el.textContent);
+                      
+                      display = document.getElementById("{{ key }}_dropdown");
+                      display.innerText = el.textContent;
+                      
+                      ele = document.getElementById("{{ key }}")
+                      ele.value = el.textContent;
+                    });
+                  });
+                </script>
+                <input type="hidden" name="{{ key }}" id="{{ key }}" value="">
+            </div>
+          {% else %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="mb-3">
+              <input type="text" name="{{ key }}" class="form-control" value="{{ value.value }}" placeholder="{{ value.description }}" required>
+            </div>
+          {% endif %}
+      {% endif %}
+    {% endfor %}
+    
+    <h3>Training Parameter</h3>
     {% for key, value in config.training_parameter.items %}
       {% if value.configurable %}
           {% if value.selectable %}
