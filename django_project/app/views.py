@@ -170,6 +170,21 @@ def model_new(request, project_id):
  * edit model paramter
 """
 def model_paraemter_edit(request, model_id):
+    def _set_config_parameters(config, save_config_list):
+        for key in save_config_list:
+            if (request.POST[key] != ''):
+                if (config[key]['dtype'] == 'int'):
+                    config[key]['value'] = int(request.POST[key])
+                elif (config[key]['dtype'] == 'float'):
+                    config[key]['value'] = float(request.POST[key])
+                elif (config[key]['dtype'] == 'bool'):
+                    if (request.POST[key].lower() in ['true']):
+                        config[key]['value'] = True
+                    else:
+                        config[key]['value'] = False
+                else:
+                    config[key]['value'] = request.POST[key]
+
     # --- load model(id=model_id) ---
     model = MlModel.objects.get(pk=model_id)
     
@@ -184,25 +199,21 @@ def model_paraemter_edit(request, model_id):
     
     if (request.method == 'POST'):
         if ('apply_parameters' in request.POST):
-            # --- save config ---
-            save_config_list = [key for key in config_data['training_parameter'].keys() if config_data['training_parameter'][key]['configurable']]
-            # logging.info('-------------------------------------')
-            # logging.info(save_config_list)
-            # logging.info('-------------------------------------')
+            # --- save dataset parameters ---
+            save_config_list = [key for key in config_data['dataset'].keys() if ((key != 'data_augmentation') and (config_data['dataset'][key]['configurable']))]
+            _set_config_parameters(config_data['dataset'], save_config_list)
             
-            for key in save_config_list:
-                if (request.POST[key] != ''):
-                    if (config_data['training_parameter'][key]['dtype'] == 'int'):
-                        config_data['training_parameter'][key]['value'] = int(request.POST[key])
-                    elif (config_data['training_parameter'][key]['dtype'] == 'float'):
-                        config_data['training_parameter'][key]['value'] = float(request.POST[key])
-                    elif (config_data['training_parameter'][key]['dtype'] == 'bool'):
-                        if (request.POST[key].lower() in ['true']):
-                            config_data['training_parameter'][key]['value'] = True
-                        else:
-                            config_data['training_parameter'][key]['value'] = False
-                    else:
-                        config_data['training_parameter'][key]['value'] = request.POST[key]
+            # --- save data augmentation parameters ---
+            save_config_list = [key for key in config_data['dataset']['data_augmentation'].keys() if config_data['dataset']['data_augmentation'][key]['configurable']]
+            _set_config_parameters(config_data['dataset']['data_augmentation'], save_config_list)
+            
+            # --- save model parameters ---
+            save_config_list = [key for key in config_data['model'].keys() if config_data['model'][key]['configurable']]
+            _set_config_parameters(config_data['model'], save_config_list)
+            
+            # --- save training parameters ---
+            save_config_list = [key for key in config_data['training_parameter'].keys() if config_data['training_parameter'][key]['configurable']]
+            _set_config_parameters(config_data['training_parameter'], save_config_list)
             
             with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
