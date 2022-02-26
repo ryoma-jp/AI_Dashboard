@@ -7,19 +7,43 @@
     
   <form method="POST">{% csrf_token %}
     {% for key, value in config.training_parameter.items %}
-      <div class="mb-3">
-        <label class="form-label">{{ value.name }}</label>
-        <input type="text" name="{{ value.key }}" class="form-control" value="{{ value.value }}" placeholder="{{ valuey.description }}" required>
-      </div>
+      {% if value.configurable %}
+          {% if value.selectable %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="dropdown mb-3">
+              <button type="button" class="btn btn-primary dropdown-toggle" id="{{ key }}_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                {{ value.value }}
+              </button>
+              <ul class="dropdown-menu" area-labelledby="{{ key }}_dropdown" id="{{ key }}_dropdown_list">
+              {% for item in value.items %}
+                <li><button type="button" class="dropdown-item" value="{{ item }}">{{ item }}</button></li>
+              {% endfor %}
+              </ul>
+                <script>
+                  dropdown_list = document.querySelector("#{{ key }}_dropdown_list")
+                  dropdown_list.querySelectorAll('li').forEach( function(el) {
+                    el.addEventListener('click', function() {
+                      // console.log('Click dropdown item');
+                      // console.log(el.textContent);
+                      
+                      display = document.getElementById("{{ key }}_dropdown");
+                      display.innerText = el.textContent;
+                      
+                      ele = document.getElementById("{{ key }}")
+                      ele.value = el.textContent;
+                    });
+                  });
+                </script>
+                <input type="hidden" name="{{ key }}" id="{{ key }}" value="">
+            </div>
+          {% else %}
+            <label class="form-label">{{ value.name }}</label>
+            <div class="mb-3">
+              <input type="text" name="{{ key }}" class="form-control" value="{{ value.value }}" placeholder="{{ value.description }}" required>
+            </div>
+          {% endif %}
+      {% endif %}
     {% endfor %}
-    <!--
-    <div class="mb-3"><label class="form-label">Optimizer</label><input type="text" name="optimizer" class="form-control" value="{{ config.training_parameter.optimizer.value }}" placeholder="{{ config.training_parameter.optimizer.description }}" required></div>
-    <div class="mb-3"><label class="form-label">Initializer</label><input type="text" name="initializer" class="form-control" value="{{ config.training_parameter.initializer.value }}" placeholder="{{ config.training_parameter.initializer.description }}" required></div>
-    <div class="mb-3"><label class="form-label">Loss Function</label><input type="text" name="loss_func" class="form-control" value="{{ config.training_parameter.loss_func.value }}" placeholder="{{ config.training_parameter.loss_func.description }}" required></div>
-    <div class="mb-3"><label class="form-label">Dropout Rate</label><input type="text" name="dropout_rate" class="form-control" value="{{ config.training_parameter.dropout_rate.value }}" placeholder="{{ config.training_parameter.dropout_rate.description }}" required></div>
-    <div class="mb-3"><label class="form-label">Epochs</label><input type="text" name="epochs" class="form-control" value="{{ config.training_parameter.epochs.value }}" placeholder="{{ config.training_parameter.epochs.description }}" required></div>
-    <div class="mb-3"><label class="form-label">Batch size</label><input type="text" name="batch_size" class="form-control" value="{{ config.training_parameter.batch_size.value }}" placeholder="{{ config.training_parameter.batch_size.description }}" required></div>
-    -->
     
     <button type="submit" class="btn btn-primary mx-3" id="apply_parameters" name="apply_parameters" value="apply_parameters">Apply</button>
     <a class="btn btn-primary" href="{% url 'training' %}" role="button">Back</a>

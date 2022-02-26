@@ -176,7 +176,7 @@ def model_paraemter_edit(request, model_id):
     # --- load config ---
     with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
         config_data = json.load(f)
-        
+    
     # logging.info('-------------------------------------')
     # logging.info(request)
     # logging.info(request.POST)
@@ -185,12 +185,25 @@ def model_paraemter_edit(request, model_id):
     if (request.method == 'POST'):
         if ('apply_parameters' in request.POST):
             # --- save config ---
-            config_data['training_parameter']['optimizer']['value'] = request.POST['optimizer']
-            config_data['training_parameter']['batch_size']['value'] = int(request.POST['batch_size'])
-            config_data['training_parameter']['initializer']['value'] = request.POST['initializer']
-            config_data['training_parameter']['dropout_rate']['value'] = float(request.POST['dropout_rate'])
-            config_data['training_parameter']['loss_func']['value'] = request.POST['loss_func']
-            config_data['training_parameter']['epochs']['value'] = int(request.POST['epochs'])
+            save_config_list = [key for key in config_data['training_parameter'].keys() if config_data['training_parameter'][key]['configurable']]
+            # logging.info('-------------------------------------')
+            # logging.info(save_config_list)
+            # logging.info('-------------------------------------')
+            
+            for key in save_config_list:
+                if (request.POST[key] != ''):
+                    if (config_data['training_parameter'][key]['dtype'] == 'int'):
+                        config_data['training_parameter'][key]['value'] = int(request.POST[key])
+                    elif (config_data['training_parameter'][key]['dtype'] == 'float'):
+                        config_data['training_parameter'][key]['value'] = float(request.POST[key])
+                    elif (config_data['training_parameter'][key]['dtype'] == 'bool'):
+                        if (request.POST[key].lower() in ['true']):
+                            config_data['training_parameter'][key]['value'] = True
+                        else:
+                            config_data['training_parameter'][key]['value'] = False
+                    else:
+                        config_data['training_parameter'][key]['value'] = request.POST[key]
+            
             with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
         

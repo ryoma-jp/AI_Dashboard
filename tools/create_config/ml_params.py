@@ -20,18 +20,21 @@ class MlParams():
 				'fifo': {
 					'name': 'FIFO',
 					'description': 'Trainer control FIFO',
+					'dtype': 'str',
 					'value': '/tmp/fifo_trainer_ctl',
 					'configurable': False,
 				},
 				'result_dir': {
 					'name': 'Result Directory',
 					'description': 'Directory into training result files(model, log, and etc)',
+					'dtype': 'str',
 					'value': None,
 					'configurable': False,
 				},
 				'tensorboard_port': {
 					'name': 'Tensorboard PORT',
 					'description': 'PORT using Tensorboard',
+					'dtype': 'int',
 					'value': 6006,
 					'configurable': False,
 				},
@@ -40,18 +43,21 @@ class MlParams():
 				'dataset_name': {
 					'name': 'Dataset Name',
 					'description': 'Dataset name',
+					'dtype': 'str',
 					'value': None,
 					'configurable': False,
 				},
 				'dataset_dir': {
 					'name': 'Dataset Directory',
 					'description': 'Dataset directory',
+					'dtype': 'str',
 					'value': None,
 					'configurable': False,
 				},
 				'norm': {
 					'name': 'Normalization',
 					'description': 'Normalization method',
+					'dtype': 'str',
 					'value': 'z-score',
 					'configurable': True,
 					'selectable': True,
@@ -61,6 +67,7 @@ class MlParams():
 					'rotation_range': {
 						'name': 'Rotation Range',
 						'description': 'Rotation range',
+						'dtype': 'int',
 						'value': 5,
 						'configurable': True,
 						'selectable': False,
@@ -68,6 +75,7 @@ class MlParams():
 					'width_shift_range': {
 						'name': 'Width Shift Range',
 						'description': 'Width range for horizontal shift',
+						'dtype': 'float',
 						'value': 0.2,
 						'configurable': True,
 						'selectable': False,
@@ -75,6 +83,7 @@ class MlParams():
 					'height_shift_range': {
 						'name': 'Height Shift Range',
 						'description': 'Height range for vertical shift',
+						'dtype': 'float',
 						'value': 0.2,
 						'configurable': True,
 						'selectable': False,
@@ -82,6 +91,7 @@ class MlParams():
 					'zoom_range': {
 						'name': 'Zoom Range',
 						'description': 'Zoom range',
+						'dtype': 'float',
 						'value': 0.2,
 						'configurable': True,
 						'selectable': False,
@@ -89,6 +99,7 @@ class MlParams():
 					'channel_shift_range': {
 						'name': 'Channel Shift Range',
 						'description': 'Channel shift range',
+						'dtype': 'float',
 						'value': 0.2,
 						'configurable': True,
 						'selectable': False,
@@ -96,6 +107,7 @@ class MlParams():
 					'horizontal_flip': {
 						'name': 'Horizontal Flip',
 						'description': 'Enable horizontal flip',
+						'dtype': 'bool',
 						'value': True,
 						'configurable': True,
 						'selectable': True,
@@ -107,6 +119,7 @@ class MlParams():
 				'model_type': {
 					'name': 'Model Type',
 					'description': 'Model Structure',
+					'dtype': 'str',
 					'value': 'SimpleCNN',
 					'configurable': True,
 					'selectable': True,
@@ -117,6 +130,7 @@ class MlParams():
 				'optimizer': {
 					'name': 'Optimizer',
 					'description': 'Optimizer',
+					'dtype': 'str',
 					'value': 'momentum',
 					'configurable': True,
 					'selectable': True,
@@ -125,6 +139,7 @@ class MlParams():
 				'batch_size': {
 					'name': 'Batch Size',
 					'description': 'Batch size',
+					'dtype': 'int',
 					'value': 100,
 					'configurable': True,
 					'selectable': False,
@@ -132,13 +147,16 @@ class MlParams():
 				'initializer': {
 					'name': 'Initializer',
 					'description': 'Weight initializer',
+					'dtype': 'str',
 					'value': 'he_normal',
 					'configurable': True,
+					'selectable': True,
 					'items': ['glrot_uniform', 'glrot_normal', 'he_uniform', 'he_normal'],
 				},
 				'dropout_rate': {
 					'name': 'Dropout Rate',
 					'description': 'Dropout rate',
+					'dtype': 'float',
 					'value': 0.25,
 					'configurable': True,
 					'selectable': False,
@@ -146,13 +164,16 @@ class MlParams():
 				'loss_func': {
 					'name': 'Loss Function',
 					'description': 'Loss Function',
+					'dtype': 'str',
 					'value': 'categorical_crossentropy',
 					'configurable': True,
+					'selectable': True,
 					'items': ['binary_crossentropy', 'categorical_crossentropy', 'sparse_categorical_crossentropy'],
 				},
 				'epochs': {
 					'name': 'EPOCHs',
 					'description': 'Epochs',
+					'dtype': 'int',
 					'value': 400,
 					'configurable': True,
 					'selectable': False,
