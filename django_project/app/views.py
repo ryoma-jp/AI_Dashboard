@@ -126,6 +126,10 @@ def model_new(request, project_id):
             os.makedirs(model_dir)
             model.model_dir = model_dir
             
+            # --- create environment directory ---
+            env_dir = os.path.join(settings.ENV_DIR, project.hash, model.hash)
+            os.makedirs(env_dir, exist_ok=True)
+            
             # --- load config ---
             if (model.dataset.name == 'MNIST'):
                 config_file = 'config_mnist.json'
@@ -137,6 +141,7 @@ def model_new(request, project_id):
                 dict_config = json.load(f)
             
             # --- set parameters ---
+            dict_config['env']['fifo']['value'] = os.path.join(env_dir, 'fifo_trainer_ctl')
             dict_config['env']['result_dir']['value'] = model_dir
             dict_config['dataset']['dataset_dir']['value'] = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR)
             with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
@@ -265,13 +270,17 @@ def dataset(request):
  * training top
 """
 def training(request):
-    def _training_run():
+    def _get_selected_object():
         project_name = request.session.get('training_view_selected_project', None)
         selected_project = Project.objects.get(name=project_name)
         
         model_name = request.session.get('training_view_selected_model', None)
         selected_model = MlModel.objects.get(name=model_name, project=selected_project)
         
+        return selected_project, selected_model
+    
+    def _training_run():
+        selected_project, selected_model = _get_selected_object()
         if (selected_model):
             logging.debug(selected_model)
             
@@ -306,9 +315,21 @@ def training(request):
         return
     
     def _stop_trainer():
-        fifo = '/tmp/fifo_trainer_ctl'
-        with open(fifo, 'w') as f:
-            f.write('stop\n')
+        selected_project, selected_model = _get_selected_object()
+        if (selected_model):
+            logging.debug(selected_model)
+            
+            # --- Load config ---
+            config_path = os.path.join(selected_model.model_dir, 'config.json')
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+            
+            # --- Get FIFO path ---
+            fifo = config_data['env']['fifo']['value']
+            
+            # --- Send stop command ---
+            with open(fifo, 'w') as f:
+                f.write('stop\n')
         return
     
     def _reset_trainer(request):

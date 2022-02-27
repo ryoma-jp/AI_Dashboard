@@ -157,6 +157,9 @@ else:
         filemode = 'a'
     )
 
+# Parameters for Environment
+ENV_DIR = os.environ.get('ENV_DIR')
+
 # Parameters for Machine Learning
 DATASET_DIR = os.environ.get('DATASET_DIR')
 MODEL_DIR = os.environ.get('MODEL_DIR')

@@ -134,7 +134,7 @@ class MlParams():
 					'value': 'momentum',
 					'configurable': True,
 					'selectable': True,
-					'items': ['momentum', 'adam', 'sgd', 'adam_lrs', 'sgd, lrs'],
+					'items': ['momentum', 'adam', 'sgd', 'adam_lrs', 'sgd_lrs'],
 				},
 				'batch_size': {
 					'name': 'Batch Size',
@@ -190,6 +190,7 @@ class MlParams_MNIST(MlParams):
 	def __init__(self):
 		super().__init__()
 		self.params['dataset']['dataset_name']['value'] = 'MNIST'
+		self.params['dataset']['data_augmentation']['horizontal_flip']['value'] = False
 
 class MlParams_CIFAR10(MlParams):
 	"""Class MlParams_CIFAR10

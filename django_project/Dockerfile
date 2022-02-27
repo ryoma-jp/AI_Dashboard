@@ -1,3 +1,4 @@
+# --- Builder stage ---
 FROM nvcr.io/nvidia/tensorflow:21.03-tf2-py3 as builder
 
 RUN mkdir -p /home/app
@@ -17,6 +18,8 @@ COPY . .
 COPY ./requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
+
+# --- Main stage ---
 FROM nvcr.io/nvidia/tensorflow:21.03-tf2-py3
 
 RUN mkdir -p /home/app
@@ -24,8 +27,10 @@ RUN groupadd app ; useradd app -g app
 
 ENV HOME=/home/app
 ENV APP_HOME=/home/app/web
+ENV ENV_HOME=/home/app/env
 RUN mkdir -p ${APP_HOME}
 RUN mkdir -p ${APP_HOME}/static
+RUN mkdir -p ${ENV_HOME}
 WORKDIR ${APP_HOME}
 
 RUN apt update ; apt -y install libpq-dev netcat graphviz
@@ -38,6 +43,7 @@ COPY ./entrypoint.sh $APP_HOME
 COPY . $APP_HOME
 
 RUN chown -R app:app ${APP_HOME}
+RUN chown -R app:app ${ENV_HOME}
 
 USER app
 
