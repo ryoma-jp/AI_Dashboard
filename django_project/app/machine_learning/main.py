@@ -86,7 +86,8 @@ def main():
 		config_data = json.load(f)
 	
 	# --- 設定パラメータを取得 ---
-	fifo = config_data['env']['fifo']['value']
+	web_app_ctrl_fifo = config_data['env']['web_app_ctrl_fifo']['value']
+	trainer_ctrl_fifo = config_data['env']['trainer_ctrl_fifo']['value']
 	result_dir = config_data['env']['result_dir']['value']
 	data_augmentation = {}
 	for (key, value) in config_data['dataset']['data_augmentation'].items():
@@ -151,7 +152,8 @@ def main():
 		quit()
 	
 	# --- 学習 ---
-	trainer.fit(fifo, x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+	trainer.fit(web_app_ctrl_fifo, trainer_ctrl_fifo, 
+		x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
 		batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
 	trainer.save_model()
 	

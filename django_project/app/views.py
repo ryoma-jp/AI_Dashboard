@@ -141,7 +141,8 @@ def model_new(request, project_id):
                 dict_config = json.load(f)
             
             # --- set parameters ---
-            dict_config['env']['fifo']['value'] = os.path.join(env_dir, 'fifo_trainer_ctl')
+            dict_config['env']['web_app_ctrl_fifo']['value'] = os.path.join(env_dir, 'web_app_ctrl_fifo')
+            dict_config['env']['trainer_ctrl_fifo']['value'] = os.path.join(env_dir, 'fifo_trainer_ctrl')
             dict_config['env']['result_dir']['value'] = model_dir
             dict_config['dataset']['dataset_dir']['value'] = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR)
             with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
@@ -154,6 +155,16 @@ def model_new(request, project_id):
             # --- save database ---
             model.status = model.STAT_IDLE
             model.save()
+            
+            # --- Create trainer control FIFO ---
+            fifo = dict_config['env']['trainer_ctrl_fifo']['value']
+            if (not os.path.exists(fifo)):
+                os.mkfifo(fifo)
+            
+            # --- Create web app control FIFO ---
+            fifo = dict_config['env']['web_app_ctrl_fifo']['value']
+            if (not os.path.exists(fifo)):
+                os.mkfifo(fifo)
             
             return redirect('index')
     else:
@@ -289,11 +300,6 @@ def training(request):
             with open(config_path, 'r') as f:
                 config_data = json.load(f)
             
-            # --- Create FIFO ---
-            fifo = config_data['env']['fifo']['value']
-            if (not os.path.exists(fifo)):
-                os.mkfifo(fifo)
-            
             # --- Training Model ---
             main_path = os.path.abspath('./app/machine_learning/main.py')
             logging.debug(f'main_path: {main_path}')
@@ -325,7 +331,7 @@ def training(request):
                 config_data = json.load(f)
             
             # --- Get FIFO path ---
-            fifo = config_data['env']['fifo']['value']
+            fifo = config_data['env']['trainer_ctrl_fifo']['value']
             
             # --- Send stop command ---
             with open(fifo, 'w') as f:

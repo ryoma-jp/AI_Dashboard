@@ -17,11 +17,18 @@ class MlParams():
 	def __init__(self):
 		self.params = {
 			'env': {
-				'fifo': {
-					'name': 'FIFO',
-					'description': 'Trainer control FIFO',
+				'web_app_ctrl_fifo': {
+					'name': 'Web Application Control FIFO',
+					'description': 'Web application control FIFO(Trainer → Web App)',
 					'dtype': 'str',
-					'value': '/tmp/fifo_trainer_ctl',
+					'value': None,
+					'configurable': False,
+				},
+				'trainer_ctrl_fifo': {
+					'name': 'Trainer Control FIFO',
+					'description': 'Trainer control FIFO(Web App → Trainer)',
+					'dtype': 'str',
+					'value': None,
 					'configurable': False,
 				},
 				'result_dir': {
@@ -190,6 +197,7 @@ class MlParams_MNIST(MlParams):
 	def __init__(self):
 		super().__init__()
 		self.params['dataset']['dataset_name']['value'] = 'MNIST'
+		self.params['dataset']['norm']['value'] = 'max'
 		self.params['dataset']['data_augmentation']['horizontal_flip']['value'] = False
 
 class MlParams_CIFAR10(MlParams):

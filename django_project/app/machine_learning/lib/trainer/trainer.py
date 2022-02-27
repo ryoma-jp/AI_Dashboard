@@ -27,12 +27,12 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"]= "true"
 class Trainer():
 	# --- カスタムコールバック ---
 	class CustomCallback(keras.callbacks.Callback):
-		def __init__(self, fifo):
+		def __init__(self, trainer_ctrl_fifo):
 			super().__init__()
-			self.fifo = fifo
+			self.trainer_ctrl_fifo = trainer_ctrl_fifo
 			
 		def on_train_batch_end(self, batch, logs=None):
-			fd = os.open(self.fifo, os.O_RDONLY | os.O_NONBLOCK)
+			fd = os.open(self.trainer_ctrl_fifo, os.O_RDONLY | os.O_NONBLOCK)
 			flags = fcntl.fcntl(fd, fcntl.F_GETFL)
 			flags &= ~os.O_NONBLOCK
 			fcntl.fcntl(fd, fcntl.F_SETFL, flags)
@@ -127,7 +127,7 @@ class Trainer():
 		return
 	
 	# --- 学習 ---
-	def fit(self, fifo, x_train, y_train, x_val=None, y_val=None, x_test=None, y_test=None,
+	def fit(self, web_app_ctrl_fifo, trainer_ctrl_fifo, x_train, y_train, x_val=None, y_val=None, x_test=None, y_test=None,
 			da_params=None,
 			batch_size=32, epochs=200,
 			verbose=0):
@@ -136,7 +136,7 @@ class Trainer():
 		checkpoint_path = os.path.join(self.output_dir, 'checkpoints', 'model.ckpt')
 		cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
 		es_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto')
-		custom_callback = self.CustomCallback(fifo)
+		custom_callback = self.CustomCallback(trainer_ctrl_fifo)
 		tensorboard_logdir = os.path.join(self.output_dir, 'logs')
 		tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
 		#callbacks = [cp_callback, es_callback]
