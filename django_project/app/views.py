@@ -1,4 +1,5 @@
 import os
+import fcntl
 import logging
 import subprocess
 import json
@@ -34,10 +35,62 @@ def get_version():
     else:
         return '[T.B.D] VerX.XX'
 
+""" Function: get_recv_fifo_command
+ * return recieved command
+"""
+def get_recv_fifo_command(fifo):
+    fd = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    flags &= ~os.O_NONBLOCK
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+
+    try:
+        command = os.read(fd, 128)
+        command = command.decode()[:-1]
+        while (True):
+            buf = os.read(fd, 65536)
+            if not buf:
+                break
+    finally:
+        os.close(fd)
+
+    if (command):
+        if (command == 'trainer_done'):
+            logging.debug(f'{command} command recieved')
+            return command
+        else:
+            logging.debug(f'Unknown command({command}) recieved')
+            return None
+    
+    return None
+
+""" Function: get_all_fifo_command
+ * get all fifo command
+"""
+def get_all_fifo_command():
+    projects = Project.objects.all()
+    for project in projects:
+        models = MlModel.objects.filter(project=project)
+        
+        for model in models:
+            with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+                dict_config = json.load(f)
+            
+            while (True):
+                recv_command = get_recv_fifo_command(dict_config['env']['web_app_ctrl_fifo']['value'])
+                if (recv_command == 'trainer_done'):
+                    model.training_pid = None
+                    model.status = model.STAT_DONE
+                    model.save()
+                else:
+                    break
+
+
 """ Function: index
  * show main view
 """
 def index(request):
+    get_all_fifo_command()
     
     projects = Project.objects.all()
     project_form = ProjectForm()
@@ -313,7 +366,7 @@ def training(request):
             logging.info(f'subproc: Tensorboard worker PID: {subproc_tensorboard.pid}')
             
             # --- Update status and Register PID to MlModel database ---
-            selected_model.status = MlModel.STAT_TRAINING
+            selected_model.status = selected_model.STAT_TRAINING
             selected_model.training_pid = subproc_training.pid
             selected_model.tensorboard_pid = subproc_tensorboard.pid
             selected_model.save()
@@ -370,6 +423,7 @@ def training(request):
         
         return redirect('training')
     else:
+        get_all_fifo_command()
         sidebar_status = SidebarActiveStatus()
         sidebar_status.training = 'active'
         text = get_version()
@@ -389,6 +443,7 @@ def training(request):
                 model_dropdown_selected = MlModel.objects.get(name=model_name, project=project_dropdown_selected)
             else:
                 model_dropdown_selected = None
+            
         else:
             model = MlModel.objects.all()
             model_dropdown_selected = None

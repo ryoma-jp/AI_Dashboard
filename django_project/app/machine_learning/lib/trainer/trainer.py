@@ -192,6 +192,10 @@ class Trainer():
 			
 			plt.close()
 		
+		# --- 学習完了をアプリへ通知 ---
+		with open(web_app_ctrl_fifo, 'w') as f:
+			f.write('trainer_done\n')
+		
 		return
 	
 	# --- 推論 ---
