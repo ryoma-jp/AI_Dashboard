@@ -13,12 +13,12 @@ ToDoのメモ．思いついたら順次追加する．
   * [x] モデルごとの学習パラメータ設定
 * 学習中断
   * [x] 中断処理
-  * [ ] 中断時のステータス更新（MlModel.status, MlModel.training_pid）
+  * [s] 中断時のステータス更新（MlModel.status, MlModel.training_pid）
 * [x] Tensorboard起動及びリンク
 * Tensorboard終了
-  * [ ] 終了処理(プロセスKill)，MlModel.tensorboard_pid更新
+  * [x] 終了処理(プロセスKill)，MlModel.tensorboard_pid更新
 * 学習終了処理
-  * [ ] ステータス更新(MlModel.status, MlModel.training_pid)
+  * [x] ステータス更新(MlModel.status, MlModel.training_pid)
 * プロジェクト操作
   * [x] 追加
   * [ ] 変更
