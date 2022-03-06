@@ -4,6 +4,8 @@ import logging
 import subprocess
 import json
 import hashlib
+import psutil
+import signal
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -360,15 +362,9 @@ def training(request):
             subproc_training = subprocess.Popen(['python', main_path, '--config', config_path])
             logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
             
-            subproc_tensorboard = subprocess.Popen(['tensorboard', \
-                                        '--logdir', selected_model.model_dir, \
-                                        '--port', '6006'])
-            logging.info(f'subproc: Tensorboard worker PID: {subproc_tensorboard.pid}')
-            
             # --- Update status and Register PID to MlModel database ---
             selected_model.status = selected_model.STAT_TRAINING
             selected_model.training_pid = subproc_training.pid
-            selected_model.tensorboard_pid = subproc_tensorboard.pid
             selected_model.save()
             
         return
@@ -400,6 +396,20 @@ def training(request):
         '''
         return
     
+    def _launch_tensorboard(model):
+        config_path = os.path.join(model.model_dir, 'config.json')
+        with open(config_path, 'r') as f:
+            config_data = json.load(f)
+        
+        if (not model.tensorboard_pid in psutil.pids()):
+            subproc_tensorboard = subprocess.Popen(['tensorboard', \
+                                        '--logdir', model.model_dir, \
+                                        '--port', f'{config_data["env"]["tensorboard_port"]["value"]}'])
+            logging.info(f'subproc: Tensorboard worker PID: {subproc_tensorboard.pid}')
+            
+            model.tensorboard_pid = subproc_tensorboard.pid
+            model.save()
+    
     # logging.info('-------------------------------------')
     # logging.info(request.method)
     # logging.info(request.POST)
@@ -409,8 +419,35 @@ def training(request):
             request.session['training_view_selected_project'] = request.POST.getlist('training_view_project_dropdown')[0]
                 
         elif ('training_view_model_dropdown' in request.POST):
+            curr_project = Project.objects.get(name=request.session['training_view_selected_project'])
+            
+            if 'training_view_selected_model' in request.session.keys():
+                prev_model = MlModel.objects.get(name=request.session['training_view_selected_model'], project=curr_project)
+            else:
+                prev_model = None
+            
             request.session['training_view_selected_model'] = request.POST.getlist('training_view_model_dropdown')[0]
+            curr_model = MlModel.objects.get(name=request.session['training_view_selected_model'], project=curr_project)
+            
+            # --- Close previous Tensorboard ---
+            #  * https://psutil.readthedocs.io/en/latest/#kill-process-tree
+            if ((prev_model is not None) and (prev_model.tensorboard_pid is not None) and (prev_model.tensorboard_pid in psutil.pids())):
+                p = psutil.Process(prev_model.tensorboard_pid)
+                c = p.children(recursive=True)
+                c.append(p)
+                for p in c:
+                    try:
+                        p.send_signal(signal.SIGTERM)
+                    except psutil.NoSuchProcess:
+                        pass
+                gone, alive = psutil.wait_procs(c, timeout=3)
                 
+                prev_model.tensorboard_pid = None
+                prev_model.save()
+            
+            # --- Launch new Tensorboard ---
+            _launch_tensorboard(curr_model)
+            
         elif ('training_run' in request.POST):
             _training_run()
         
@@ -441,6 +478,7 @@ def training(request):
             model_name = request.session.get('training_view_selected_model', None)
             if (model_name is not None):
                 model_dropdown_selected = MlModel.objects.get(name=model_name, project=project_dropdown_selected)
+                _launch_tensorboard(model_dropdown_selected)
             else:
                 model_dropdown_selected = None
             
@@ -448,9 +486,20 @@ def training(request):
             model = MlModel.objects.all()
             model_dropdown_selected = None
         
+        # --- Get Tensorboard PORT ---
+        if (model_dropdown_selected is not None):
+            config_path = os.path.join(model_dropdown_selected.model_dir, 'config.json')
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+            tensorboard_port = config_data["env"]["tensorboard_port"]["value"]
+        else:
+            tensorboard_port = None
+        
+        
         context = {
             'project': project,
             'model': model,
+            'tensorboard_port': tensorboard_port,
             'sidebar_status': sidebar_status,
             'text': text,
             'project_dropdown_selected': project_dropdown_selected,
