@@ -237,6 +237,57 @@ def model_new(request, project_id):
     }
     return render(request, 'model_new.html', context)
 
+""" Function: model_edit
+ * edit model
+"""
+def model_edit(request, project_id, model_id):
+    # logging.info('-------------------------------------')
+    # logging.info(request.method)
+    # logging.info(request.POST)
+    # logging.info('-------------------------------------')
+    
+    project = get_object_or_404(Project, pk=project_id)
+    model = get_object_or_404(MlModel, pk=model_id, project=project)
+    
+    if (request.method == 'POST'):
+        form = MlModelForm(request.POST)
+        if (form.is_valid()):
+            # --- get form data ---
+            model.name = form.cleaned_data.get('name')
+            model.description = form.cleaned_data.get('description')
+            
+            # --- get dataset object ---
+            selected_dataset = request.POST.getlist('model_edit_dataset_dropdown_selected_submit')[0]
+            model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_dataset))
+            
+            # logging.info('-------------------------------------')
+            # logging.info(dict_config)
+            # logging.info('-------------------------------------')
+            
+            # --- save database ---
+            model.save()
+            
+            # --- clear session variables ---
+            del request.session['training_view_selected_model']
+            request.session.modified = True
+            
+            return redirect('index')
+    else:
+        initial_dict = dict(name=model.name, description=model.description)
+        form = MlModelForm(initial=initial_dict)
+    
+    model_edit_dropdown_selected = model.dataset
+    dataset = Dataset.objects.all().filter(project=project)
+    text = get_version()
+    
+    context = {
+        'model_edit_dropdown_selected': model_edit_dropdown_selected,
+        'dataset': dataset,
+        'form': form,
+        'text': text
+    }
+    return render(request, 'model_edit.html', context)
+
 """ Function: model_paraemter_edit
  * edit model paramter
 """

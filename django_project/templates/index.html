@@ -35,7 +35,7 @@
                   <tbody>
                   {% for model in models|in_project:project %}
                     <tr>
-                      <td>{{ model.name }}</td>
+                      <td><a href="{% url 'model_edit' project.id model.id %}">{{ model.name }}</a></td>
                       <td>{{ model.description }}</td>
                       <td>{{ model.dataset }}</td>
                       <td>{{ model.status }}</td>

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+
+{% block main %}
+<div class="container-fluid">
+  <h2> Edit Model</h2>
+  <form method="post">
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    
+    <div class="dropdown my-3">
+      <button type="button" class="btn btn-primary dropdown-toggle" id="model_edit_dataset_dropdown_selected" data-bs-toggle="dropdown" aria-expanded="false">
+        {% if model_edit_dropdown_selected %}
+          {{ model_edit_dropdown_selected.name }}
+        {% else %}
+          Select Dataset
+        {% endif %}
+      </button>
+      <ul class="dropdown-menu" area-labelledby="model_edit_dataset_dropdown_selected" id="model_edit_dataset_dropdown_selected_list">
+      {% for dataset_ in dataset %}
+        <li><button type="button" class="dropdown-item" value="{{ dataset_.name }}">{{ dataset_.name }}</button></li>
+      {% endfor %}
+      </ul>
+        <script>
+          // id=model_edit_dataset__dropdown_selected_listのdropdown-menu内のliタグに対してリスナにクリックイベントを追加する
+          dropdown_list = document.querySelector('#model_edit_dataset_dropdown_selected_list')
+          dropdown_list.querySelectorAll('li').forEach( function(el) {
+            el.addEventListener('click', function() {
+              // console.log('Click dropdown item');
+              // console.log(el.textContent);
+              
+              display = document.getElementById('model_edit_dataset_dropdown_selected');
+              display.innerText = el.textContent;
+              
+              ele = document.getElementById('model_edit_dataset_dropdown_selected_submit')
+              ele.value = el.textContent;
+            });
+          });
+        </script>
+        <input type="hidden" name="model_edit_dataset_dropdown_selected_submit" id="model_edit_dataset_dropdown_selected_submit" value="{{ model_edit_dropdown_selected.name }}">
+    </div>
+    
+    {% bootstrap_button button_type="submit" content="Apply" %}
+    <a class="btn btn-primary" href="{% url 'index' %}" role="button">Cancel</a>
+  </form>
+</div>
+{% endblock %}
+
