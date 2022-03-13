@@ -7,8 +7,8 @@
   <form method="post">
     {% csrf_token %}
     {% bootstrap_form form %}
-    {% bootstrap_button button_type="submit" content="追加" %}
-    <a class="btn btn-primary" href="{% url 'index' %}" role="button">キャンセル</a>
+    {% bootstrap_button button_type="submit" content="Add Project" %}
+    <a class="btn btn-primary" href="{% url 'index' %}" role="button">Cancel</a>
   </form>
 </div>
 {% endblock %}
