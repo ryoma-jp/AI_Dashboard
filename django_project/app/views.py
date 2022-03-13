@@ -70,9 +70,9 @@ def get_recv_fifo_command(fifo):
  * get all fifo command
 """
 def get_all_fifo_command():
-    projects = Project.objects.all()
+    projects = Project.objects.all().order_by('-id').reverse()
     for project in projects:
-        models = MlModel.objects.filter(project=project)
+        models = MlModel.objects.filter(project=project).order_by('-id').reverse()
         
         for model in models:
             with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
@@ -87,6 +87,18 @@ def get_all_fifo_command():
                 else:
                     break
 
+""" Function: create_project_hash
+ * create project hash
+"""
+def create_project_hash(project):
+    return hashlib.sha256(f'{project.id:08}'.encode()).hexdigest()
+
+""" Function: create_model_hash
+ * create model hash
+"""
+def create_model_hash(project, model):
+    return hashlib.sha256(f'{project.id:08}{model.id:08}'.encode()).hexdigest()
+
 
 """ Function: index
  * show main view
@@ -94,11 +106,11 @@ def get_all_fifo_command():
 def index(request):
     get_all_fifo_command()
     
-    projects = Project.objects.all()
+    projects = Project.objects.all().order_by('-id').reverse()
     project_form = ProjectForm()
-    dataset = Dataset.objects.all()
+    dataset = Dataset.objects.all().order_by('-id').reverse()
     dataset_form = DatasetForm()
-    models = MlModel.objects.all()
+    models = MlModel.objects.all().order_by('-id').reverse()
     
     sidebar_status = SidebarActiveStatus()
     sidebar_status.index = 'active'
@@ -126,8 +138,8 @@ def project_new(request):
         form = ProjectForm(request.POST)
         if (form.is_valid()):
             # --- save database ---
-            project = form.save(commit=False)
-            project.hash = hashlib.sha256(project.name.encode()).hexdigest()
+            project = form.save(commit=True)       # commit=True: id確定のため
+            project.hash = create_project_hash(project)
             project.save()
             
             # logging.info('-------------------------------------')
@@ -153,6 +165,45 @@ def project_new(request):
     }
     return render(request, 'project_new.html', context)
 
+""" Function: project_edit
+ * edit project
+"""
+def project_edit(request, project_id):
+    
+    project = get_object_or_404(Project, pk=project_id)
+    if (request.method == 'POST'):
+        form = ProjectForm(request.POST)
+        if (form.is_valid()):
+            # --- get form data ---
+            project.name = form.cleaned_data.get('name')
+            project.description = form.cleaned_data.get('description')
+            
+            # logging.info('-------------------------------------')
+            # logging.info(project.hash)
+            # logging.info('-------------------------------------')
+            
+            # --- save database ---
+            project.save()
+            
+            # --- clear session variables ---
+            if 'training_view_selected_project' in request.session.keys():
+                del request.session['training_view_selected_project']
+                request.session.modified = True
+            
+            return redirect('index')
+    else:
+        initial_dict = dict(name=project.name, description=project.description)
+        form = ProjectForm(initial=initial_dict)
+    
+    text = get_version()
+    
+    context = {
+        'form': form,
+        'text': text,
+    }
+    return render(request, 'project_edit.html', context)
+
+
 """ Function: model_new
  * new model
 """
@@ -173,7 +224,12 @@ def model_new(request, project_id):
             # --- get dataset object ---
             selected_model = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
             model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_model))
-            model.hash = hashlib.sha256(model.name.encode()).hexdigest()
+            
+            # --- dummy save ---
+            model.save()       # commit=True: id確定のため
+            
+            # --- create hash ---
+            model.hash = create_model_hash(project, model)
             
             # --- create model directory ---
             project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
@@ -226,7 +282,7 @@ def model_new(request, project_id):
         form = MlModelForm()
     
     model_new_dropdown_selected = None
-    dataset = Dataset.objects.all().filter(project=project)
+    dataset = Dataset.objects.all().filter(project=project).order_by('-id').reverse()
     text = get_version()
     
     context = {
@@ -268,8 +324,9 @@ def model_edit(request, project_id, model_id):
             model.save()
             
             # --- clear session variables ---
-            del request.session['training_view_selected_model']
-            request.session.modified = True
+            if 'training_view_selected_model' in request.session.keys():
+                del request.session['training_view_selected_model']
+                request.session.modified = True
             
             return redirect('index')
     else:
@@ -277,7 +334,7 @@ def model_edit(request, project_id, model_id):
         form = MlModelForm(initial=initial_dict)
     
     model_edit_dropdown_selected = model.dataset
-    dataset = Dataset.objects.all().filter(project=project)
+    dataset = Dataset.objects.all().filter(project=project).order_by('-id').reverse()
     text = get_version()
     
     context = {
@@ -355,31 +412,31 @@ def model_paraemter_edit(request, model_id):
 def dataset(request):
     if (request.method == 'POST'):
         if ('dataset_view_dropdown' in request.POST):
-            request.session['dataset_view_dropdown_selected'] = request.POST.getlist('dataset_view_dropdown')[0]
+            request.session['dataset_view_dropdown_selected_project'] = request.POST.getlist('dataset_view_dropdown')[0]
         return redirect('dataset')
     else:
-        project = Project.objects.all()
-        dataset = Dataset.objects.all()
+        project = Project.objects.all().order_by('-id').reverse()
+        dataset = Dataset.objects.all().order_by('-id').reverse()
         sidebar_status = SidebarActiveStatus()
         sidebar_status.dataset = 'active'
         text = get_version()
         
-        project_name = request.session.get('dataset_view_dropdown_selected', None)
+        project_name = request.session.get('dataset_view_dropdown_selected_project', None)
         if (project_name is not None):
-            dataset_view_dropdown_selected = Project.objects.get(name=project_name)
+            dropdown_selected_project = Project.objects.get(name=project_name)
         else:
-            dataset_view_dropdown_selected = None
+            dropdown_selected_project = None
         
         # logging.info('-------------------------------------')
         # logging.info(project_name)
-        # logging.info(dataset_view_dropdown_selected)
+        # logging.info(dropdown_selected_project)
         # logging.info('-------------------------------------')
         context = {
             'project': project,
             'dataset': dataset,
             'sidebar_status': sidebar_status,
             'text': text,
-            'dataset_view_dropdown_selected': dataset_view_dropdown_selected
+            'dropdown_selected_project': dropdown_selected_project
         }
         return render(request, 'dataset.html', context)
 
@@ -516,7 +573,7 @@ def training(request):
         sidebar_status.training = 'active'
         text = get_version()
         
-        project = Project.objects.all()
+        project = Project.objects.all().order_by('-id').reverse()
         project_name = request.session.get('training_view_selected_project', None)
         if (project_name is not None):
             project_dropdown_selected = Project.objects.get(name=project_name)
@@ -524,7 +581,7 @@ def training(request):
             project_dropdown_selected = None
         
         if (project_dropdown_selected):
-            model = MlModel.objects.filter(project=project_dropdown_selected)
+            model = MlModel.objects.filter(project=project_dropdown_selected).order_by('-id').reverse()
             
             model_name = request.session.get('training_view_selected_model', None)
             if (model_name is not None):
@@ -534,7 +591,7 @@ def training(request):
                 model_dropdown_selected = None
             
         else:
-            model = MlModel.objects.all()
+            model = MlModel.objects.all().order_by('-id').reverse()
             model_dropdown_selected = None
         
         # --- Get Tensorboard PORT ---

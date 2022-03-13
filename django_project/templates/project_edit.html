@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+
+{% block main %}
+<div class="container-fluid">
+  <h2> Edit Project</h2>
+  <form method="post">
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    {% bootstrap_button button_type="submit" content="Apply" %}
+    <a class="btn btn-primary" href="{% url 'index' %}" role="button">Cancel</a>
+  </form>
+</div>
+{% endblock %}
+

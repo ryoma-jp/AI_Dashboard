@@ -7,7 +7,7 @@ from django.conf import settings
 # クラス：プロジェクト
 #---------------------------------------
 class Project(models.Model):
-    name = models.CharField('ProjectName', max_length=128, unique=True)
+    name = models.CharField('ProjectName', max_length=128)
     description = models.TextField('Description', blank=True)
     hash = models.CharField('Project hash', max_length=128)
     

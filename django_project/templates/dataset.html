@@ -18,8 +18,8 @@
           {% csrf_token %}
             <div class="btn-group">
               <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                {% if dataset_view_dropdown_selected %}
-                  {{ dataset_view_dropdown_selected.name }}
+                {% if dropdown_selected_project %}
+                  {{ dropdown_selected_project.name }}
                 {% else %}
                   Select Project
                 {% endif %}
@@ -32,7 +32,7 @@
             </div>
         </form>
         <h1 class="h3">Dataset List</h1>
-        {% if dataset|in_project:dataset_view_dropdown_selected %}
+        {% if dataset|in_project:dropdown_selected_project %}
           <table class="table table-bordered border-primary table-hover ms-4">
             <thead class="table-dark">
               <tr>
@@ -41,7 +41,7 @@
               </tr>
             </thead>
             <tbody>
-              {% for data_ in dataset|in_project:dataset_view_dropdown_selected %}
+              {% for data_ in dataset|in_project:dropdown_selected_project %}
                 <tr>
                   <td>{{ data_.name }}</td>
                   <td>---</td>
