@@ -1,3 +1,4 @@
+import sys
 import os
 import fcntl
 import logging
@@ -6,6 +7,7 @@ import json
 import hashlib
 import psutil
 import signal
+import pickle
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -14,8 +16,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from app.models import Project, Dataset, MlModel
 from app.forms import ProjectForm, DatasetForm, MlModelForm
 
-from .machine_learning.lib.data_loader.data_loader import *
-from .machine_learning.lib.trainer.trainer import *
+from machine_learning.lib.data_loader.data_loader import *
+from machine_learning.lib.trainer.trainer import *
 
 # Create your views here.
 
@@ -147,8 +149,8 @@ def project_new(request):
             # logging.info('-------------------------------------')
             
             # --- create default dataset ---
-            Dataset.objects.create(name='MNIST', project=project)
-            Dataset.objects.create(name='CIFAR-10', project=project)
+            Dataset.objects.create(name='MNIST', project=project, pickle="")
+            Dataset.objects.create(name='CIFAR-10', project=project, pickle="")
             
             # --- create project directory ---
             os.makedirs(os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
@@ -234,12 +236,16 @@ def model_new(request, project_id):
             # --- create model directory ---
             project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
             model_dir = os.path.join(project_dir, model.hash)
+            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR,  project.hash, model.hash)
             os.makedirs(model_dir)
             model.model_dir = model_dir
             
             # --- create environment directory ---
             env_dir = os.path.join(settings.ENV_DIR, project.hash, model.hash)
             os.makedirs(env_dir, exist_ok=True)
+            
+            # --- create dataset directory ---
+            os.makedirs(dataset_dir, exist_ok=True)
             
             # --- load config ---
             if (model.dataset.name == 'MNIST'):
@@ -255,13 +261,26 @@ def model_new(request, project_id):
             dict_config['env']['web_app_ctrl_fifo']['value'] = os.path.join(env_dir, 'web_app_ctrl_fifo')
             dict_config['env']['trainer_ctrl_fifo']['value'] = os.path.join(env_dir, 'fifo_trainer_ctrl')
             dict_config['env']['result_dir']['value'] = model_dir
-            dict_config['dataset']['dataset_dir']['value'] = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR)
+            dict_config['dataset']['dataset_dir']['value'] = dataset_dir
             with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(dict_config, f, ensure_ascii=False, indent=4)
             
             # logging.info('-------------------------------------')
             # logging.info(dict_config)
             # logging.info('-------------------------------------')
+            
+            # --- preparing dataset ---
+            if (model.dataset.pickle == ""):
+                if (model.dataset.name == 'MNIST'):
+                    dataset = DataLoaderMNIST(dataset_dir, validation_split=0.2, one_hot=False, download=True)
+                elif (model.dataset.name == 'CIFAR-10'):
+                    dataset = DataLoaderCIFAR10(dataset_dir, validation_split=0.2, one_hot=False, download=True)
+                else:
+                    pass
+                
+                model.dataset.pickle = os.path.join(dataset_dir, 'dataset.pkl')
+                with open(model.dataset.pickle, 'wb') as f:
+                    pickle.dump(dataset, f)
             
             # --- save database ---
             model.status = model.STAT_IDLE

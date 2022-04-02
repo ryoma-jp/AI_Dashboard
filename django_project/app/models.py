@@ -21,6 +21,9 @@ class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
+    dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
+    pickle = models.CharField('Model Object (*.pkl)', max_length=512, blank=True)
+    
     train_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     train_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     valid_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))

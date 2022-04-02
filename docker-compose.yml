@@ -18,6 +18,8 @@ services:
       - ./.env.dev
     depends_on:
       - db
+    environment:
+      PYTHONPATH: '${PYTHONPATH}'
     deploy:
       resources:
         reservations:

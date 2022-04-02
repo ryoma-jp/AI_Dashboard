@@ -42,11 +42,12 @@ import os
 import json
 import argparse
 import pandas as pd
+import pickle
 
-from lib.data_loader.data_loader import DataLoaderMNIST
-from lib.data_loader.data_loader import DataLoaderCIFAR10
+from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
+from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 
-from lib.trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
+from machine_learning.lib.trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
 
 #---------------------------------
 # 定数定義
@@ -103,19 +104,16 @@ def main():
 	batch_size = config_data['training_parameter']['batch_size']['value']
 	epochs = config_data['training_parameter']['epochs']['value']
 	
-	# --- データセット読み込み
+	# --- データセット読み込み ---
+	with open(os.path.join(dataset_dir, 'dataset.pkl'), 'rb') as f:
+		dataset = pickle.load(f)
+	
 	if (loss_func == "sparse_categorical_crossentropy"):
 		one_hot = False
 	else:
 		one_hot = True
-	if (data_type == "MNIST"):
-		dataset = DataLoaderMNIST(dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
-	elif (data_type == "CIFAR-10"):
-		dataset = DataLoaderCIFAR10(dataset_dir, validation_split=0.2, one_hot=one_hot, download=True)
-	else:
-		print('[ERROR] Unknown data_type: {}'.format(data_type))
-		quit()
-		
+	dataset.convert_label_encoding(one_hot=one_hot)
+	
 	print_ndarray_shape(dataset.train_images)
 	print_ndarray_shape(dataset.train_labels)
 	print_ndarray_shape(dataset.validation_images)

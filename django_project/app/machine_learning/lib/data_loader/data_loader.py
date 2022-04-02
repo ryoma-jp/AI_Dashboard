@@ -16,6 +16,9 @@ import gzip
 class DataLoader():
 	# --- コンストラクタ ---
 	def __init__(self):
+		self.one_hot = True
+		self.output_dims = -1
+		
 		return
 	
 	# --- ファイルダウンロード ---
@@ -61,14 +64,6 @@ class DataLoader():
 		
 		return train_norm, validation_norm, test_norm
 		
-	# --- ラベルインデックス取得 ---
-	def get_label_index(self, label, one_hot=True):
-		if (one_hot):
-			label = np.argmax(label, axis=1)
-		n_category = max(label)+1
-		
-		return np.array([np.arange(len(label))[label==i] for i in range(n_category)])
-	
 	# --- 学習データとバリデーションデータを分割 ---
 	def split_train_val(self, validation_split):
 		idx = np.arange(len(self.train_images))
@@ -90,7 +85,30 @@ class DataLoader():
 			self.train_labels = self.train_labels[0:validation_index]
 		
 		return
-
+	
+	def convert_label_encoding(self, one_hot=True):
+		"""Convert Label Encoding
+		
+		正解ラベルをOne Hot表現とインデックス表現を相互変換する
+		
+		Args:
+		    one_hot (bool): 変換先のインデックス表現を指定
+		"""
+		
+		if ((not self.one_hot) and (one_hot)):
+			identity = np.eye(self.output_dims, dtype=np.int)
+			self.train_labels = np.array([identity[i] for i in self.train_labels])
+			self.validation_labels = np.array([identity[i] for i in self.validation_labels])
+			self.test_labels = np.array([identity[i] for i in self.test_labels])
+		elif ((self.one_hot) and (not one_hot)):
+			self.train_labels = self.train_labels.argmax(axis=1)
+			self.validation_labels = self.validation_labels.argmax(axis=1)
+			self.test_labels = self.test_labels.argmax(axis=1)
+			
+		self.one_hot = one_hot
+		
+		return
+	
 #---------------------------------
 # クラス; CIFAR-10データセット取得
 #---------------------------------
@@ -112,6 +130,7 @@ class DataLoaderCIFAR10(DataLoader):
 		
 		# --- initialize super class ---
 		super().__init__()
+		self.one_hot = one_hot
 		
 		# --- download dataset and extract ---
 		if (download):
@@ -148,7 +167,7 @@ class DataLoaderCIFAR10(DataLoader):
 		self.test_images = test_images.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
 		
 		# --- labels ---
-		if (one_hot):
+		if (self.one_hot):
 			identity = np.eye(10, dtype=np.int)
 			self.train_labels = np.array([identity[i] for i in train_labels])
 			self.test_labels = np.array([identity[i] for i in test_labels])
@@ -179,6 +198,7 @@ class DataLoaderMNIST(DataLoader):
 		
 		# --- initialize super class ---
 		super().__init__()
+		self.one_hot = one_hot
 		
 		# --- download dataset and extract ---
 		if (download):
@@ -225,7 +245,7 @@ class DataLoaderMNIST(DataLoader):
 		n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
 		
 		self.train_labels = byte_data[8:]
-		if (one_hot):
+		if (self.one_hot):
 			identity = np.eye(10, dtype=np.int)
 			self.train_labels = np.array([identity[i] for i in self.train_labels])
 		
@@ -249,7 +269,7 @@ class DataLoaderMNIST(DataLoader):
 		n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
 		
 		self.test_labels = byte_data[8:]
-		if (one_hot):
+		if (self.one_hot):
 			self.test_labels = np.array([identity[i] for i in self.test_labels])
 		
 		# --- 学習データとバリデーションデータを分割 ---
