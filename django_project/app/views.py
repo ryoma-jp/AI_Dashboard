@@ -101,6 +101,33 @@ def create_model_hash(project, model):
     """
     return hashlib.sha256(f'{project.id:08}{model.id:08}'.encode()).hexdigest()
 
+def load_dataset(model):
+    """Load Dataset
+    
+    Load dataset and return the class object
+    
+    Args:
+        model: MlModel class object
+    
+    Return:
+        Dataset class object
+    """
+    
+    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, model.project.hash, model.hash)
+    download_dir = os.path.join(dataset_dir, model.dataset.name)
+    if (os.path.exists(download_dir)):
+        download = False
+    else:
+        download = True
+    if (model.dataset.name == 'MNIST'):
+        dataset = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
+    elif (model.dataset.name == 'CIFAR-10'):
+        dataset = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
+    else:
+        dataset = None
+    
+    return dataset
+
 def index(request):
     """ Function: index
      * show main view
@@ -233,7 +260,7 @@ def model_new(request, project_id):
             # --- create model directory ---
             project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
             model_dir = os.path.join(project_dir, model.hash)
-            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR,  project.hash, model.hash)
+            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash, model.hash)
             os.makedirs(model_dir)
             model.model_dir = model_dir
             
@@ -267,18 +294,10 @@ def model_new(request, project_id):
             # logging.info('-------------------------------------')
             
             # --- preparing dataset ---
-            
-            if (model.dataset.pickle == ""):
-                if (model.dataset.name == 'MNIST'):
-                    dataset = DataLoaderMNIST(dataset_dir, validation_split=0.2, one_hot=False, download=True)
-                elif (model.dataset.name == 'CIFAR-10'):
-                    dataset = DataLoaderCIFAR10(dataset_dir, validation_split=0.2, one_hot=False, download=True)
-                else:
-                    pass
-                
-                model.dataset.pickle = os.path.join(dataset_dir, 'dataset.pkl')
-                with open(model.dataset.pickle, 'wb') as f:
-                    pickle.dump(dataset, f)
+            dataset = load_dataset(model)
+            model.dataset.pickle = os.path.join(dataset_dir, 'dataset.pkl')
+            with open(model.dataset.pickle, 'wb') as f:
+                pickle.dump(dataset, f)
             
             # --- save database ---
             model.status = model.STAT_IDLE
@@ -332,6 +351,17 @@ def model_edit(request, project_id, model_id):
             # --- get dataset object ---
             selected_dataset = request.POST.getlist('model_edit_dataset_dropdown_selected_submit')[0]
             model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_dataset))
+            
+            # --- load config ---
+            with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+                config_data = json.load(f)
+            dataset_dir = config_data['dataset']['dataset_dir']['value']
+            
+            # --- preparing dataset ---
+            dataset = load_dataset(model)
+            model.dataset.pickle = os.path.join(dataset_dir, 'dataset.pkl')
+            with open(model.dataset.pickle, 'wb') as f:
+                pickle.dump(dataset, f)
             
             # logging.info('-------------------------------------')
             # logging.info(dict_config)

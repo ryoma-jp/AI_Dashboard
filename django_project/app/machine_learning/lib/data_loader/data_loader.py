@@ -135,6 +135,7 @@ class DataLoaderCIFAR10(DataLoader):
 		# --- download dataset and extract ---
 		if (download):
 			logging.debug('[DataLoaderCIFAR10] {}'.format(dataset_dir))
+			os.makedirs(dataset_dir, exist_ok=True)
 			if (not os.path.exists(os.path.join(dataset_dir, 'cifar-10-batches-py'))):
 				url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 				save_file = self.file_download(dataset_dir, url)
@@ -203,6 +204,7 @@ class DataLoaderMNIST(DataLoader):
 		# --- download dataset and extract ---
 		if (download):
 			logging.debug('[DataLoaderMNIST] {}'.format(dataset_dir))
+			os.makedirs(dataset_dir, exist_ok=True)
 			mnist_files = [
 				'train-images-idx3-ubyte.gz',
 				'train-labels-idx1-ubyte.gz',
