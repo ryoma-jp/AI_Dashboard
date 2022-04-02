@@ -21,28 +21,28 @@ from machine_learning.lib.trainer.trainer import *
 
 # Create your views here.
 
-""" Class: Sidebar active status
-"""
 class SidebarActiveStatus():
+    """ Class: Sidebar active status
+    """
     def __init__(self):
         self.index = ''
         self.dataset = ''
         self.training = ''
 
 
-""" Function: get_version
- * return version text
-"""
 def get_version():
+    """ Function: get_version
+     * return version text
+    """
     if (settings.DEBUG):
         return 'Debug mode'
     else:
         return '[T.B.D] VerX.XX'
 
-""" Function: get_recv_fifo_command
- * return recieved command
-"""
 def get_recv_fifo_command(fifo):
+    """ Function: get_recv_fifo_command
+     * return recieved command
+    """
     fd = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
     flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     flags &= ~os.O_NONBLOCK
@@ -68,10 +68,10 @@ def get_recv_fifo_command(fifo):
     
     return None
 
-""" Function: get_all_fifo_command
- * get all fifo command
-"""
 def get_all_fifo_command():
+    """ Function: get_all_fifo_command
+     * get all fifo command
+    """
     projects = Project.objects.all().order_by('-id').reverse()
     for project in projects:
         models = MlModel.objects.filter(project=project).order_by('-id').reverse()
@@ -89,23 +89,22 @@ def get_all_fifo_command():
                 else:
                     break
 
-""" Function: create_project_hash
- * create project hash
-"""
 def create_project_hash(project):
+    """ Function: create_project_hash
+     * create project hash
+    """
     return hashlib.sha256(f'{project.id:08}'.encode()).hexdigest()
 
-""" Function: create_model_hash
- * create model hash
-"""
 def create_model_hash(project, model):
+    """ Function: create_model_hash
+     * create model hash
+    """
     return hashlib.sha256(f'{project.id:08}{model.id:08}'.encode()).hexdigest()
 
-
-""" Function: index
- * show main view
-"""
 def index(request):
+    """ Function: index
+     * show main view
+    """
     get_all_fifo_command()
     
     projects = Project.objects.all().order_by('-id').reverse()
@@ -132,10 +131,10 @@ def index(request):
     return render(request, 'index.html', context)
 
 
-""" Function: project_new
- * new project
-"""
 def project_new(request):
+    """ Function: project_new
+     * new project
+    """
     if (request.method == 'POST'):
         form = ProjectForm(request.POST)
         if (form.is_valid()):
@@ -167,11 +166,10 @@ def project_new(request):
     }
     return render(request, 'project_new.html', context)
 
-""" Function: project_edit
- * edit project
-"""
 def project_edit(request, project_id):
-    
+    """ Function: project_edit
+     * edit project
+    """
     project = get_object_or_404(Project, pk=project_id)
     if (request.method == 'POST'):
         form = ProjectForm(request.POST)
@@ -205,11 +203,10 @@ def project_edit(request, project_id):
     }
     return render(request, 'project_edit.html', context)
 
-
-""" Function: model_new
- * new model
-"""
 def model_new(request, project_id):
+    """ Function: model_new
+     * new model
+    """
     # logging.info('-------------------------------------')
     # logging.info(request.method)
     # logging.info(request.POST)
@@ -270,6 +267,7 @@ def model_new(request, project_id):
             # logging.info('-------------------------------------')
             
             # --- preparing dataset ---
+            
             if (model.dataset.pickle == ""):
                 if (model.dataset.name == 'MNIST'):
                     dataset = DataLoaderMNIST(dataset_dir, validation_split=0.2, one_hot=False, download=True)
@@ -312,10 +310,10 @@ def model_new(request, project_id):
     }
     return render(request, 'model_new.html', context)
 
-""" Function: model_edit
- * edit model
-"""
 def model_edit(request, project_id, model_id):
+    """ Function: model_edit
+     * edit model
+    """
     # logging.info('-------------------------------------')
     # logging.info(request.method)
     # logging.info(request.POST)
@@ -364,10 +362,10 @@ def model_edit(request, project_id, model_id):
     }
     return render(request, 'model_edit.html', context)
 
-""" Function: model_paraemter_edit
- * edit model paramter
-"""
 def model_paraemter_edit(request, model_id):
+    """ Function: model_paraemter_edit
+     * edit model paramter
+    """
     def _set_config_parameters(config, save_config_list):
         for key in save_config_list:
             if (request.POST[key] != ''):
@@ -425,10 +423,10 @@ def model_paraemter_edit(request, model_id):
         }
         return render(request, 'model_parameter_edit.html', context)
 
-""" Function: dataset
- * dataset top
-"""
 def dataset(request):
+    """ Function: dataset
+     * dataset top
+    """
     if (request.method == 'POST'):
         if ('dataset_view_dropdown' in request.POST):
             request.session['dataset_view_dropdown_selected_project'] = request.POST.getlist('dataset_view_dropdown')[0]
@@ -459,10 +457,10 @@ def dataset(request):
         }
         return render(request, 'dataset.html', context)
 
-""" Function: training
- * training top
-"""
 def training(request):
+    """ Function: training
+     * training top
+    """
     def _get_selected_object():
         project_name = request.session.get('training_view_selected_project', None)
         selected_project = Project.objects.get(name=project_name)
