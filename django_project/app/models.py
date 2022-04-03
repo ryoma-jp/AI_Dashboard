@@ -22,7 +22,6 @@ class Dataset(models.Model):
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
     dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
-    pickle = models.CharField('Model Object (*.pkl)', max_length=512, blank=True)
     
     train_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     train_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
@@ -44,6 +43,7 @@ class MlModel(models.Model):
     hash = models.CharField('Model hash', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.CASCADE)
+    dataset_pickle = models.CharField('Dataset Object (*.pkl)', max_length=512, blank=True)
     
     model_dir = models.CharField('Model Directory', max_length=1024)
     

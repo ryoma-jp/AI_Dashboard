@@ -113,7 +113,7 @@ def load_dataset(model):
         Dataset class object
     """
     
-    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, model.project.hash, model.hash)
+    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, model.project.hash)
     download_dir = os.path.join(dataset_dir, model.dataset.name)
     if (os.path.exists(download_dir)):
         download = False
@@ -175,8 +175,8 @@ def project_new(request):
             # logging.info('-------------------------------------')
             
             # --- create default dataset ---
-            Dataset.objects.create(name='MNIST', project=project, pickle="")
-            Dataset.objects.create(name='CIFAR-10', project=project, pickle="")
+            Dataset.objects.create(name='MNIST', project=project)
+            Dataset.objects.create(name='CIFAR-10', project=project)
             
             # --- create project directory ---
             os.makedirs(os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
@@ -260,7 +260,7 @@ def model_new(request, project_id):
             # --- create model directory ---
             project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
             model_dir = os.path.join(project_dir, model.hash)
-            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash, model.hash)
+            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
             os.makedirs(model_dir)
             model.model_dir = model_dir
             
@@ -284,8 +284,8 @@ def model_new(request, project_id):
             # --- set parameters ---
             dict_config['env']['web_app_ctrl_fifo']['value'] = os.path.join(env_dir, 'web_app_ctrl_fifo')
             dict_config['env']['trainer_ctrl_fifo']['value'] = os.path.join(env_dir, 'fifo_trainer_ctrl')
-            dict_config['env']['result_dir']['value'] = model_dir
-            dict_config['dataset']['dataset_dir']['value'] = dataset_dir
+            dict_config['env']['result_dir']['value'] = model.model_dir
+            dict_config['dataset']['dataset_dir']['value'] = model.model_dir	# directory that contains 'dataset.pkl'
             with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(dict_config, f, ensure_ascii=False, indent=4)
             
@@ -295,8 +295,8 @@ def model_new(request, project_id):
             
             # --- preparing dataset ---
             dataset = load_dataset(model)
-            model.dataset.pickle = os.path.join(dataset_dir, 'dataset.pkl')
-            with open(model.dataset.pickle, 'wb') as f:
+            model.dataset_pickle = os.path.join(model.model_dir, 'dataset.pkl')
+            with open(model.dataset_pickle, 'wb') as f:
                 pickle.dump(dataset, f)
             
             # --- save database ---
@@ -359,8 +359,8 @@ def model_edit(request, project_id, model_id):
             
             # --- preparing dataset ---
             dataset = load_dataset(model)
-            model.dataset.pickle = os.path.join(dataset_dir, 'dataset.pkl')
-            with open(model.dataset.pickle, 'wb') as f:
+            model.dataset_pickle = os.path.join(dataset_dir, 'dataset.pkl')
+            with open(model.dataset_pickle, 'wb') as f:
                 pickle.dump(dataset, f)
             
             # logging.info('-------------------------------------')
