@@ -43,7 +43,7 @@
             <tbody>
               {% for data_ in dataset|in_project:dropdown_selected_project %}
                 <tr>
-                  <td>{{ data_.name }}</td>
+                  <td><a href="{% url 'dataset_detail' dropdown_selected_project.id data_.id %}">{{ data_.name }}</a></td>
                   <td>---</td>
                 </tr>
               {% endfor %}

@@ -487,6 +487,14 @@ def dataset(request):
         }
         return render(request, 'dataset.html', context)
 
+def dataset_detail(request, project_id, dataset_id):
+    """ Function: dataset_detail
+     * display dataset details(images, distribution, etc)
+    """
+    
+    context = {}
+    return render(request, 'dataset_detail.html', context)
+
 def training(request):
     """ Function: training
      * training top
