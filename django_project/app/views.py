@@ -101,27 +101,27 @@ def create_model_hash(project, model):
     """
     return hashlib.sha256(f'{project.id:08}{model.id:08}'.encode()).hexdigest()
 
-def load_dataset(model):
+def load_dataset(dataset):
     """Load Dataset
     
     Load dataset and return the class object
     
     Args:
-        model: MlModel class object
+        dataset: Dataset class object
     
     Return:
         Dataset class object
     """
     
-    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, model.project.hash)
-    download_dir = os.path.join(dataset_dir, model.dataset.name)
+    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
+    download_dir = os.path.join(dataset_dir, dataset.name)
     if (os.path.exists(download_dir)):
         download = False
     else:
         download = True
-    if (model.dataset.name == 'MNIST'):
+    if (dataset.name == 'MNIST'):
         dataset = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
-    elif (model.dataset.name == 'CIFAR-10'):
+    elif (dataset.name == 'CIFAR-10'):
         dataset = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
     else:
         dataset = None
@@ -294,7 +294,7 @@ def model_new(request, project_id):
             # logging.info('-------------------------------------')
             
             # --- preparing dataset ---
-            dataset = load_dataset(model)
+            dataset = load_dataset(model.dataset)
             model.dataset_pickle = os.path.join(model.model_dir, 'dataset.pkl')
             with open(model.dataset_pickle, 'wb') as f:
                 pickle.dump(dataset, f)
@@ -358,7 +358,7 @@ def model_edit(request, project_id, model_id):
             dataset_dir = config_data['dataset']['dataset_dir']['value']
             
             # --- preparing dataset ---
-            dataset = load_dataset(model)
+            dataset = load_dataset(model.dataset)
             model.dataset_pickle = os.path.join(dataset_dir, 'dataset.pkl')
             with open(model.dataset_pickle, 'wb') as f:
                 pickle.dump(dataset, f)
@@ -492,7 +492,36 @@ def dataset_detail(request, project_id, dataset_id):
      * display dataset details(images, distribution, etc)
     """
     
-    context = {}
+    # logging.info('-------------------------------------')
+    # logging.info(request)
+    # logging.info(request.method)
+    # logging.info('-------------------------------------')
+
+    project = get_object_or_404(Project, pk=project_id)
+    dataset = get_object_or_404(Dataset, pk=dataset_id, project=project)
+    
+    if (request.method == 'POST'):
+        # logging.info('-------------------------------------')
+        # logging.info(request.POST)
+        # logging.info(request.POST.keys())
+        # logging.info('-------------------------------------')
+        
+        if ('dataset_download' in request.POST.keys()):
+            # --- dataset download ---
+            load_dataset(dataset)
+
+    # --- check download directory ---
+    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
+    download_dir = os.path.join(dataset_dir, dataset.name)
+    download_button_state = "disabled"
+    if (not os.path.exists(download_dir)):
+        download_button_state = ""
+    
+    context = {
+        'text': get_version(),
+        'dataset_name': dataset.name,
+        'download_button_state': download_button_state,
+    }
     return render(request, 'dataset_detail.html', context)
 
 def training(request):
