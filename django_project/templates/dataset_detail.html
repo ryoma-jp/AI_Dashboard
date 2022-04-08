@@ -17,6 +17,28 @@
           <button type="submit" class="btn btn-primary" name="dataset_download" {{ download_button_state }}>Download</button>
         </form>
       </div>
+      
+      {% if dataloader_obj %}
+        <p><table class="table table-bordered border-primary table-hover ms-4">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">Image Shape(H, W, C)</th>
+              <th scope="col">Train data num</th>
+              <th scope="col">Validation data num</th>
+              <th scope="col">Test data num</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>({{ dataloader_obj.train_images.shape.1 }}, {{ dataloader_obj.train_images.shape.2 }}, {{ dataloader_obj.train_images.shape.3 }})</td>
+              <td>{{ dataloader_obj.train_images.shape.0 }}</td>
+              <td>{{ dataloader_obj.validation_images.shape.0 }}</td>
+              <td>{{ dataloader_obj.test_images.shape.0 }}</td>
+            </tr>
+          </tbody>
+        </table></p>
+      {% endif %}
+      
     </div>
   </div>
 </div>

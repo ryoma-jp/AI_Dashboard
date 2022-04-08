@@ -113,6 +113,7 @@ def load_dataset(dataset):
         Dataset class object
     """
     
+    # --- load dataset ---
     dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
     download_dir = os.path.join(dataset_dir, dataset.name)
     if (os.path.exists(download_dir)):
@@ -125,6 +126,10 @@ def load_dataset(dataset):
         dataset = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
     else:
         dataset = None
+    
+    # --- save dataset object to pickle file ---
+    with open(os.path.join(download_dir, 'dataset.pkl'), 'wb') as f:
+        pickle.dump(dataset, f)
     
     return dataset
 
@@ -513,13 +518,18 @@ def dataset_detail(request, project_id, dataset_id):
     # --- check download directory ---
     dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
     download_dir = os.path.join(dataset_dir, dataset.name)
-    download_button_state = "disabled"
-    if (not os.path.exists(download_dir)):
+    if (os.path.exists(download_dir)):
+        download_button_state = "disabled"
+        with open(os.path.join(download_dir, 'dataset.pkl'), 'rb') as f:
+            dataloader_obj = pickle.load(f)
+    else:
         download_button_state = ""
+        dataloader_obj = None
     
     context = {
         'text': get_version(),
         'dataset_name': dataset.name,
+        'dataloader_obj': dataloader_obj,
         'download_button_state': download_button_state,
     }
     return render(request, 'dataset_detail.html', context)
