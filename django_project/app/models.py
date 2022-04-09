@@ -31,6 +31,19 @@ class Dataset(models.Model):
     test_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
+    
+    DL_STATUS_NONE = 'None'
+    DL_STATUS_PREPARING = 'Preparing'
+    DL_STATUS_PROCESSING = 'Downloading'
+    DL_STATUS_DONE = 'Done'
+    DL_STATUS = (
+        (DL_STATUS_NONE, DL_STATUS_NONE),
+        (DL_STATUS_PREPARING, DL_STATUS_PREPARING),
+        (DL_STATUS_PROCESSING, DL_STATUS_PROCESSING),
+        (DL_STATUS_DONE, DL_STATUS_DONE),
+    )
+    download_status = models.CharField(max_length=32, choices=DL_STATUS, default=DL_STATUS_NONE)
+    
     def __str__(self):
         return self.name
 

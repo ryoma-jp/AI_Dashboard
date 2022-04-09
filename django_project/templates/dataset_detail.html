@@ -19,27 +19,39 @@
       </div>
     </div>
     
-    {% if dataloader_obj %}
-      <p><table class="table table-bordered border-primary table-hover ms-4">
-        <thead class="table-dark">
-          <tr>
-            <th scope="col">Image Shape(H, W, C)</th>
-            <th scope="col">Train data num</th>
-            <th scope="col">Validation data num</th>
-            <th scope="col">Test data num</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>({{ dataloader_obj.train_images.shape.1 }}, {{ dataloader_obj.train_images.shape.2 }}, {{ dataloader_obj.train_images.shape.3 }})</td>
-            <td>{{ dataloader_obj.train_images.shape.0 }}</td>
-            <td>{{ dataloader_obj.validation_images.shape.0 }}</td>
-            <td>{{ dataloader_obj.test_images.shape.0 }}</td>
-          </tr>
-        </tbody>
-      </table></p>
-    {% endif %}
+    {% if download_status|stringformat:'s' == 'Done' %}
+      {% if dataloader_obj %}
+        <p><table class="table table-bordered border-primary table-hover ms-4">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">Image Shape(H, W, C)</th>
+              <th scope="col">Train data num</th>
+              <th scope="col">Validation data num</th>
+              <th scope="col">Test data num</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>({{ dataloader_obj.train_images.shape.1 }}, {{ dataloader_obj.train_images.shape.2 }}, {{ dataloader_obj.train_images.shape.3 }})</td>
+              <td>{{ dataloader_obj.train_images.shape.0 }}</td>
+              <td>{{ dataloader_obj.validation_images.shape.0 }}</td>
+              <td>{{ dataloader_obj.test_images.shape.0 }}</td>
+            </tr>
+          </tbody>
+        </table></p>
+      {% endif %}
+    {% elif download_status|stringformat:'s' != 'None' %}
+      <p>Dataset Loading ...</p>
+      <div class="spinner-border text-primary" role="status">
+        <span class="sr-only"></span>
+      </div>
       
+      {% if download_status|stringformat:'s' == 'Preparing' %}
+      <script>
+        window.location.href = "{% url 'dataset_detail' project_id dataset_id %}"
+      </script>
+      {% endif %}
+    {% endif %}
   </div>
 </div>
 {% endblock %}
