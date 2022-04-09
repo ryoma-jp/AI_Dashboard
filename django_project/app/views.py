@@ -120,18 +120,24 @@ def load_dataset(dataset):
         download = False
     else:
         download = True
+        dataset.download_status = dataset.DL_STATUS_PROCESSING
+        dataset.save()
     if (dataset.name == 'MNIST'):
-        dataset = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
+        dataloader = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
     elif (dataset.name == 'CIFAR-10'):
-        dataset = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
+        dataloader = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
     else:
-        dataset = None
+        dataloader = None
     
     # --- save dataset object to pickle file ---
     with open(os.path.join(download_dir, 'dataset.pkl'), 'wb') as f:
-        pickle.dump(dataset, f)
+        pickle.dump(dataloader, f)
     
-    return dataset
+    # --- set done status for dataset download ---
+    dataset.download_status = dataset.DL_STATUS_DONE
+    dataset.save()
+
+    return dataloader
 
 def index(request):
     """ Function: index
@@ -526,13 +532,7 @@ def dataset_detail(request, project_id, dataset_id):
             
     # --- check dataset download ---
     if (dataset.download_status == dataset.DL_STATUS_PREPARING):
-        dataset.download_status = dataset.DL_STATUS_PROCESSING
-        dataset.save()
-        
         load_dataset(dataset)
-    
-        dataset.download_status = dataset.DL_STATUS_DONE
-        dataset.save()
         
     # --- check download directory ---
     if (dataset.download_status == dataset.DL_STATUS_DONE):
