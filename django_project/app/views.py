@@ -507,7 +507,11 @@ def dataset_detail(request, project_id, dataset_id):
     # logging.info(request)
     # logging.info(request.method)
     # logging.info('-------------------------------------')
-
+    
+    dataset_info = [
+        'Images',
+    ]
+    
     project = get_object_or_404(Project, pk=project_id)
     dataset = get_object_or_404(Dataset, pk=dataset_id, project=project)
     
@@ -529,7 +533,10 @@ def dataset_detail(request, project_id, dataset_id):
                 'download_status': dataset.download_status,
             }
             return render(request, 'dataset_detail.html', context)
-            
+        
+        if ('dropdown_dataset_info' in request.POST.keys()):
+            request.session['dropdown_dataset_info'] = request.POST['dropdown_dataset_info']
+        
     # --- check dataset download ---
     if (dataset.download_status == dataset.DL_STATUS_PREPARING):
         load_dataset(dataset)
@@ -546,12 +553,16 @@ def dataset_detail(request, project_id, dataset_id):
             download_button_state = ""
             dataloader_obj = None
         
+        selected_dataset_info = request.session.get('dropdown_dataset_info', None)
+        
         context = {
             'text': get_version(),
             'dataset_name': dataset.name,
             'dataloader_obj': dataloader_obj,
             'download_status': dataset.download_status,
             'download_button_state': download_button_state,
+            'dataset_info': dataset_info,
+            'selected_dataset_info': selected_dataset_info,
         }
         return render(request, 'dataset_detail.html', context)
     else:

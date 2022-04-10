@@ -52,6 +52,32 @@
       </script>
       {% endif %}
     {% endif %}
+  
+    {% if download_status|stringformat:'s' == 'Done' %}
+    <h3>Select Dataset Information</h3>
+    <form method="post">
+    {% csrf_token %}
+      <div class="container">
+        <div class="row">
+          <div class="btn-group col-4 my-1">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if selected_dataset_info %}
+                {{ selected_dataset_info }}
+              {% else %}
+                Select Item
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu">
+            {% for dataset_info_ in dataset_info %}
+              <li><button class="dropdown-item" type="submit" name="dropdown_dataset_info" value="{{ dataset_info_ }}">{{ dataset_info_ }}</button></li>
+            {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </form>
+    {% endif %}
+    
   </div>
 </div>
 {% endblock %}
