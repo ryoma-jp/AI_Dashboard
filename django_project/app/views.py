@@ -120,7 +120,7 @@ def load_dataset(dataset):
         download = False
     else:
         download = True
-        dataset.download_status = dataset.DL_STATUS_PROCESSING
+        dataset.download_status = dataset.STATUS_PROCESSING
         dataset.save()
     if (dataset.name == 'MNIST'):
         dataloader = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
@@ -134,7 +134,7 @@ def load_dataset(dataset):
         pickle.dump(dataloader, f)
     
     # --- set done status for dataset download ---
-    dataset.download_status = dataset.DL_STATUS_DONE
+    dataset.download_status = dataset.STATUS_DONE
     dataset.save()
 
     return dataloader
@@ -510,6 +510,7 @@ def dataset_detail(request, project_id, dataset_id):
     
     dataset_info = [
         'Images',
+        'Statistics',
     ]
     
     project = get_object_or_404(Project, pk=project_id)
@@ -523,7 +524,7 @@ def dataset_detail(request, project_id, dataset_id):
         
         if ('dataset_download' in request.POST.keys()):
             # --- dataset download ---
-            dataset.download_status = dataset.DL_STATUS_PREPARING
+            dataset.download_status = dataset.STATUS_PREPARING
             dataset.save()
             
             context = {
@@ -535,14 +536,19 @@ def dataset_detail(request, project_id, dataset_id):
             return render(request, 'dataset_detail.html', context)
         
         if ('dropdown_dataset_info' in request.POST.keys()):
-            request.session['dropdown_dataset_info'] = request.POST['dropdown_dataset_info']
+            selected_dataset_info = request.POST['dropdown_dataset_info']
+            request.session['dropdown_dataset_info'] = selected_dataset_info
+            
+            if ((selected_dataset_info == 'Images') and (dataset.image_gallery_status == dataset.STATUS_NONE)):
+                dataset.image_gallery_status = dataset.STATUS_PREPARING
+                dataset.save()
         
     # --- check dataset download ---
-    if (dataset.download_status == dataset.DL_STATUS_PREPARING):
+    if (dataset.download_status == dataset.STATUS_PREPARING):
         load_dataset(dataset)
         
     # --- check download directory ---
-    if (dataset.download_status == dataset.DL_STATUS_DONE):
+    if (dataset.download_status == dataset.STATUS_DONE):
         dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
         download_dir = os.path.join(dataset_dir, dataset.name)
         if (os.path.exists(os.path.join(download_dir, 'dataset.pkl'))):
@@ -552,6 +558,17 @@ def dataset_detail(request, project_id, dataset_id):
         else:
             download_button_state = ""
             dataloader_obj = None
+        
+        # --- preparing to display images ---
+        if (dataset.image_gallery_status == dataset.STATUS_PREPARING):
+            dataset.image_gallery_status = dataset.STATUS_PROCESSING
+            dataset.save()
+            
+            dataset.image_gallery_status = dataset.STATUS_DONE
+            dataset.save()
+            
+        if (dataset.image_gallery_status == dataset.STATUS_DONE):
+            pass
         
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         

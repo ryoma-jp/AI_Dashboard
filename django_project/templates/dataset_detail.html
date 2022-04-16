@@ -54,28 +54,44 @@
     {% endif %}
   
     {% if download_status|stringformat:'s' == 'Done' %}
-    <h3>Select Dataset Information</h3>
-    <form method="post">
-    {% csrf_token %}
-      <div class="container">
-        <div class="row">
-          <div class="btn-group col-4 my-1">
-            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-              {% if selected_dataset_info %}
-                {{ selected_dataset_info }}
-              {% else %}
-                Select Item
-              {% endif %}
-            </button>
-            <ul class="dropdown-menu">
-            {% for dataset_info_ in dataset_info %}
-              <li><button class="dropdown-item" type="submit" name="dropdown_dataset_info" value="{{ dataset_info_ }}">{{ dataset_info_ }}</button></li>
-            {% endfor %}
-            </ul>
+      <h3>Select Dataset Information</h3>
+      <form method="post">
+      {% csrf_token %}
+        <div class="container">
+          <div class="row">
+            <div class="btn-group col-1 my-1">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if selected_dataset_info %}
+                  {{ selected_dataset_info }}
+                {% else %}
+                  Select Item
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for dataset_info_ in dataset_info %}
+                <li><button class="dropdown-item" type="submit" name="dropdown_dataset_info" value="{{ dataset_info_ }}">{{ dataset_info_ }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
           </div>
         </div>
-      </div>
-    </form>
+      </form>
+      {% if selected_dataset_info|stringformat:'s' == 'Images' %}
+        <p>Images selected</p>
+        {% if image_gallery_status|stringformat:'s' == 'Done' %}
+        {% elif image_gallery_status|stringformat:'s' != 'None' %}
+          <p>Imagefile Loading ...</p>
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only"></span>
+          </div>
+          
+          {% if image_gallery_status|stringformat:'s' == 'Preparing' %}
+          <script>
+            window.location.href = "{% url 'dataset_detail' project_id dataset_id %}"
+          </script>
+          {% endif %}
+        {% endif %}
+      {% endif %}
     {% endif %}
     
   </div>

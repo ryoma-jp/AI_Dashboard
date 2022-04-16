@@ -32,17 +32,18 @@ class Dataset(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     
-    DL_STATUS_NONE = 'None'
-    DL_STATUS_PREPARING = 'Preparing'
-    DL_STATUS_PROCESSING = 'Downloading'
-    DL_STATUS_DONE = 'Done'
-    DL_STATUS = (
-        (DL_STATUS_NONE, DL_STATUS_NONE),
-        (DL_STATUS_PREPARING, DL_STATUS_PREPARING),
-        (DL_STATUS_PROCESSING, DL_STATUS_PROCESSING),
-        (DL_STATUS_DONE, DL_STATUS_DONE),
+    STATUS_NONE = 'None'
+    STATUS_PREPARING = 'Preparing'
+    STATUS_PROCESSING = 'Processing'
+    STATUS_DONE = 'Done'
+    STATUS = (
+        (STATUS_NONE, STATUS_NONE),
+        (STATUS_PREPARING, STATUS_PREPARING),
+        (STATUS_PROCESSING, STATUS_PROCESSING),
+        (STATUS_DONE, STATUS_DONE),
     )
-    download_status = models.CharField(max_length=32, choices=DL_STATUS, default=DL_STATUS_NONE)
+    download_status = models.CharField(max_length=32, choices=STATUS, default=STATUS_NONE)
+    image_gallery_status = models.CharField(max_length=32, choices=STATUS, default=STATUS_NONE)
     
     def __str__(self):
         return self.name
