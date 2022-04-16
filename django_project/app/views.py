@@ -8,6 +8,7 @@ import hashlib
 import psutil
 import signal
 import pickle
+import cv2
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -138,6 +139,47 @@ def load_dataset(dataset):
     dataset.save()
 
     return dataloader
+
+def save_image_files(images, image_shape, labels, output_dir, name='images'):
+    """Save Image Files
+    
+    Convert image data to image file and save to <dataset_dir>/<name>
+    
+    Args:
+        images: Image list
+        image_shape: image shape (tuple)
+        labels: classification label (ground truth, one_hot)
+        output_dir: output directory
+        name: data name
+    
+    Return:
+        None
+    """
+    
+    # --- create output directory ---
+    os.makedirs(os.path.join(output_dir, name), exist_ok=True)
+    
+    # --- save image files ---
+    dict_image_file = {
+        'id': [],
+        'file': [],
+        'class_id': [],
+    }
+    for i, (image, label) in enumerate(zip(images, labels)):
+        image_file = os.path.join(name, f'{i:08}.png')
+        image = image.reshape(image_shape)
+        cv2.imwrite(os.path.join(output_dir, image_file), image)
+        
+        dict_image_file['id'].append(i)
+        dict_image_file['file'].append(image_file)
+        dict_image_file['class_id'].append(int(np.argmax(label)))
+    
+    # --- save image files information to json file ---
+    with open(os.path.join(output_dir, f'info_{name}.json'), 'w') as f:
+        json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
+    
+    return None
+    
 
 def index(request):
     """ Function: index
@@ -503,6 +545,20 @@ def dataset_detail(request, project_id, dataset_id):
      * display dataset details(images, distribution, etc)
     """
     
+    def _get_dataloader_obj(dataset):
+        dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
+        download_dir = os.path.join(dataset_dir, dataset.name)
+        if (os.path.exists(os.path.join(download_dir, 'dataset.pkl'))):
+            download_button_state = "disabled"
+            with open(os.path.join(download_dir, 'dataset.pkl'), 'rb') as f:
+                dataloader_obj = pickle.load(f)
+        else:
+            download_button_state = ""
+            dataloader_obj = None
+        
+        return dataloader_obj, download_button_state, download_dir
+    
+    
     # logging.info('-------------------------------------')
     # logging.info(request)
     # logging.info(request.method)
@@ -531,6 +587,7 @@ def dataset_detail(request, project_id, dataset_id):
                 'text': get_version(),
                 'project_id': project.id,
                 'dataset_id': dataset.id,
+                'dataset_name': dataset.name,
                 'download_status': dataset.download_status,
             }
             return render(request, 'dataset_detail.html', context)
@@ -542,6 +599,21 @@ def dataset_detail(request, project_id, dataset_id):
             if ((selected_dataset_info == 'Images') and (dataset.image_gallery_status == dataset.STATUS_NONE)):
                 dataset.image_gallery_status = dataset.STATUS_PREPARING
                 dataset.save()
+            
+                dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
+                context = {
+                    'text': get_version(),
+                    'project_id': project.id,
+                    'dataset_id': dataset.id,
+                    'dataset_name': dataset.name,
+                    'dataloader_obj': dataloader_obj,
+                    'download_status': dataset.download_status,
+                    'download_button_state': download_button_state,
+                    'dataset_info': dataset_info,
+                    'selected_dataset_info': selected_dataset_info,
+                    'image_gallery_status': dataset.image_gallery_status,
+                }
+                return render(request, 'dataset_detail.html', context)
         
     # --- check dataset download ---
     if (dataset.download_status == dataset.STATUS_PREPARING):
@@ -549,20 +621,22 @@ def dataset_detail(request, project_id, dataset_id):
         
     # --- check download directory ---
     if (dataset.download_status == dataset.STATUS_DONE):
-        dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
-        download_dir = os.path.join(dataset_dir, dataset.name)
-        if (os.path.exists(os.path.join(download_dir, 'dataset.pkl'))):
-            download_button_state = "disabled"
-            with open(os.path.join(download_dir, 'dataset.pkl'), 'rb') as f:
-                dataloader_obj = pickle.load(f)
-        else:
-            download_button_state = ""
-            dataloader_obj = None
+        dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
         
         # --- preparing to display images ---
         if (dataset.image_gallery_status == dataset.STATUS_PREPARING):
             dataset.image_gallery_status = dataset.STATUS_PROCESSING
             dataset.save()
+            
+            if (dataloader_obj.train_images is not None):
+                save_image_files(dataloader_obj.train_images, dataloader_obj.train_images.shape[1:],
+                                 dataloader_obj.train_labels, download_dir, name='train_images')
+            if (dataloader_obj.validation_images is not None):
+                save_image_files(dataloader_obj.validation_images, dataloader_obj.validation_images.shape[1:],
+                                 dataloader_obj.validation_labels, download_dir, name='validation_images')
+            if (dataloader_obj.test_images is not None):
+                save_image_files(dataloader_obj.test_images, dataloader_obj.test_images.shape[1:],
+                                 dataloader_obj.test_labels, download_dir, name='test_images')
             
             dataset.image_gallery_status = dataset.STATUS_DONE
             dataset.save()
@@ -580,11 +654,13 @@ def dataset_detail(request, project_id, dataset_id):
             'download_button_state': download_button_state,
             'dataset_info': dataset_info,
             'selected_dataset_info': selected_dataset_info,
+            'image_gallery_status': dataset.image_gallery_status,
         }
         return render(request, 'dataset_detail.html', context)
     else:
         context = {
             'text': get_version(),
+            'dataset_name': dataset.name,
             'download_status': dataset.download_status,
         }
         return render(request, 'dataset_detail.html', context)
