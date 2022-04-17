@@ -77,8 +77,32 @@
         </div>
       </form>
       {% if selected_dataset_info|stringformat:'s' == 'Images' %}
-        <p>Images selected</p>
+        <h3>Images</h3>
         {% if image_gallery_status|stringformat:'s' == 'Done' %}
+          <form method="post">
+          {% csrf_token %}
+            <div class="btn-group col-1 my-1">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if image_gallery_selected_item %}
+                  {{ image_gallery_selected_item }}
+                {% else %}
+                  Select Data Type
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for image_gallery_key in image_gallery_keys %}
+                <li><button class="dropdown-item" type="submit" name="image_gallery_key" value="{{ image_gallery_key }}">{{ image_gallery_key }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+          </form>
+          
+          {% if image_gallery_data %}
+            {% for image_gallery_data_ in image_gallery_data %}
+              <p>{{ image_gallery_data_.id }}, {{ image_gallery_data_.file }}, {{ image_gallery_data_.class_id }}</p>
+            {% endfor %}
+          {% endif %}
+          
         {% elif image_gallery_status|stringformat:'s' != 'None' %}
           <p>Imagefile Loading ...</p>
           <div class="spinner-border text-primary" role="status">
