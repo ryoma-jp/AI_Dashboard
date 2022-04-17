@@ -99,7 +99,15 @@
           
           {% if image_gallery_data %}
             {% for image_gallery_data_ in image_gallery_data %}
+              <!--
               <p>{{ image_gallery_data_.id }}, {{ image_gallery_data_.file }}, {{ image_gallery_data_.class_id }}</p>
+              -->
+              
+              <figure class="figure">
+                <img src="{{ image_gallery_data_.file }}" alt="Responsive image" class="img-fluid img-thumbnail">
+                <figcaption class="figure-caption">id={{ image_gallery_data_.id }}, class_id={{ image_gallery_data_.class_id }}</figcaption>
+              </figure>
+              
             {% endfor %}
           {% endif %}
           

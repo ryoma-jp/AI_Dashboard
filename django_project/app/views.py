@@ -172,7 +172,8 @@ def save_image_files(images, image_shape, labels, output_dir, name='images'):
         
         dict_image_file['id'].append(i)
         dict_image_file['file'].append(image_file)
-        dict_image_file['class_id'].append(int(np.argmax(label)))
+        # dict_image_file['class_id'].append(int(np.argmax(label)))
+        dict_image_file['class_id'].append(int(label))
     
     # --- save image files information to json file ---
     with open(os.path.join(output_dir, f'info_{name}.json'), 'w') as f:
@@ -676,7 +677,11 @@ def dataset_detail(request, project_id, dataset_id):
             for i in range(images_page_now, images_page_now+images_per_page):
                 image_gallery_data.append({
                     'id': json_data['id'][i],
-                    'file': json_data['file'][i],
+                    'file': os.path.join(settings.MEDIA_URL,
+                                         settings.DATASET_DIR,
+                                         dataset.project.hash,
+                                         dataset.name,
+                                         json_data['file'][i]),
                     'class_id': json_data['class_id'][i],
                 })
         
