@@ -98,6 +98,20 @@
           </form>
           
           {% if image_gallery_data %}
+            <form method="post">
+            {% csrf_token %}
+              <div class="btn-group col-1 my-1">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  Select Page: {{ images_page_now }} of {{ images_page_max }}
+                </button>
+                <ul class="dropdown-menu customScrollableDropdown">
+                {% for page in images_page_list %}
+                  <li><button class="dropdown-item" type="submit" name="select_page" value="{{ page }}">{{ page }}</button></li>
+                {% endfor %}
+                </ul>
+              </div>
+            </form>
+            
             {% for image_gallery_data_ in image_gallery_data %}
               <!--
               <p>{{ image_gallery_data_.id }}, {{ image_gallery_data_.file }}, {{ image_gallery_data_.class_id }}</p>

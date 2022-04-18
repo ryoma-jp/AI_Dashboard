@@ -625,7 +625,12 @@ def dataset_detail(request, project_id, dataset_id):
         if ('image_gallery_key' in request.POST.keys()):
             selected_dataset_type = request.POST['image_gallery_key']
             request.session['selected_dataset_type'] = selected_dataset_type
+            request.session['image_gallery_page_now'] = 1
         
+        if ('select_page' in request.POST.keys()):
+            selected_page = int(request.POST['select_page'])
+            request.session['image_gallery_page_now'] = selected_page
+            
     # --- check dataset download ---
     if (dataset.download_status == dataset.STATUS_PREPARING):
         load_dataset(dataset)
@@ -667,14 +672,17 @@ def dataset_detail(request, project_id, dataset_id):
         # --- set image data file ---
         image_gallery_data = []
         if (selected_dataset_type is not None):
-            images_page_now = 0
+            images_page_now = request.session.get('image_gallery_page_now', 1)
             images_per_page = 50
             
             json_file = os.path.join(download_dir, f'info_{selected_dataset_type}.json')
             with open(json_file, 'r') as f:
                 json_data = json.load(f)
             
-            for i in range(images_page_now, images_page_now+images_per_page):
+            images_page_max = len(json_data['id']) // images_per_page
+            images_page_list = [x for x in range(1, images_page_max+1)]
+            
+            for i in range((images_page_now-1)*images_per_page, ((images_page_now-1)*images_per_page)+images_per_page):
                 image_gallery_data.append({
                     'id': json_data['id'][i],
                     'file': os.path.join(settings.MEDIA_URL,
@@ -684,6 +692,11 @@ def dataset_detail(request, project_id, dataset_id):
                                          json_data['file'][i]),
                     'class_id': json_data['class_id'][i],
                 })
+        else:
+            images_page_now = 1
+            images_page_max = 1
+            images_page_list = []
+            
         
         context = {
             'text': get_version(),
@@ -697,6 +710,9 @@ def dataset_detail(request, project_id, dataset_id):
             'image_gallery_keys': image_gallery_keys,
             'image_gallery_selected_item': selected_dataset_type,
             'image_gallery_data': image_gallery_data,
+            'images_page_now': images_page_now,
+            'images_page_max': images_page_max,
+            'images_page_list': images_page_list,
         }
         return render(request, 'dataset_detail.html', context)
     else:
