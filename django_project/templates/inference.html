@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load custom_filter %}
+
+{% block main %}
+<div class="container-fluid">
+  <div class="row">
+  
+    <!-- Inference tab -->
+    <div id="inference" class="tab-pane">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">Inference</h1>
+      </div>
+      
+      <h1 class="h3">Select Project</h1>
+      {% if project %}
+        <form method="post">
+          {% csrf_token %}
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if project_dropdown_selected %}
+                  {{ project_dropdown_selected.name }}
+                {% else %}
+                  Select Project
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for project_ in project %}
+                <li><button class="dropdown-item" type="submit" name="inference_view_project_dropdown" value="{{ project_.name }}">{{ project_.name }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+        </form>
+        
+        <h1 class="h3">Select Model</h1>
+        {% if model|in_project:project_dropdown_selected %}
+          <form method="post">
+            {% csrf_token %}
+              <div class="btn-group">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  {% if model_dropdown_selected %}
+                    {{ model_dropdown_selected.name }}
+                  {% else %}
+                    Select Model
+                  {% endif %}
+                </button>
+                <ul class="dropdown-menu">
+                {% for model_ in model %}
+                  <li><button class="dropdown-item" type="submit" name="inference_view_model_dropdown" value="{{ model_.name }}">{{ model_.name }}</button></li>
+                {% endfor %}
+                </ul>
+              </div>
+          </form>
+          
+          {% if model_dropdown_selected %}
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <tr>
+                <td>Name</td>
+                <td>{{ model_dropdown_selected.name }}</td>
+              </tr>
+              <tr>
+                <td>Description</td>
+                <td>{{ model_dropdown_selected.description | linebreaksbr }}</td>
+              </tr>
+              <tr>
+                <td>Project</td>
+                <td>{{ model_dropdown_selected.project.name }}</td>
+              </tr>
+              <tr>
+                <td>Dataset</td>
+                <td>{{ model_dropdown_selected.dataset.name }}</td>
+              </tr>
+              <tr>
+                <td>Status</td>
+                <td>{{ model_dropdown_selected.status }}</td>
+              </tr>
+              <tr>
+                <td>Training PID(debug)</td>
+                {% if model_dropdown_selected.training_pid %}
+                  <td>{{ model_dropdown_selected.training_pid }}</td>
+                {% else %}
+                  <td>--- (Not Training)</td>
+                {% endif %}
+              </tr>
+              <tr>
+                <td>Tensorboard PID(debug)</td>
+                {% if model_dropdown_selected.tensorboard_pid %}
+                  <td>{{ model_dropdown_selected.tensorboard_pid }}</td>
+                {% else %}
+                  <td>--- (Not Training)</td>
+                {% endif %}
+              </tr>
+              <tr>
+                <td>Model hash(debug)</td>
+                <td>{{ model_dropdown_selected.hash }}</td>
+              </tr>
+            </table></p>
+          {% else %}
+            <p>Unknown Model</p>
+          {% endif %}
+        {% else %}
+          <p>No Model registered</p>
+        {% endif %}
+      {% else %}
+        <p>No Projects</p>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+

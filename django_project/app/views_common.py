@@ -19,6 +19,7 @@ class SidebarActiveStatus():
         self.index = ''
         self.dataset = ''
         self.training = ''
+        self.inference = ''
 
 
 def get_version():
