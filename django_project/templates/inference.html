@@ -121,6 +121,10 @@
           </div>
         </form>
       
+        <form method="post">
+        {% csrf_token %}
+          <button type="submit" class="btn btn-primary my-3" id="inference_run" name="inference_run" value="inference_run">Run</button>
+        </form>
       {% else %}
         <p>No Projects</p>
       {% endif %}

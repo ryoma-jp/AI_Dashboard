@@ -1,3 +1,6 @@
+import os
+import json
+import subprocess
 import logging
 
 from django.shortcuts import render, redirect
@@ -12,6 +15,31 @@ def inference(request):
     """ Function: inference
      * inference top
     """
+    def _get_selected_object():
+        project_name = request.session.get('inference_view_selected_project', None)
+        selected_project = Project.objects.get(name=project_name)
+        
+        model_name = request.session.get('inference_view_selected_model', None)
+        selected_model = MlModel.objects.get(name=model_name, project=selected_project)
+        
+        return selected_project, selected_model
+    
+    def _inference_run():
+        selected_project, selected_model = _get_selected_object()
+        if (selected_model):
+            logging.debug(selected_model)
+            
+            # --- Load config ---
+            config_path = os.path.join(selected_model.model_dir, 'config.json')
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+            
+            # --- Predict ---
+            main_path = os.path.abspath('./app/machine_learning/main.py')
+            logging.debug(f'main_path: {main_path}')
+            logging.debug(f'current working directory: {os.getcwd()}')
+            subproc_inference = subprocess.Popen(['python', main_path, '--mode', 'predict', '--config', config_path])
+    
     # logging.info('-------------------------------------')
     # logging.info(request.method)
     # logging.info(request.POST)
@@ -37,6 +65,9 @@ def inference(request):
             request.session['inference_view_selected_dataset'] = request.POST.getlist('inference_view_dataset_dropdown')[0]
             curr_dataset = Dataset.objects.get(name=request.session['inference_view_selected_dataset'], project=curr_project)
             
+        elif ('inference_run' in request.POST):
+            _inference_run()
+        
         else:
             logging.warning('Unknown POST command:')
             logging.warning(request.POST)

@@ -1,6 +1,7 @@
 import os
 import logging
 import psutil
+import signal
 import subprocess
 import json
 
@@ -39,7 +40,7 @@ def training(request):
             main_path = os.path.abspath('./app/machine_learning/main.py')
             logging.debug(f'main_path: {main_path}')
             logging.debug(f'current working directory: {os.getcwd()}')
-            subproc_training = subprocess.Popen(['python', main_path, '--config', config_path])
+            subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
             logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
             
             # --- Update status and Register PID to MlModel database ---

@@ -61,6 +61,8 @@ def ArgParser():
 				formatter_class=argparse.RawTextHelpFormatter)
 
 	# --- 引数を追加 ---
+	parser.add_argument('--mode', dest='mode', type=str, default=None, required=True, \
+			help='機械学習の動作モードを選択("train", "predict")')
 	parser.add_argument('--config', dest='config', type=str, default=None, required=True, \
 			help='設定ファイル(*.json)')
 
@@ -80,6 +82,7 @@ def main():
 	# --- 引数処理 ---
 	args = ArgParser()
 	print('[INFO] Arguments')
+	print('  * args.mode = {}'.format(args.mode))
 	print('  * args.config = {}'.format(args.config))
 	
 	# --- configファイルをロード ---
@@ -149,14 +152,20 @@ def main():
 		print('[ERROR] Unknown model_type: {}'.format(model_type))
 		quit()
 	
-	# --- 学習 ---
-	trainer.fit(web_app_ctrl_fifo, trainer_ctrl_fifo, 
-		x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
-		batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
-	trainer.save_model()
-	
-	predictions = trainer.predict(x_test)
-	print('\nPredictions(shape): {}'.format(predictions.shape))
+	if (args.mode == 'train'):
+		# --- 学習 ---
+		trainer.fit(web_app_ctrl_fifo, trainer_ctrl_fifo, 
+			x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+			batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
+		trainer.save_model()
+		
+		predictions = trainer.predict(x_test)
+		print('\nPredictions(shape): {}'.format(predictions.shape))
+	elif (args.mode == 'predict'):
+		predictions = trainer.predict(x_test)
+		print('\nPredictions(shape): {}'.format(predictions.shape))
+	else:
+		print('[ERROR] Unknown mode: {}'.format(args.mode))
 
 	return
 
