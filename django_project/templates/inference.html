@@ -121,9 +121,14 @@
           </div>
         </form>
       
+        <h1 class="h3">Prediction</h1>
         <form method="post">
         {% csrf_token %}
-          <button type="submit" class="btn btn-primary my-3" id="inference_run" name="inference_run" value="inference_run">Run</button>
+          {% if model_dropdown_selected and model_dropdown_selected.status|stringformat:'s' == 'DONE' and dataset_dropdown_selected %}
+            <button type="submit" class="btn btn-primary" id="inference_run" name="inference_run" value="inference_run">Run</button>
+          {% else %}
+            <button type="submit" class="btn btn-primary" id="inference_run" name="inference_run" value="inference_run" disabled>Run</button>
+          {% endif %}
         </form>
       {% else %}
         <p>No Projects</p>
