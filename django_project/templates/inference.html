@@ -53,6 +53,9 @@
           </form>
           
           {% if model_dropdown_selected %}
+            {% if model_dropdown_selected.status|stringformat:'s' != 'DONE' %}
+              <p><font color="red">!! Please select the trained model !!</font></p>
+            {% endif %}
             <p><table class="table table-bordered border-primary table-hover ms-4">
               <tr>
                 <td>Name</td>
@@ -65,10 +68,6 @@
               <tr>
                 <td>Project</td>
                 <td>{{ model_dropdown_selected.project.name }}</td>
-              </tr>
-              <tr>
-                <td>Dataset</td>
-                <td>{{ model_dropdown_selected.dataset.name }}</td>
               </tr>
               <tr>
                 <td>Status</td>
@@ -101,6 +100,27 @@
         {% else %}
           <p>No Model registered</p>
         {% endif %}
+        
+        <h1 class="h3">Select Dataset</h1>
+        <form method="post">
+        {% csrf_token %}
+          <div class="btn-group">
+            <!-- select dataset -->
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            {% if dataset_dropdown_selected %}
+              {{ dataset_dropdown_selected.name }}
+            {% else %}
+              Select Dataset
+            {% endif %}
+            </button>
+            <ul class="dropdown-menu">
+            {% for dataset_ in dataset %}
+              <li><button class="dropdown-item" type="submit" name="inference_view_dataset_dropdown" value="{{ dataset_.name }}">{{ dataset_.name }}</button></li>
+            {% endfor %}
+            </ul>
+          </div>
+        </form>
+      
       {% else %}
         <p>No Projects</p>
       {% endif %}
