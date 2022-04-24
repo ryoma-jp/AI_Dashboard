@@ -145,21 +145,33 @@ def main():
 	output_dims = dataset.output_dims
 	
 	# --- モデル取得 ---
+	if (args.mode == 'predict'):
+		model_file = os.path.join(result_dir, 'models', 'hdf5', 'model.h5')
+		if (not os.path.exists(model_file)):
+			model_file = None
+	else:
+		model_file = None
+	
 	if (model_type == 'MLP'):
-		trainer = TrainerMLP(dataset.train_images.shape[1:], output_dir=result_dir,
+		trainer = TrainerMLP(dataset.train_images.shape[1:],
+			output_dir=result_dir, model_file=model_file,
 			optimizer=optimizer, initializer=initializer)
 	elif (model_type == 'SimpleCNN'):
-		trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=result_dir,
+		trainer = TrainerCNN(dataset.train_images.shape[1:],
+			output_dir=result_dir, model_file=model_file,
 			optimizer=optimizer, loss=loss_func, initializer=initializer)
 	elif (model_type == 'DeepCNN'):
-		trainer = TrainerCNN(dataset.train_images.shape[1:], output_dir=result_dir,
+		trainer = TrainerCNN(dataset.train_images.shape[1:],
+			output_dir=result_dir, model_file=model_file,
 			optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model')
 	elif (model_type == 'SimpleResNet'):
-		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims, output_dir=result_dir,
+		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims,
+			output_dir=result_dir, model_file=model_file,
 			model_type='custom', 
 			optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
 	elif (model_type == 'DeepResNet'):
-		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims, output_dir=result_dir,
+		trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims,
+			output_dir=result_dir, model_file=model_file,
 			model_type='custom_deep', 
 			optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
 	else:

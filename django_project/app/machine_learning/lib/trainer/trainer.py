@@ -72,7 +72,7 @@ class Trainer():
 		# --- モデル構築 ---
 		def _load_model(model_file):
 			if (model_file is not None):
-				return None
+				return keras.models.load_model(model_file)
 			else:
 				return None
 		
@@ -257,7 +257,7 @@ class Trainer():
 #---------------------------------
 class TrainerResNet(Trainer):
 	# --- コンストラクタ ---
-	def __init__(self, input_shape, classes, output_dir=None, model_type='custom', optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', dropout_rate=0.0):
+	def __init__(self, input_shape, classes, output_dir=None, model_file=None, model_type='custom', optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', dropout_rate=0.0):
 		# --- Residual Block ---
 		#  * アプリケーションからkeras.applications.resnet.ResNetにアクセスできない為，
 		#    必要なモジュールをTensorFlow公式からコピー
@@ -372,30 +372,31 @@ class TrainerResNet(Trainer):
 			return model
 		
 		# --- 基底クラスの初期化 ---
-		super().__init__(output_dir)
+		super().__init__(output_dir=output_dir, model_file=model_file)
 		
 		# --- モデル構築 ---
-		if (model_type == 'custom'):
-			def stack_fn(x, dropout_rate=0.0):
-				x = stack1(x, 32, 3, stride1=1, dropout_rate=dropout_rate, name='conv2')
-				return stack1(x, 64, 4, dropout_rate=dropout_rate, name='conv3')
-			
-			self.model = _load_model(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
-			self._compile_model(optimizer=optimizer, loss=loss)
-		elif (model_type == 'custom_deep'):
-			def stack_fn(x, dropout_rate=0.0):
-				x = stack1(x, 16, 18, stride1=1, dropout_rate=dropout_rate, name='conv2')
-				x = stack1(x, 32, 18, dropout_rate=dropout_rate, name='conv3')
-				return stack1(x, 64, 18, dropout_rate=dropout_rate, name='conv4')
-			
-			self.model = _load_model_deep(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
-			self._compile_model(optimizer=optimizer, loss=loss)
-		elif (model_type == 'resnet50'):
-			self.model = _load_model_resnet50(input_shape, classes, initializer=initializer, dropout_rate=dropout_rate, pretrained=False)
-			self._compile_model(optimizer=optimizer, loss=loss)
-		else:
-			print('[ERROR] Unknown model_type: {}'.format(model_type))
-			return
+		if (self.model is None):
+			if (model_type == 'custom'):
+				def stack_fn(x, dropout_rate=0.0):
+					x = stack1(x, 32, 3, stride1=1, dropout_rate=dropout_rate, name='conv2')
+					return stack1(x, 64, 4, dropout_rate=dropout_rate, name='conv3')
+				
+				self.model = _load_model(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
+				self._compile_model(optimizer=optimizer, loss=loss)
+			elif (model_type == 'custom_deep'):
+				def stack_fn(x, dropout_rate=0.0):
+					x = stack1(x, 16, 18, stride1=1, dropout_rate=dropout_rate, name='conv2')
+					x = stack1(x, 32, 18, dropout_rate=dropout_rate, name='conv3')
+					return stack1(x, 64, 18, dropout_rate=dropout_rate, name='conv4')
+				
+				self.model = _load_model_deep(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
+				self._compile_model(optimizer=optimizer, loss=loss)
+			elif (model_type == 'resnet50'):
+				self.model = _load_model_resnet50(input_shape, classes, initializer=initializer, dropout_rate=dropout_rate, pretrained=False)
+				self._compile_model(optimizer=optimizer, loss=loss)
+			else:
+				print('[ERROR] Unknown model_type: {}'.format(model_type))
+				return
 			
 		if (self.output_dir is not None):
 			keras.utils.plot_model(self.model, os.path.join(self.output_dir, 'plot_model.png'), show_shapes=True)
@@ -407,7 +408,7 @@ class TrainerResNet(Trainer):
 #---------------------------------
 class TrainerCNN(Trainer):
 	# --- コンストラクタ ---
-	def __init__(self, input_shape, output_dir=None, optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', model_type='baseline'):
+	def __init__(self, input_shape, output_dir=None, model_file=None, optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', model_type='baseline'):
 		# --- モデル構築(baseline) ---
 		def _load_model(input_shape, initializer='glorot_uniform'):
 			model = keras.models.Sequential()
@@ -466,16 +467,17 @@ class TrainerCNN(Trainer):
 			return model
 		
 		# --- 基底クラスの初期化 ---
-		super().__init__(output_dir)
+		super().__init__(output_dir=output_dir, model_file=model_file)
 		
 		# --- モデル構築 ---
-		if (model_type == 'baseline'):
-			self.model = _load_model(input_shape, initializer=initializer)
-		elif (model_type == 'deep_model'):
-			self.model = _load_model_deep(input_shape, initializer=initializer)
-		else:
-			print('[ERROR] Unknown model_type: {}'.format(model_type))
-			quit()
+		if (self.model is None):
+			if (model_type == 'baseline'):
+				self.model = _load_model(input_shape, initializer=initializer)
+			elif (model_type == 'deep_model'):
+				self.model = _load_model_deep(input_shape, initializer=initializer)
+			else:
+				print('[ERROR] Unknown model_type: {}'.format(model_type))
+				quit()
 		
 		self._compile_model(optimizer=optimizer, loss=loss)
 		if (self.output_dir is not None):
@@ -489,7 +491,7 @@ class TrainerCNN(Trainer):
 #---------------------------------
 class TrainerMLP(Trainer):
 	# --- コンストラクタ ---
-	def __init__(self, input_shape, output_dir=None, optimizer='adam'):
+	def __init__(self, input_shape, output_dir=None, model_file=None, optimizer='adam'):
 		# --- モデル構築 ---
 		def _load_model(input_shape):
 			model = keras.models.Sequential()
@@ -502,13 +504,14 @@ class TrainerMLP(Trainer):
 			return model
 		
 		# --- 基底クラスの初期化 ---
-		super().__init__(output_dir)
+		super().__init__(output_dir=output_dir, model_file=model_file)
 		
 		# --- モデル構築 ---
-		self.model = _load_model(input_shape)
-		self._compile_model(optimizer=optimizer)
-		if (self.output_dir is not None):
-			keras.utils.plot_model(self.model, os.path.join(self.output_dir, 'plot_model.png'), show_shapes=True)
+		if (self.model is None):
+			self.model = _load_model(input_shape)
+			self._compile_model(optimizer=optimizer)
+			if (self.output_dir is not None):
+				keras.utils.plot_model(self.model, os.path.join(self.output_dir, 'plot_model.png'), show_shapes=True)
 		
 		return
 	
