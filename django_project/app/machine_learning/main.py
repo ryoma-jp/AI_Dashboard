@@ -71,6 +71,19 @@ def ArgParser():
 
 	return args
 
+def _predict_and_calc_accuracy(trainer, x, y=None):
+	predictions = trainer.predict(x)
+	print('\nPredictions(shape): {}'.format(predictions.shape))
+	
+	if (y is not None):
+		predictions_idx = np.argmax(predictions, axis=1)
+		y_idx = np.argmax(y, axis=1)
+		
+		print('n_data : {}'.format(len(predictions_idx)))
+		print('n_correct : {}'.format(len(predictions_idx[predictions_idx==y_idx])))
+		
+	return predictions
+
 def main():
 	# --- NumPy配列形状表示 ---
 	def print_ndarray_shape(ndarr):
@@ -160,11 +173,9 @@ def main():
 			batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
 		trainer.save_model()
 		
-		predictions = trainer.predict(x_test)
-		print('\nPredictions(shape): {}'.format(predictions.shape))
+		predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
 	elif (args.mode == 'predict'):
-		predictions = trainer.predict(x_test)
-		print('\nPredictions(shape): {}'.format(predictions.shape))
+		predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
 		
 		json_data = []
 		for i, (prediction, label) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):

@@ -112,6 +112,14 @@ def inference(request):
             dataset = Dataset.objects.all().order_by('-id').reverse()
             dataset_dropdown_selected = None
             
+        # --- Load prediction ---
+        prediction_json = os.path.join(model_dropdown_selected.model_dir, 'prediction.json')
+        if ((dataset_dropdown_selected is not None) and os.path.exists(prediction_json)):
+            with open(prediction_json, 'r') as f:
+                prediction = json.load(f)
+        else:
+            prediction = None
+            
         context = {
             'project': project,
             'model': model,
@@ -121,6 +129,7 @@ def inference(request):
             'project_dropdown_selected': project_dropdown_selected,
             'model_dropdown_selected': model_dropdown_selected,
             'dataset_dropdown_selected': dataset_dropdown_selected,
+            'prediction': prediction,
         }
         return render(request, 'inference.html', context)
 

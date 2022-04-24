@@ -130,6 +130,30 @@
             <button type="submit" class="btn btn-primary" id="inference_run" name="inference_run" value="inference_run" disabled>Run</button>
           {% endif %}
         </form>
+        
+        <h1 class="h4">Result</h1>
+        {% if prediction %}
+          <p><table class="table table-bordered border-primary table-hover ms-4">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Prediction</th>
+                <th scope="col">Label</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for prediction_ in prediction %}
+              <tr>
+                <td>{{ prediction_.id }}</td>
+                <td>{{ prediction_.prediction }}</td>
+                <td>{{ prediction_.label }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table></p>
+        {% else %}
+          <p>No Result</p>
+        {% endif %}
       {% else %}
         <p>No Projects</p>
       {% endif %}
