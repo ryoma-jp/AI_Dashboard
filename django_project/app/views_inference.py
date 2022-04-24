@@ -113,10 +113,13 @@ def inference(request):
             dataset_dropdown_selected = None
             
         # --- Load prediction ---
-        prediction_json = os.path.join(model_dropdown_selected.model_dir, 'prediction.json')
-        if ((dataset_dropdown_selected is not None) and os.path.exists(prediction_json)):
-            with open(prediction_json, 'r') as f:
-                prediction = json.load(f)
+        if (dataset_dropdown_selected is not None):
+            prediction_json = os.path.join(model_dropdown_selected.model_dir, 'prediction.json')
+            if (os.path.exists(prediction_json)):
+                with open(prediction_json, 'r') as f:
+                    prediction = json.load(f)
+            else:
+                prediction = None
         else:
             prediction = None
             
