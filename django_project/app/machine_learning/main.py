@@ -41,6 +41,7 @@
 import os
 import json
 import argparse
+import numpy as np
 import pandas as pd
 import pickle
 
@@ -164,6 +165,17 @@ def main():
 	elif (args.mode == 'predict'):
 		predictions = trainer.predict(x_test)
 		print('\nPredictions(shape): {}'.format(predictions.shape))
+		
+		json_data = []
+		for i, (prediction, label) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):
+			json_data.append({
+				'id': int(i),
+				'prediction': int(prediction),
+				'label': int(label),
+			})
+		with open(os.path.join(result_dir, 'prediction.json'), 'w') as f:
+			json.dump(json_data, f, ensure_ascii=False, indent=4)
+		
 	else:
 		print('[ERROR] Unknown mode: {}'.format(args.mode))
 
