@@ -68,6 +68,9 @@ def inference(request):
         elif ('inference_run' in request.POST):
             _inference_run()
         
+        elif ('prediction_filter' in request.POST):
+            request.session['prediction_filter'] = request.POST.getlist('prediction_filter')[0]
+        
         else:
             logging.warning('Unknown POST command:')
             logging.warning(request.POST)
@@ -111,7 +114,10 @@ def inference(request):
         
             dataset = Dataset.objects.all().order_by('-id').reverse()
             dataset_dropdown_selected = None
-            
+        
+        # --- Check prediction filter ---
+        prediction_filter_selected = request.session.get('prediction_filter', 'All')
+        
         # --- Load prediction ---
         if (dataset_dropdown_selected is not None):
             prediction_json = os.path.join(model_dropdown_selected.model_dir, 'prediction.json')
@@ -133,6 +139,7 @@ def inference(request):
             'model_dropdown_selected': model_dropdown_selected,
             'dataset_dropdown_selected': dataset_dropdown_selected,
             'prediction': prediction,
+            'prediction_filter_selected': prediction_filter_selected,
         }
         return render(request, 'inference.html', context)
 

@@ -133,6 +133,29 @@
         
         <h1 class="h4">Result</h1>
         {% if prediction %}
+          <div class="container">
+            <div class="row">
+              <div class="col-1">
+                <h1 class="h5">Filter: </h1>
+              </div>
+              <div class="col-1">
+                <form method="post">
+                {% csrf_token %}
+                  <div class="btn-group">
+                    <!-- select filter -->
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      {{ prediction_filter_selected }}
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><button class="dropdown-item" type="submit" name="prediction_filter" value="All">All</button></li>
+                      <li><button class="dropdown-item" type="submit" name="prediction_filter" value="Correct">Correct</button></li>
+                      <li><button class="dropdown-item" type="submit" name="prediction_filter" value="Wrong">Wrong</button></li>
+                    </ul>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
           <p><table class="table table-bordered border-primary table-hover ms-4">
             <thead class="table-dark">
               <tr>
@@ -143,11 +166,35 @@
             </thead>
             <tbody>
             {% for prediction_ in prediction %}
-              <tr>
-                <td>{{ prediction_.id }}</td>
-                <td>{{ prediction_.prediction }}</td>
-                <td>{{ prediction_.label }}</td>
-              </tr>
+              {% if prediction_filter_selected|stringformat:'s' == 'All' %}
+                <tr>
+                  <td>{{ prediction_.id }}</td>
+                  <td>{{ prediction_.prediction }}</td>
+                  <td>{{ prediction_.label }}</td>
+                </tr>
+              {% elif prediction_filter_selected|stringformat:'s' == 'Correct' %}
+                {% if prediction_.prediction == prediction_.label %}
+                  <tr>
+                    <td>{{ prediction_.id }}</td>
+                    <td>{{ prediction_.prediction }}</td>
+                    <td>{{ prediction_.label }}</td>
+                  </tr>
+                {% endif %}
+              {% elif prediction_filter_selected|stringformat:'s' == 'Wrong' %}
+                {% if prediction_.prediction != prediction_.label %}
+                  <tr>
+                    <td>{{ prediction_.id }}</td>
+                    <td>{{ prediction_.prediction }}</td>
+                    <td>{{ prediction_.label }}</td>
+                  </tr>
+                {% endif %}
+              {% else %}
+                <tr>
+                  <td>---</td>
+                  <td>---</td>
+                  <td>---</td>
+                </tr>
+              {% endif %}
             {% endfor %}
             </tbody>
           </table></p>
