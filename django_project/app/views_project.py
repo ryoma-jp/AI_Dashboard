@@ -234,40 +234,50 @@ def model_edit(request, project_id, model_id):
     model = get_object_or_404(MlModel, pk=model_id, project=project)
     
     if (request.method == 'POST'):
-        form = MlModelForm(request.POST)
-        if (form.is_valid()):
-            # --- get form data ---
-            model.name = form.cleaned_data.get('name')
-            model.description = form.cleaned_data.get('description')
+        if ('model_apply' in request.POST):
+            form = MlModelForm(request.POST)
+            if (form.is_valid()):
+                # --- get form data ---
+                model.name = form.cleaned_data.get('name')
+                model.description = form.cleaned_data.get('description')
+                
+                # --- get dataset object ---
+                selected_dataset = request.POST.getlist('model_edit_dataset_dropdown_selected_submit')[0]
+                model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_dataset))
+                
+                # --- load config ---
+                with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+                    config_data = json.load(f)
+                dataset_dir = config_data['dataset']['dataset_dir']['value']
+                
+                # --- preparing dataset ---
+                dataset = load_dataset(model.dataset)
+                model.dataset_pickle = os.path.join(dataset_dir, 'dataset.pkl')
+                with open(model.dataset_pickle, 'wb') as f:
+                    pickle.dump(dataset, f)
+                
+                # logging.info('-------------------------------------')
+                # logging.info(dict_config)
+                # logging.info('-------------------------------------')
+                
+                # --- save database ---
+                model.save()
+                
+                # --- clear session variables ---
+                if 'training_view_selected_model' in request.session.keys():
+                    del request.session['training_view_selected_model']
+                    request.session.modified = True
+                
+                return redirect('index')
+        if ('model_delete' in request.POST):
+            # --- delete model data ---
+            shutil.rmtree(model.model_dir)
             
-            # --- get dataset object ---
-            selected_dataset = request.POST.getlist('model_edit_dataset_dropdown_selected_submit')[0]
-            model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_dataset))
-            
-            # --- load config ---
-            with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
-                config_data = json.load(f)
-            dataset_dir = config_data['dataset']['dataset_dir']['value']
-            
-            # --- preparing dataset ---
-            dataset = load_dataset(model.dataset)
-            model.dataset_pickle = os.path.join(dataset_dir, 'dataset.pkl')
-            with open(model.dataset_pickle, 'wb') as f:
-                pickle.dump(dataset, f)
-            
-            # logging.info('-------------------------------------')
-            # logging.info(dict_config)
-            # logging.info('-------------------------------------')
-            
-            # --- save database ---
-            model.save()
-            
-            # --- clear session variables ---
-            if 'training_view_selected_model' in request.session.keys():
-                del request.session['training_view_selected_model']
-                request.session.modified = True
+            # --- delete database ---
+            model.delete()
             
             return redirect('index')
+        
     else:
         initial_dict = dict(name=model.name, description=model.description)
         form = MlModelForm(initial=initial_dict)
