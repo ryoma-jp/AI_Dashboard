@@ -3,6 +3,7 @@ import logging
 import json
 import pickle
 import hashlib
+import shutil
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -69,23 +70,44 @@ def project_edit(request, project_id):
     """
     project = get_object_or_404(Project, pk=project_id)
     if (request.method == 'POST'):
-        form = ProjectForm(request.POST)
-        if (form.is_valid()):
-            # --- get form data ---
-            project.name = form.cleaned_data.get('name')
-            project.description = form.cleaned_data.get('description')
+        # logging.info('-------------------------------------')
+        # logging.info(request.method)
+        # logging.info(request.POST)
+        # logging.info('-------------------------------------')
+        
+        if ('project_apply' in request.POST):
+            form = ProjectForm(request.POST)
+            if (form.is_valid()):
+                # --- get form data ---
+                project.name = form.cleaned_data.get('name')
+                project.description = form.cleaned_data.get('description')
+                
+                # logging.info('-------------------------------------')
+                # logging.info(project.hash)
+                # logging.info('-------------------------------------')
+                
+                # --- save database ---
+                project.save()
+                
+                # --- clear session variables ---
+                if 'training_view_selected_project' in request.session.keys():
+                    del request.session['training_view_selected_project']
+                    request.session.modified = True
+                
+                return redirect('index')
+                
+        elif ('project_delete' in request.POST):
+            # --- delete project data ---
+            project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
+            if (os.path.exists(project_dir)):
+                shutil.rmtree(project_dir)
             
-            # logging.info('-------------------------------------')
-            # logging.info(project.hash)
-            # logging.info('-------------------------------------')
+            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
+            if (os.path.exists(dataset_dir)):
+                shutil.rmtree(dataset_dir)
             
-            # --- save database ---
-            project.save()
-            
-            # --- clear session variables ---
-            if 'training_view_selected_project' in request.session.keys():
-                del request.session['training_view_selected_project']
-                request.session.modified = True
+            # --- delete database ---
+            project.delete()
             
             return redirect('index')
     else:

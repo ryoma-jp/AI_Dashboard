@@ -56,7 +56,7 @@ class MlModel(models.Model):
     description = models.TextField('Description', blank=True)
     hash = models.CharField('Model hash', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
-    dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.CASCADE)
+    dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.SET_NULL, null=True)
     dataset_pickle = models.CharField('Dataset Object (*.pkl)', max_length=512, blank=True)
     
     model_dir = models.CharField('Model Directory', max_length=1024)

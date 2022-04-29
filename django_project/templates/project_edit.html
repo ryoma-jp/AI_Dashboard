@@ -7,8 +7,9 @@
   <form method="post">
     {% csrf_token %}
     {% bootstrap_form form %}
-    {% bootstrap_button button_type="submit" content="Apply" %}
+    <button type="submit" class="btn btn-primary" id="project_apply" name="project_apply">Apply</button>
     <a class="btn btn-primary" href="{% url 'index' %}" role="button">Cancel</a>
+    <button type="submit" class="btn btn-danger" id="project_delete" name="project_delete">Delete</button>
   </form>
 </div>
 {% endblock %}
