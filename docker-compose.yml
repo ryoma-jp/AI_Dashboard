@@ -10,6 +10,9 @@ services:
       - type: bind
         source: "./django_project/media/"
         target: "/home/app/web/media"
+      - type: bind
+        source: "./tools/"
+        target: "/home/app/web/tools"
     expose:
       - 8000
     ports:
