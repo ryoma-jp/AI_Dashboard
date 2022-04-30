@@ -20,6 +20,7 @@ class SidebarActiveStatus():
         self.dataset = ''
         self.training = ''
         self.inference = ''
+        self.view_streaming = ''
 
 
 def get_version():
