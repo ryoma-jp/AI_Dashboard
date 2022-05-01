@@ -13,6 +13,46 @@
       </div>
     </div>
     
+    <!-- Set IP address and PORT -->
+    <form method="post">
+      {% csrf_token %}
+      <div class="row">
+        <label class="col-sm-2 col-form-label">IP Address</label>
+        <div class="col">
+          <input type="text" class="form-control mb-1" placeholder="0" name="ip_0" value="{{ ip_addr.0 }}">
+        </div>
+        .
+        <div class="col">
+          <input type="text" class="form-control mb-1" placeholder="0" name="ip_1" value="{{ ip_addr.1 }}">
+        </div>
+        .
+        <div class="col">
+          <input type="text" class="form-control mb-1" placeholder="0" name="ip_2" value="{{ ip_addr.2 }}">
+        </div>
+        .
+        <div class="col">
+          <input type="text" class="form-control mb-1" placeholder="0" name="ip_3" value="{{ ip_addr.3 }}">
+        </div>
+      </div>
+      
+      <div class="row">
+        <label class="col-sm-2 col-form-label">PORT</label>
+        <div class="col">
+          <input type="text" class="form-control mb-1" placeholder="0" name="port" value="{{ port }}">
+        </div>
+      </div>
+      
+      <button type="submit" class="btn btn-primary mb-2">Apply</button>
+    </form>
+    
+    <!-- Streaming Area -->
+    {% if valid_url %}
+      <h1 class="h3">mjpg-streamer</h1>
+      <div "col-10">
+        <img src="http://{{ ip_addr.0 }}.{{ ip_addr.1 }}.{{ ip_addr.2 }}.{{ ip_addr.3 }}:{{ port }}/?action=stream">
+      </div>
+    {% endif %}
+    
   </div>
 </div>
 {% endblock %}
