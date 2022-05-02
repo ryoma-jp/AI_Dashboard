@@ -21,15 +21,15 @@ class Project(models.Model):
 #---------------------------------------
 def train_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
-    return os.path.join(base_dir, f'dataset_{instance.id}', 'train', filename)
+    return os.path.join(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'train', filename)
     
 def validation_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
-    return os.path.join(base_dir, f'dataset_{instance.id}', 'validation', filename)
+    return os.path.join(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'validation', filename)
     
 def test_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
-    return os.path.join(base_dir, f'dataset_{instance.id}', 'test', filename)
+    return os.path.join(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'test', filename)
     
 class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
@@ -37,9 +37,9 @@ class Dataset(models.Model):
     
     dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
     
-    train_zip = models.FileField(upload_to=train_dataset_path)
-    valid_zip = models.FileField(upload_to=validation_dataset_path)
-    test_zip = models.FileField(upload_to=test_dataset_path)
+    train_zip = models.FileField(upload_to=train_dataset_path, max_length=512)
+    valid_zip = models.FileField(upload_to=validation_dataset_path, max_length=512)
+    test_zip = models.FileField(upload_to=test_dataset_path, max_length=512)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     STATUS_NONE = 'None'
