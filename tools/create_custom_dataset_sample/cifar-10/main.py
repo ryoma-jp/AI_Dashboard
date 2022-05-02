@@ -27,6 +27,8 @@ def ArgParser():
 			help='CIFAR-10データセット(cifar-10-batches-py)のディレクトリパス')
 	parser.add_argument('--output_dir', dest='output_dir', type=str, default='output', required=False, \
 			help='カスタムデータセットの出力ディレクトリ')
+	parser.add_argument('--n_data', dest='n_data', type=int, default=0, required=False, \
+			help='取得するデータサンプル数(0以下指定で全データを取得)')
 
 	args = parser.parse_args()
 
@@ -62,7 +64,7 @@ def load_cifar10_dataset(input_dir):
 	
 	return train_images, train_labels, test_images, test_labels
 	
-def save_image_files(images, image_shape, labels, output_dir, name='images'):
+def save_image_files(images, image_shape, labels, output_dir, name='images', n_data=0):
 	dict_image_file = {
 		'id': [],
 		'file': [],
@@ -71,7 +73,10 @@ def save_image_files(images, image_shape, labels, output_dir, name='images'):
 	
 	os.makedirs(os.path.join(output_dir, name), exist_ok=True)
 	
-	for i, (image, label) in enumerate(zip(images, labels)):
+	if ((n_data <= 0) or (n_data > len(images))):
+		n_data = len(images)
+		
+	for i, (image, label) in enumerate(zip(images[0:n_data], labels[0:n_data])):
 		image_file = os.path.join(name, f'{i:08}.png')
 		image = image.reshape(image_shape)
 		cv2.imwrite(os.path.join(output_dir, image_file), image)
@@ -93,6 +98,7 @@ def main():
 	args = ArgParser()
 	print('args.input_dir : {}'.format(args.input_dir))
 	print('args.output_dir : {}'.format(args.output_dir))
+	print('args.n_data : {}'.format(args.n_data))
 	
 	# --- CIFAR-10データセット読み込み ---
 	train_images, train_labels, test_images, test_labels = load_cifar10_dataset(args.input_dir)
@@ -100,12 +106,12 @@ def main():
 	# --- save image files(train) ---
 	output_dir = os.path.join(args.output_dir, 'train_data')
 	os.makedirs(output_dir, exist_ok=True)
-	save_image_files(train_images, train_images.shape[1:], train_labels, output_dir, name='images')
+	save_image_files(train_images, train_images.shape[1:], train_labels, output_dir, name='images', n_data=args.n_data)
 	
 	# --- save image files(test) ---
 	output_dir = os.path.join(args.output_dir, 'test_data')
 	os.makedirs(output_dir, exist_ok=True)
-	save_image_files(test_images, test_images.shape[1:], test_labels, output_dir, name='images')
+	save_image_files(test_images, test_images.shape[1:], test_labels, output_dir, name='images', n_data=args.n_data)
 	
 	return
 
