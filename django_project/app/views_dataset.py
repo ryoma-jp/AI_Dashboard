@@ -3,6 +3,7 @@ import pickle
 import logging
 import json
 import cv2
+import shutil
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
@@ -90,6 +91,15 @@ def dataset(request):
                               image_gallery_status=Dataset.STATUS_NONE,
                           )
         
+                # --- unzip ---
+                train_dir = os.path.dirname(dataset.train_zip.path)
+                valid_dir = os.path.dirname(dataset.valid_zip.path)
+                test_dir = os.path.dirname(dataset.test_zip.path)
+                
+                shutil.unpack_archive(dataset.train_zip.path, train_dir)
+                shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
+                shutil.unpack_archive(dataset.test_zip.path, test_dir)
+                
         return redirect('dataset')
     else:
         project = Project.objects.all().order_by('-id').reverse()

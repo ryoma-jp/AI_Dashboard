@@ -60,6 +60,7 @@ class Dataset(models.Model):
     
     def save(self, *args, **kwargs):
         if (self.id is None):
+            # --- dummy save, set id and zip files ---
             _tmp_train_zip = self.train_zip
             _tmp_valid_zip = self.valid_zip
             _tmp_test_zip = self.test_zip
@@ -75,6 +76,13 @@ class Dataset(models.Model):
             if ('force_insert' in kwargs):
                 kwargs.pop('force_insert')
         
+            # --- set dataset_dir ---
+            self.dataset_dir = os.path.join(
+                                   getattr(settings, 'MEDIA_ROOT', None),
+                                   getattr(settings, 'DATASET_DIR', None),
+                                   self.project.hash,
+                                   f'dataset_{self.id}')
+            
         super().save(*args, **kwargs)
 
 #---------------------------------------
