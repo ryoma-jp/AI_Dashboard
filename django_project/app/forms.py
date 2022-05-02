@@ -10,9 +10,9 @@ class DatasetForm(forms.ModelForm):
     class Meta:
         model = Dataset
         fields = ('name',
-                  'train_zip', 'train_csv',
-                  'valid_zip', 'valid_csv',
-                  'test_zip', 'test_csv', )
+                  'train_zip',
+                  'valid_zip',
+                  'test_zip', )
 
 class MlModelForm(forms.ModelForm):
     class Meta:

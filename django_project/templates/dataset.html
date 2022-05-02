@@ -11,8 +11,9 @@
       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">Dataset</h1>
       </div>
-      <h1 class="h3">Select Project</h1>
       
+      <!-- Select Project -->
+      <h1 class="h3">Select Project</h1>
       {% if project %}
         <form method="post">
           {% csrf_token %}
@@ -31,6 +32,8 @@
               </ul>
             </div>
         </form>
+        
+        <!-- Dataset List -->
         <h1 class="h3">Dataset List</h1>
         {% if dataset|in_project:dropdown_selected_project %}
           <table class="table table-bordered border-primary table-hover ms-4">
@@ -52,6 +55,19 @@
         {% else %}
           <p>No Dataset registered</p>
         {% endif %}
+        
+        <!-- Upload Dataset -->
+        <h1 class="h3">Upload Dataset</h1>
+        {% if dataset|in_project:dropdown_selected_project %}
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% bootstrap_form form_custom_dataset %}
+            <button class="btn btn-primary" type="submit" name="dataset_view_upload">Upload</button>
+          </form>
+        {% else %}
+          <p>Please select project</p>
+        {% endif %}
+        
       {% else %}
         <p>No Projects</p>
       {% endif %}

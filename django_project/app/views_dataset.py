@@ -8,6 +8,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 
 from app.models import Project, Dataset
+from app.forms import DatasetForm
 
 from views_common import SidebarActiveStatus, get_version, load_dataset
 
@@ -69,6 +70,26 @@ def dataset(request):
     if (request.method == 'POST'):
         if ('dataset_view_dropdown' in request.POST):
             request.session['dataset_view_dropdown_selected_project'] = request.POST.getlist('dataset_view_dropdown')[0]
+        
+        elif ('dataset_view_upload' in request.POST):
+            form_custom_dataset = DatasetForm(request.POST, request.FILES)
+            if (form_custom_dataset.is_valid()):
+                # --- get related project ---
+                project_name = request.session.get('dataset_view_dropdown_selected_project', None)
+                project = Project.objects.get(name=project_name)
+                
+                # --- save model ---
+                dataset = Dataset.objects.create(
+                              name=form_custom_dataset.cleaned_data.get('name'),
+                              project=project,
+                              train_zip=form_custom_dataset.cleaned_data.get('train_zip'),
+                              valid_zip=form_custom_dataset.cleaned_data.get('valid_zip'),
+                              test_zip=form_custom_dataset.cleaned_data.get('test_zip'),
+                              uploaded_at=form_custom_dataset.cleaned_data.get('uploaded_at'),
+                              download_status=Dataset.STATUS_NONE,
+                              image_gallery_status=Dataset.STATUS_NONE,
+                          )
+        
         return redirect('dataset')
     else:
         project = Project.objects.all().order_by('-id').reverse()
@@ -83,6 +104,8 @@ def dataset(request):
         else:
             dropdown_selected_project = None
         
+        form_custom_dataset = DatasetForm()
+        
         # logging.info('-------------------------------------')
         # logging.info(project_name)
         # logging.info(dropdown_selected_project)
@@ -92,7 +115,8 @@ def dataset(request):
             'dataset': dataset,
             'sidebar_status': sidebar_status,
             'text': text,
-            'dropdown_selected_project': dropdown_selected_project
+            'dropdown_selected_project': dropdown_selected_project,
+            'form_custom_dataset': form_custom_dataset,
         }
         return render(request, 'dataset.html', context)
 

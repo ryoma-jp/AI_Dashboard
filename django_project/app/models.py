@@ -24,13 +24,9 @@ class Dataset(models.Model):
     dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
     
     train_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
-    train_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     valid_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
-    valid_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     test_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
-    test_csv = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
     
     STATUS_NONE = 'None'
     STATUS_PREPARING = 'Preparing'
