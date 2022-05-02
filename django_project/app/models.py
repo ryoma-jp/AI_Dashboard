@@ -1,3 +1,5 @@
+import os
+
 from django.db import models
 from django.conf import settings
 
@@ -17,15 +19,27 @@ class Project(models.Model):
 #---------------------------------------
 # クラス：データセット
 #---------------------------------------
+def train_dataset_path(instance, filename):
+    base_dir = getattr(settings, 'DATASET_DIR', None)
+    return os.path.join(base_dir, f'dataset_{instance.id}', 'train', filename)
+    
+def validation_dataset_path(instance, filename):
+    base_dir = getattr(settings, 'DATASET_DIR', None)
+    return os.path.join(base_dir, f'dataset_{instance.id}', 'validation', filename)
+    
+def test_dataset_path(instance, filename):
+    base_dir = getattr(settings, 'DATASET_DIR', None)
+    return os.path.join(base_dir, f'dataset_{instance.id}', 'test', filename)
+    
 class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
     dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
     
-    train_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
-    valid_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
-    test_zip = models.FileField(upload_to=getattr(settings, 'DATASET_DIR', None))
+    train_zip = models.FileField(upload_to=train_dataset_path)
+    valid_zip = models.FileField(upload_to=validation_dataset_path)
+    test_zip = models.FileField(upload_to=test_dataset_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     STATUS_NONE = 'None'
@@ -43,6 +57,25 @@ class Dataset(models.Model):
     
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        if (self.id is None):
+            _tmp_train_zip = self.train_zip
+            _tmp_valid_zip = self.valid_zip
+            _tmp_test_zip = self.test_zip
+            
+            self.train_zip = None
+            self.valid_zip = None
+            self.test_zip = None
+            super().save(*args, **kwargs)
+            
+            self.train_zip = _tmp_train_zip
+            self.valid_zip = _tmp_valid_zip
+            self.test_zip = _tmp_test_zip
+            if ('force_insert' in kwargs):
+                kwargs.pop('force_insert')
+        
+        super().save(*args, **kwargs)
 
 #---------------------------------------
 # クラス：MlModel
