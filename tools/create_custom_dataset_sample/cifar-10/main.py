@@ -88,7 +88,7 @@ def save_image_files(images, image_shape, labels, output_dir, name='images', n_d
 		
 	# --- save image files information to json file ---
 	df_image_file = pd.DataFrame(dict_image_file)
-	with open(os.path.join(output_dir, f'info_{name}.json'), 'w') as f:
+	with open(os.path.join(output_dir, 'info.json'), 'w') as f:
 		json.dump(json.loads(df_image_file.to_json(orient='records')), f, ensure_ascii=False, indent=4)
 	
 	return None
