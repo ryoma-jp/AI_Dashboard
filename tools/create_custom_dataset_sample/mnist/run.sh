@@ -35,6 +35,6 @@ python main.py --input_dir ${INPUT_DIR} --output_dir ${OUTPUT_DIR} --n_data ${N_
 
 # --- zip compress ---
 cd ${OUTPUT_DIR}
-zip train_data.zip train_data
-zip test_data.zip test_data
+zip -rq train_data.zip train_data
+zip -rq test_data.zip test_data
 

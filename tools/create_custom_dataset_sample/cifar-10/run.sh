@@ -22,6 +22,6 @@ python main.py --input_dir ${INPUT_DIR}/cifar-10-batches-py --output_dir ${OUTPU
 
 # --- zip compress ---
 cd ${OUTPUT_DIR}
-zip train_data.zip train_data
-zip test_data.zip test_data
+zip -rq train_data.zip train_data
+zip -rq test_data.zip test_data
 
