@@ -33,3 +33,8 @@ cd ${BASE_DIR}
 # --- preprocessing ---
 python main.py --input_dir ${INPUT_DIR} --output_dir ${OUTPUT_DIR} --n_data ${N_DATA}
 
+# --- zip compress ---
+cd ${OUTPUT_DIR}
+zip train_data.zip train_data
+zip test_data.zip test_data
+
