@@ -39,9 +39,14 @@ COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --no-cache /wheels/*
 
-COPY ./entrypoint.sh $APP_HOME
-
-COPY . $APP_HOME
+# --- copy data without media ---
+COPY ./app $APP_HOME/app
+COPY ./entrypoint.sh $APP_HOME/entrypoint.sh
+COPY ./manage.py $APP_HOME/manage.py
+COPY ./project $APP_HOME/project
+COPY ./requirements.txt $APP_HOME/requirements.txt
+COPY ./static $APP_HOME/static
+COPY ./templates $APP_HOME/templates
 
 RUN chown -R app:app ${APP_HOME}
 RUN chown -R app:app ${ENV_HOME}

@@ -1,5 +1,9 @@
 #! /bin/bash
 
+chmod a+w django_project/media/config
+chmod a+w django_project/media/dataset
+chmod a+w django_project/media/model
+
 docker-compose build
 STAT_BUILD=$?
 if [ ! ${STAT_BUILD} -eq 0 ]; then

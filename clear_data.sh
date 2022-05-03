@@ -1,5 +1,5 @@
 #! /bin/bash
 
-rm -rf django_project/media/dataset/*
-rm -rf django_project/media/model/*
+sudo rm -rf django_project/media/dataset/*
+sudo rm -rf django_project/media/model/*
 

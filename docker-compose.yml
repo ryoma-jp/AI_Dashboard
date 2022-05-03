@@ -9,7 +9,7 @@ services:
       - env_data:/home/app/env
       - type: bind
         source: "./django_project/media/"
-        target: "/home/app/web/media"
+        target: "/home/app/media"
       - type: bind
         source: "./tools/"
         target: "/home/app/web/tools"
@@ -21,8 +21,6 @@ services:
       - ./.env.dev
     depends_on:
       - db
-    environment:
-      PYTHONPATH: '${PYTHONPATH}'
     deploy:
       resources:
         reservations:

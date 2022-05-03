@@ -66,7 +66,7 @@ ToDoのメモ．思いついたら順次追加する．
     1. configファイル生成
         ```
         $ source venv/bin/activate
-        (venv) $ $ python3 tools/create_config/create_config.py --output_dir django_project/media/config/
+        (venv) $ python3 tools/create_config/create_config.py --output_dir django_project/media/config/
         (venv) $ deactivate
         ```
 1. サーバ起動
