@@ -275,7 +275,7 @@ def dataset_detail(request, project_id, dataset_id):
                     'file': os.path.join(settings.MEDIA_URL,
                                          settings.DATASET_DIR,
                                          dataset.project.hash,
-                                         dataset.name,
+                                         f'dataset_{dataset.id}',
                                          json_data['file'][i]),
                     'class_id': json_data['class_id'][i],
                 })
