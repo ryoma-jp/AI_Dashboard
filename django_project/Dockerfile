@@ -13,9 +13,16 @@ RUN apt update ; \
 
 RUN pip install --upgrade pip
 RUN pip install flake8
-COPY . .
 
-COPY ./requirements.txt .
+# --- copy data without media ---
+COPY ./app ./app
+COPY ./entrypoint.sh ./entrypoint.sh
+COPY ./manage.py ./manage.py
+COPY ./project ./project
+COPY ./requirements.txt ./requirements.txt
+COPY ./static ./static
+COPY ./templates ./templates
+
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
 
