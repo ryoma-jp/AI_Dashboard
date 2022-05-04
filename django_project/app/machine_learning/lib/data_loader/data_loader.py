@@ -6,9 +6,11 @@
 import os
 import logging
 import numpy as np
+import pandas as pd
 import requests
 import tarfile
 import gzip
+import cv2
 
 #---------------------------------
 # クラス; データ取得基底クラス
@@ -279,6 +281,68 @@ class DataLoaderMNIST(DataLoader):
 		
 		# --- 出力次元数を保持 ---
 		self.output_dims = 10
+		
+		return
+	
+
+#---------------------------------
+# クラス; カスタムデータセット取得
+#---------------------------------
+class DataLoaderCustom(DataLoader):
+	# --- コンストラクタ ---
+	def __init__(self, train_dir, test_dir, validation_dir=None, validation_split=0.0, flatten=False, one_hot=False, download=False):
+		"""
+			[引数説明]
+				* train_dir: 学習データセットのディレクトリ
+				* test_dir: テストデータセットのディレクトリ
+				* validation_dir: バリデーションデータセットのディレクトリ
+				* validation_split: validation dataとして使用する学習データの比率(0.0 ～ 1.0)
+				                    validation_dirが指定されている場合は，validation_splitは無視する
+				* flatten: 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
+				* one_hot: one hot形式(=True)かラベルインデックス(=False;default)かを選択する
+		"""
+		
+		def _load_data(data_dir):
+			"""_load_data
+				カスタムデータセットを読み込み，画像とラベルを返す
+				
+				[引数説明]
+				  * data_dir: カスタムデータセットのディレクトリ
+			"""
+			json_file = os.path.join(data_dir, 'info.json')
+			df_data = pd.read_json(json_file, orient='records')
+			
+			img = cv2.imread(os.path.join(data_dir, df_data['file'][0]))
+			n_items = len(df_data)
+			if (img.ndim) == 3:
+				img_h, img_w, n_channel = img.shape
+			
+			images = []
+			labels = []
+			for data_ in df_data.itertuples():
+				images.append(list(cv2.imread(os.path.join(data_dir, data_.file))))
+				labels.append(data_.class_id)
+			
+			return np.array(images), np.array(labels)
+		
+		# --- initialize super class ---
+		super().__init__()
+		self.one_hot = one_hot
+		
+		# --- load training data ---
+		self.train_images, self.train_labels = _load_data(train_dir)
+		
+		# --- load test data ---
+		self.test_images, self.test_labels = _load_data(test_dir)
+		
+		# --- load validation data ---
+		if (validation_dir is not None):
+			self.validation_images, self.validation_labels = _load_data(validation_dir)
+		else:
+			self.split_train_val(validation_split)
+			
+		# --- 出力次元数を保持 ---
+		self.output_dims = 10	# T.B.D
 		
 		return
 	

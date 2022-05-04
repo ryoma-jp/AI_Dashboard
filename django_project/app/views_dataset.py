@@ -100,7 +100,11 @@ def dataset(request):
                 shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
                 shutil.unpack_archive(dataset.test_zip.path, test_dir)
                 
+                # --- preparing ---
+                load_dataset(dataset)
+                
         return redirect('dataset')
+        
     else:
         project = Project.objects.all().order_by('-id').reverse()
         dataset = Dataset.objects.all().order_by('-id').reverse()
@@ -137,7 +141,7 @@ def dataset_detail(request, project_id, dataset_id):
     
     def _get_dataloader_obj(dataset):
         dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
-        download_dir = os.path.join(dataset_dir, dataset.name)
+        download_dir = os.path.join(dataset_dir, f'dataset_{dataset.id}')
         if (os.path.exists(os.path.join(download_dir, 'dataset.pkl'))):
             download_button_state = "disabled"
             with open(os.path.join(download_dir, 'dataset.pkl'), 'rb') as f:

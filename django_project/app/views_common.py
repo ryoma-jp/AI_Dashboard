@@ -8,7 +8,7 @@ from django.conf import settings
 
 from app.models import Project, MlModel
 
-from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10, DataLoaderMNIST
+from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10, DataLoaderMNIST, DataLoaderCustom
 
 # Create your views here.
 
@@ -96,7 +96,7 @@ def load_dataset(dataset):
     
     # --- load dataset ---
     dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
-    download_dir = os.path.join(dataset_dir, dataset.name)
+    download_dir = os.path.join(dataset_dir, f'dataset_{dataset.id}')
     if (os.path.exists(download_dir)):
         download = False
     else:
@@ -108,7 +108,10 @@ def load_dataset(dataset):
     elif (dataset.name == 'CIFAR-10'):
         dataloader = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
     else:
-        dataloader = None
+        train_dir = os.path.splitext(dataset.train_zip.path)[0]
+        valid_dir = os.path.splitext(dataset.valid_zip.path)[0]
+        test_dir = os.path.splitext(dataset.test_zip.path)[0]
+        dataloader = DataLoaderCustom(train_dir, test_dir, validation_dir=valid_dir, one_hot=False)
     
     # --- save dataset object to pickle file ---
     with open(os.path.join(download_dir, 'dataset.pkl'), 'wb') as f:
