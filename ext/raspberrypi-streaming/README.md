@@ -75,6 +75,10 @@ mjpg-streamerを使う
     ```
     $ ./start.sh
     ```
+1. start server (OpenCV)
+    ```
+    $ ./mjpg_streamer -i "./input_opencv.so --filter ./cvfilter_py.so --fargs ./plugins/input_opencv/filters/cvfilter_py/example_filter.py" -o "./output_http.so -w ./www"
+    ```
 
 ## ストリーミング配信の確認
 
