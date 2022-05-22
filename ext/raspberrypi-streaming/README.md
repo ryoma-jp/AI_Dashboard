@@ -91,6 +91,21 @@ mjpg-streamerを使う
 <img src="http://(Raspberry PiのIPアドレス):(PORT番号)/?action=stream">
 ```
 
+## Raspberry PiにTensorFlow Liteをインストールして推論する
+
+1. Python向けTensorFlow Liteのインストール
+    ```
+    $ echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+    $ pip3 install --extra-index-url https://google-coral.github.io/py-repo/ tflite_runtime
+    ```
+1. サーバ起動
+    ```
+    $ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/arm-linux-gnueabihf
+    $ ./start_server.sh
+    ```
+1. サーバへアクセス
+    ```http://<RaspberryPi IP Address>:8080/?action=stream```
+
 ## 参照
 
 * [Raspberry PiとWebカメラでストリーミング配信してみた](https://www.ecomottblog.com/?p=8791)
@@ -98,4 +113,5 @@ mjpg-streamerを使う
 * [Raspberry Pi + Python 3 に OpenCV 3 をなるべく簡単にインストールする](https://qiita.com/masaru/items/658b24b0806144cfeb1c)
 ** ```sudo pip3 install opencv-python==3.4.17.63```のように，opencv-pythonのバージョンを指定する
 ** デフォルトのままでは，OpenCV 4系がインストールされてしまう(2022.5.19現在)
+* [Python クイックスタート](https://www.tensorflow.org/lite/guide/python?hl=ja)
 
