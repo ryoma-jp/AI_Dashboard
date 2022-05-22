@@ -27,11 +27,12 @@ def _inference(interpreter, input_details, input_data):
     duration = (stop_time - start_time) * 1000
     return duration
 
-def object_detection(model_file, image, max_detection=-1, thresh=0.3):
+def object_detection(model_file, class_label, image, max_detection=-1, thresh=0.3):
     '''Object Detection
 
     Arguments:
       - model_file: file path of tflite
+      - class_label: list of class name
       - image: image data(ndarray, HxWxC)
       - max_detection: max boxes to draw on image (if -1 set then draw all boxes, but thresh is more priority)
       - thresh: minimum score threshold to draw boxes
@@ -89,7 +90,7 @@ def object_detection(model_file, image, max_detection=-1, thresh=0.3):
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, 2)
 
             y = ymin - 15 if ((ymin - 15) > 15) else ymin + 15
-            label = f'class: {int(class_)}'
+            label = f'{class_label[int(class_)]}'
             cv2.putText(image, label, (xmin, y),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 

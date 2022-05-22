@@ -57,19 +57,25 @@ do
 done
 
 # --- download tflite models ---
+CLASS_LABEL=""
 TFLITE_FILE=""
 if [ ${TASK} = "object_detection" ]; then
-    TFLITE_FILE="./models/efficientdet_lite0.tflite"
+    TFLITE_DIR="./models/efficientdet_lite0"
+    mkdir -p ${TFLITE_DIR}
+    TFLITE_FILE="${TFLITE_DIR}/efficientdet_lite0.tflite"
+    CLASS_LABEL="${TFLITE_DIR}/labelmap.txt"
     if [ ! -f ${TFLITE_FILE} ]; then
         curl \
             -L 'https://tfhub.dev/tensorflow/lite-model/efficientdet/lite0/detection/metadata/1?lite-format=tflite' \
 	    -o ${TFLITE_FILE}
+	unzip ${TFLITE_FILE} -d ${TFLITE_DIR}
     fi
 fi
 
 # --- launch server ---
 STREAMING_TASK="${TASK}" \
 TFLITE_FILE="${TFLITE_FILE}" \
+CLASS_LABEL="${CLASS_LABEL}" \
 mjpg_streamer -i "/usr/local/lib/mjpg-streamer/input_opencv.so --filter /usr/local/lib/mjpg-streamer/cvfilter_py.so --fargs ./main.py" -o "/usr/local/lib/mjpg-streamer/output_http.so -w ./www"
 
 

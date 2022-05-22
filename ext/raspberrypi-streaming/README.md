@@ -114,4 +114,5 @@ mjpg-streamerを使う
 ** ```sudo pip3 install opencv-python==3.4.17.63```のように，opencv-pythonのバージョンを指定する
 ** デフォルトのままでは，OpenCV 4系がインストールされてしまう(2022.5.19現在)
 * [Python クイックスタート](https://www.tensorflow.org/lite/guide/python?hl=ja)
+* [TensorFlowLiteモデルメーカーによるオブジェクト検出](https://www.tensorflow.org/lite/tutorials/model_maker_object_detection)
 
