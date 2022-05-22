@@ -3,6 +3,8 @@ import os
 import cv2
 import numpy as np
 
+from lib.inference_tflite import object_detection
+
 class StreamingFilter:
     '''Filter of mjpg-streamer for Streaming 
     '''
@@ -23,6 +25,12 @@ class StreamingFilter:
             :param img: A numpy array representing the input image
             :returns: A numpy array to send to the mjpg-streamer output plugin
         '''
+        ret_img, time = object_detection(self.tflite_file, img)
+
+        if (self.debug == 0):
+            print(time)
+            self.debug += 1
+
 
         return img
         
@@ -31,6 +39,13 @@ def init_filter():
         This function is called after the filter module is imported. It MUST
         return a callable object (such as a function or bound method). 
     '''
+    task = os.environ['STREAMING_TASK']
     f = StreamingFilter(tflite_file=os.environ['TFLITE_FILE'])
-    return f.object_detection
+
+    if (task == 'object_detection'):
+        filter_fn = f.object_detection
+    else:
+        filter_fn = f.path_through
+
+    return filter_fn
 

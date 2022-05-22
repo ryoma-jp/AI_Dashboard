@@ -68,6 +68,7 @@ if [ ${TASK} = "object_detection" ]; then
 fi
 
 # --- launch server ---
+STREAMING_TASK="${TASK}" \
 TFLITE_FILE="${TFLITE_FILE}" \
 mjpg_streamer -i "/usr/local/lib/mjpg-streamer/input_opencv.so --filter /usr/local/lib/mjpg-streamer/cvfilter_py.so --fargs ./main.py" -o "/usr/local/lib/mjpg-streamer/output_http.so -w ./www"
 
