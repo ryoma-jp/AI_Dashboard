@@ -13,8 +13,11 @@ class StreamingFilter:
         self.debug = 0
         self.tflite_file = tflite_file
 
-        with open(class_label, 'r') as f:
-            self.class_label = f.read().splitlines()
+        if os.path.exists(class_label):
+            with open(class_label, 'r') as f:
+                self.class_label = f.read().splitlines()
+        else:
+            self.class_label = None
 
     def path_through(self, img):
         '''

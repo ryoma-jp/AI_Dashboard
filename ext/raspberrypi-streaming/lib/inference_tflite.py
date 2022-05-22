@@ -44,15 +44,22 @@ def object_detection(model_file, class_label, image, max_detection=-1, thresh=0.
 
     # load model file
     interpreter = tflite.Interpreter(model_path=model_file)
-    interpreter.allocate_tensors()
-
     input_details = interpreter.get_input_details()
+    # print(input_details)
 
     # image preprocessing
     org_img_shape = image.shape
-    input_img_shape = (input_details[0]['shape'][1], input_details[0]['shape'][2])
-    input_image = cv2.resize(image, input_img_shape)
-    input_image = np.expand_dims(input_image, axis=0)
+    input_type = input_details[0]['name']
+    if (input_type == 'normalized_input_image_tensor'):
+        input_image = (((image / 255.) - 0.5) * 2).astype(np.float32)
+        input_image = np.expand_dims(input_image, axis=0)
+        interpreter.resize_tensor_input(input_details[0]['index'], (1, image.shape[0], image.shape[1], 3))
+    elif (input_type == 'serving_default_images:0'):
+        input_img_shape = (input_details[0]['shape'][1], input_details[0]['shape'][2])
+        input_image = cv2.resize(image, input_img_shape)
+        input_image = np.expand_dims(input_image, axis=0)
+
+    interpreter.allocate_tensors()
 
     # inference
     duration = _inference(interpreter, input_details, input_image)
@@ -74,6 +81,17 @@ def object_detection(model_file, class_label, image, max_detection=-1, thresh=0.
             result['classes'] = interpreter.get_tensor(output_detail['index'])
         elif (output_detail['name'] == 'StatefulPartitionedCall:3'):
             result['boxes'] = interpreter.get_tensor(output_detail['index'])
+        elif (output_detail['name'] == 'raw_outputs/box_encodings'):
+            result['boxes'] = interpreter.get_tensor(output_detail['index'])
+        elif (output_detail['name'] == 'raw_outputs/class_predictions'):
+            result_tmp = interpreter.get_tensor(output_detail['index'])
+            result_exp = np.exp(result_tmp)
+            result['scores'] = result_exp.max(axis=2) / result_exp.sum(axis=2)
+            result['classes'] = result_tmp.argmax(axis=2)
+
+    # print(result['scores'].shape)
+    # print(result['classes'].shape)
+    # print(result['boxes'].shape)
 
     ret_image = image
     for i, (score_, class_, box_) in enumerate(zip(result['scores'][0], result['classes'][0], result['boxes'][0])):
@@ -90,7 +108,10 @@ def object_detection(model_file, class_label, image, max_detection=-1, thresh=0.
             cv2.rectangle(image, (xmin, ymin), (xmax, ymax), color, 2)
 
             y = ymin - 15 if ((ymin - 15) > 15) else ymin + 15
-            label = f'{class_label[int(class_)]}'
+            if class_label is None:
+                label = f'class: {int(class_)}'
+            else:
+                label = f'{class_label[int(class_)]}'
             cv2.putText(image, label, (xmin, y),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 

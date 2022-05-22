@@ -115,4 +115,6 @@ mjpg-streamerを使う
 ** デフォルトのままでは，OpenCV 4系がインストールされてしまう(2022.5.19現在)
 * [Python クイックスタート](https://www.tensorflow.org/lite/guide/python?hl=ja)
 * [TensorFlowLiteモデルメーカーによるオブジェクト検出](https://www.tensorflow.org/lite/tutorials/model_maker_object_detection)
+* [TensorFlow Hub](https://tfhub.dev/s?deployment-format=lite&module-type=image-object-detection)
+* [TensorFlow / Kerasにおけるlogitsの意味](https://minus9d.hatenablog.com/entry/2020/10/25/193018)
 
