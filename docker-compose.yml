@@ -1,8 +1,11 @@
 version: '3.7'
  
 services:
+  # AI Dashboard main application
   web:
-    build: ./django_project
+    build:
+      context: ./django_project
+      dockerfile: ./env/web/Dockerfile
     command: gunicorn project.wsgi:application --bind 0.0.0.0:8000 -t 86400 --workers 1
     volumes:
       - static_volume:/home/app/web/static
@@ -28,6 +31,7 @@ services:
            - driver: nvidia
              capabilities: [utility, compute, video]
 
+  # Database
   db:
     image: postgres:13.4-alpine
     volumes:
@@ -35,6 +39,7 @@ services:
     env_file:
       - ./.env.dev
 
+  # Front-end application
   nginx:
     build: ./nginx
     volumes:
@@ -43,6 +48,28 @@ services:
       - 1317:80
     depends_on:
       - web
+
+  # Jupyter Notebook TensorFlow
+  jupyter_notebook_tf:
+    build: "./django_project/env/jupyter_notebook_tf/"
+    volumes:
+      - type: bind
+        source: "./django_project/media/notebooks/"
+        target: "/tf/work"
+      - type: bind
+        source: "./django_project/media/dataset/"
+        target: "/tf/data"
+    ports:
+      - 35000:8888
+    env_file:
+      - ./.env.dev
+    deploy:
+      resources:
+        reservations:
+          devices:
+           - driver: nvidia
+             device_ids: ['0']
+             capabilities: [gpu]
 
 volumes:
   postgres_data:

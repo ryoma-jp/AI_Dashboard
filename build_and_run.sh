@@ -3,6 +3,7 @@
 chmod a+w django_project/media/config
 chmod a+w django_project/media/dataset
 chmod a+w django_project/media/model
+chmod a+w django_project/media/notebooks
 
 docker-compose build
 STAT_BUILD=$?

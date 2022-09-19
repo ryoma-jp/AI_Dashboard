@@ -19,7 +19,7 @@ COPY ./app ./app
 COPY ./entrypoint.sh ./entrypoint.sh
 COPY ./manage.py ./manage.py
 COPY ./project ./project
-COPY ./requirements.txt ./requirements.txt
+COPY ./env/web/requirements.txt ./requirements.txt
 COPY ./static ./static
 COPY ./templates ./templates
 
@@ -51,7 +51,7 @@ COPY ./app $APP_HOME/app
 COPY ./entrypoint.sh $APP_HOME/entrypoint.sh
 COPY ./manage.py $APP_HOME/manage.py
 COPY ./project $APP_HOME/project
-COPY ./requirements.txt $APP_HOME/requirements.txt
+COPY ./env/web/requirements.txt $APP_HOME/requirements.txt
 COPY ./static $APP_HOME/static
 COPY ./templates $APP_HOME/templates
 
