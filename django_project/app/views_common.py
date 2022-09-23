@@ -123,4 +123,11 @@ def load_dataset(dataset):
 
     return dataloader
 
+def get_jupyter_nb_url():
+    """ Function: get_jupyter_nb_url
+     * return Jupyter Notebook URL
+    """
+    
+    return settings.JUPYTER_NB_URL
+
 

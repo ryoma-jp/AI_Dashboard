@@ -45,10 +45,12 @@ def view_streaming(request):
     sidebar_status = SidebarActiveStatus()
     sidebar_status.view_streaming = 'active'
     text = get_version()
+    jupyter_nb_url = get_jupyter_nb_url()
         
     context = {
         'sidebar_status': sidebar_status,
         'text': text,
+        'jupyter_nb_url': jupyter_nb_url,
         'ip_addr': ip_addr,
         'port': port,
         'valid_url': valid_url,

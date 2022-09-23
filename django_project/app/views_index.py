@@ -3,7 +3,7 @@ from django.shortcuts import render
 from app.models import Project, Dataset, MlModel
 from app.forms import ProjectForm, DatasetForm, MlModelForm
 
-from views_common import SidebarActiveStatus, get_version, get_all_fifo_command
+from views_common import SidebarActiveStatus, get_version, get_all_fifo_command, get_jupyter_nb_url
 
 from machine_learning.lib.trainer.trainer import Trainer
 
@@ -25,6 +25,7 @@ def index(request):
     sidebar_status.index = 'active'
     text = get_version()
     system_info = Trainer.GetSystemInfo()
+    jupyter_nb_url = get_jupyter_nb_url()
     
     context = {
         'projects': projects,
@@ -34,7 +35,8 @@ def index(request):
         'models': models,
         'sidebar_status': sidebar_status,
         'text': text,
-        'system_info': system_info
+        'jupyter_nb_url': jupyter_nb_url,
+        'system_info': system_info,
     }
     return render(request, 'index.html', context)
 

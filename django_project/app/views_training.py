@@ -145,6 +145,7 @@ def training(request):
         sidebar_status = SidebarActiveStatus()
         sidebar_status.training = 'active'
         text = get_version()
+        jupyter_nb_url = get_jupyter_nb_url()
         
         project = Project.objects.all().order_by('-id').reverse()
         project_name = request.session.get('training_view_selected_project', None)
@@ -183,6 +184,7 @@ def training(request):
             'tensorboard_port': tensorboard_port,
             'sidebar_status': sidebar_status,
             'text': text,
+            'jupyter_nb_url': 'jupyter_nb_url',
             'project_dropdown_selected': project_dropdown_selected,
             'model_dropdown_selected': model_dropdown_selected
         }

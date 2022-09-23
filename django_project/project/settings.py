@@ -168,3 +168,5 @@ CONFIG_DIR = os.environ.get('CONFIG_DIR')
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = ['http://*.localhost:1317']
 
+# Related URLs
+JUPYTER_NB_URL = f'http://localhost:35000?token={JUPYTER_NB_TOKEN}'
