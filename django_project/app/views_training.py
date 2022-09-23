@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel
 
-from views_common import SidebarActiveStatus, get_version, get_all_fifo_command
+from views_common import SidebarActiveStatus, get_version, get_all_fifo_command, get_jupyter_nb_url
 
 # Create your views here.
 

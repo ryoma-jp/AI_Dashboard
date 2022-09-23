@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel, Dataset
 
-from views_common import SidebarActiveStatus, get_version
+from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url
 
 # Create your views here.
 
