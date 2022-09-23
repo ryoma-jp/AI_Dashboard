@@ -38,6 +38,7 @@ ToDoのメモ．思いついたら順次追加する．
 * データセット分析
   * [x] 画像表示
   * [ ] 統計量表示
+  * [ ] 分析環境(Jupyter Notebook)
 * ダウンロード
   * [ ] 学習済みモデルのダウンロード(Keras H5)
   * [ ] 学習済みモデルのダウンロード(Saved Model)
@@ -60,7 +61,7 @@ ToDoのメモ．思いついたら順次追加する．
     1. local_settings.py生成  
         ```
         $ source venv/bin/activate
-        (venv) $ python3 tools/create_local_settings/create_local_settings.py --output_file django_project/project/local_settings.py
+        (venv) $ python3 tools/create_local_settings/create_local_settings.py --output_file django_project/project/local_settings.py  --jupyter_nb_config django_project/env/jupyter_notebook_tf/jupyter_notebook_config.py
         (venv) $ deactivate
         ```
     1. configファイル生成
@@ -1233,6 +1234,14 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
 
 * [Keras: release memory after finish training process](https://stackoverflow.com/questions/51005147/keras-release-memory-after-finish-training-process/52354943)
 
+## Jupyter Notebook
+
+* tokenを固定する
+  * ブラウザからJupyter Notebookを起動するために，tokenを指定する必要がある
+  * ランダムで生成されるtokenを取得することができないため，```.jupyter/jupyter_notebook_config.py```でtokenを固定する
+  * 参照
+    * [Jupyter notebookのパスワード](https://qiita.com/SaitoTsutomu/items/aee41edf1a990cad5be6)
+
 ## その他
 
 ### GitHubのMarkdownにPlantUMLを表示する方法
@@ -1262,3 +1271,19 @@ $ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 ```
 
 * [【Docker】docker-compose を最新版にアップグレードする](https://qiita.com/kottyan/items/c892b525b14f293ab7b3)
+
+### docker-compose.ymlでDockerfileのビルド時のパス起点を制御する
+
+* 問題の事象
+  * Dockerfileはビルド起点のパスの親ディレクトリに辿れない仕様であり，ファイルコピーやディレクトリのマウントをする際に参照エラーが生じる
+* 対策
+  * docker-compose.ymlでcontext, dockerfileを指定して，コピーやマウント対象ディレクトリの最上位階層をビルドの起点に設定する
+    ```
+      build:
+      context: <ビルド起点のパス>
+      dockerfile: <Dockerfileをcontextからの相対パスで指定>
+    ```
+* 参照
+  * [Docker ComposeでDockerfileをビルドする際に親ディレクトリのファイルをコピーする](https://zukucode.com/2020/08/docker-compose-parent-directory.html)
+
+

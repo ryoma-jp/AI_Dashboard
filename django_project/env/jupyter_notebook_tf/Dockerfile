@@ -13,4 +13,4 @@ RUN pip install opencv-python natsort numpy pandas xfeat seaborn japanize-matplo
                 optuna scikit-learn umap-learn \
                 sphinx sphinx_rtd_theme
 
-
+COPY ./jupyter_notebook_config.py /root/.jupyter/

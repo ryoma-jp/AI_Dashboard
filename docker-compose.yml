@@ -59,10 +59,13 @@ services:
       - type: bind
         source: "./django_project/media/dataset/"
         target: "/tf/data"
+      - type: bind
+        source: "./django_project/app/machine_learning/lib/"
+        target: "/tf/lib"
     ports:
       - 35000:8888
     env_file:
-      - ./.env.dev
+      - ./django_project/env/jupyter_notebook_tf/.env
     deploy:
       resources:
         reservations:
