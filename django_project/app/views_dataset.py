@@ -11,7 +11,7 @@ from django.conf import settings
 from app.models import Project, Dataset
 from app.forms import DatasetForm
 
-from views_common import SidebarActiveStatus, get_version, load_dataset
+from views_common import SidebarActiveStatus, get_version, load_dataset, get_jupyter_nb_url
 
 # Create your views here.
 
@@ -111,6 +111,7 @@ def dataset(request):
         sidebar_status = SidebarActiveStatus()
         sidebar_status.dataset = 'active'
         text = get_version()
+        jupyter_nb_url = get_jupyter_nb_url()
         
         project_name = request.session.get('dataset_view_dropdown_selected_project', None)
         if (project_name is not None):
@@ -129,6 +130,7 @@ def dataset(request):
             'dataset': dataset,
             'sidebar_status': sidebar_status,
             'text': text,
+            'jupyter_nb_url': jupyter_nb_url,
             'dropdown_selected_project': dropdown_selected_project,
             'form_custom_dataset': form_custom_dataset,
         }

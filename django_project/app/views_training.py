@@ -184,7 +184,7 @@ def training(request):
             'tensorboard_port': tensorboard_port,
             'sidebar_status': sidebar_status,
             'text': text,
-            'jupyter_nb_url': 'jupyter_nb_url',
+            'jupyter_nb_url': jupyter_nb_url,
             'project_dropdown_selected': project_dropdown_selected,
             'model_dropdown_selected': model_dropdown_selected
         }
