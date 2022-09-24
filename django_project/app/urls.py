@@ -1,6 +1,6 @@
 """app URL Configuration
 """
-from django.urls import path
+from django.urls import path, include
 from . import views_index, views_project, views_dataset, views_training, views_inference, views_view_streaming
 
 urlpatterns = [
@@ -15,4 +15,5 @@ urlpatterns = [
     path('project<int:project_id>/model<int:model_id>_edit/', views_project.model_edit, name='model_edit'),
     path('inference/', views_inference.inference, name='inference'),
     path('view_streaming/', views_view_streaming.view_streaming, name='view_streaming'),
+    path('', include('urls_api')),
 ]
