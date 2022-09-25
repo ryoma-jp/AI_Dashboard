@@ -110,8 +110,6 @@ def dataset(request):
         dataset = Dataset.objects.all().order_by('-id').reverse()
         sidebar_status = SidebarActiveStatus()
         sidebar_status.dataset = 'active'
-        text = get_version()
-        jupyter_nb_url = get_jupyter_nb_url()
         
         project_name = request.session.get('dataset_view_dropdown_selected_project', None)
         if (project_name is not None):
@@ -129,8 +127,8 @@ def dataset(request):
             'project': project,
             'dataset': dataset,
             'sidebar_status': sidebar_status,
-            'text': text,
-            'jupyter_nb_url': jupyter_nb_url,
+            'text': get_version(),
+            'jupyter_nb_url': get_jupyter_nb_url(),
             'dropdown_selected_project': dropdown_selected_project,
             'form_custom_dataset': form_custom_dataset,
         }
@@ -181,6 +179,7 @@ def dataset_detail(request, project_id, dataset_id):
             
             context = {
                 'text': get_version(),
+                'jupyter_nb_url': get_jupyter_nb_url(),
                 'project_id': project.id,
                 'dataset_id': dataset.id,
                 'dataset_name': dataset.name,
@@ -199,6 +198,7 @@ def dataset_detail(request, project_id, dataset_id):
                 dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
                 context = {
                     'text': get_version(),
+                    'jupyter_nb_url': get_jupyter_nb_url(),
                     'project_id': project.id,
                     'dataset_id': dataset.id,
                     'dataset_name': dataset.name,
@@ -289,6 +289,7 @@ def dataset_detail(request, project_id, dataset_id):
         
         context = {
             'text': get_version(),
+            'jupyter_nb_url': get_jupyter_nb_url(),
             'dataset_name': dataset.name,
             'dataloader_obj': dataloader_obj,
             'download_status': dataset.download_status,
@@ -307,6 +308,7 @@ def dataset_detail(request, project_id, dataset_id):
     else:
         context = {
             'text': get_version(),
+            'jupyter_nb_url': get_jupyter_nb_url(),
             'dataset_name': dataset.name,
             'download_status': dataset.download_status,
         }

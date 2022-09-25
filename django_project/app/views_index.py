@@ -23,9 +23,7 @@ def index(request):
     
     sidebar_status = SidebarActiveStatus()
     sidebar_status.index = 'active'
-    text = get_version()
     system_info = Trainer.GetSystemInfo()
-    jupyter_nb_url = get_jupyter_nb_url()
     
     context = {
         'projects': projects,
@@ -34,8 +32,8 @@ def index(request):
         'dataset_form': dataset_form,
         'models': models,
         'sidebar_status': sidebar_status,
-        'text': text,
-        'jupyter_nb_url': jupyter_nb_url,
+        'text': get_version(),
+        'jupyter_nb_url': get_jupyter_nb_url(),
         'system_info': system_info,
     }
     return render(request, 'index.html', context)

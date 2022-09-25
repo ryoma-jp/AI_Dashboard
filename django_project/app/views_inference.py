@@ -79,8 +79,6 @@ def inference(request):
     else:
         sidebar_status = SidebarActiveStatus()
         sidebar_status.inference = 'active'
-        text = get_version()
-        jupyter_nb_url = get_jupyter_nb_url()
         
         project = Project.objects.all().order_by('-id').reverse()
         project_name = request.session.get('inference_view_selected_project', None)
@@ -135,8 +133,8 @@ def inference(request):
             'model': model,
             'dataset': dataset,
             'sidebar_status': sidebar_status,
-            'text': text,
-            'jupyter_nb_url': jupyter_nb_url,
+            'text': get_version(),
+            'jupyter_nb_url': get_jupyter_nb_url(),
             'project_dropdown_selected': project_dropdown_selected,
             'model_dropdown_selected': model_dropdown_selected,
             'dataset_dropdown_selected': dataset_dropdown_selected,

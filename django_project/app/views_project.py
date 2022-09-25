@@ -56,11 +56,10 @@ def project_new(request):
     else:
         form = ProjectForm()
     
-    text = get_version()
-    
     context = {
         'form': form,
-        'text': text,
+        'text': get_version(),
+        'jupyter_nb_url': get_jupyter_nb_url(),
     }
     return render(request, 'project_new.html', context)
 
@@ -114,11 +113,10 @@ def project_edit(request, project_id):
         initial_dict = dict(name=project.name, description=project.description)
         form = ProjectForm(initial=initial_dict)
     
-    text = get_version()
-    
     context = {
         'form': form,
-        'text': text,
+        'text': get_version(),
+        'jupyter_nb_url': get_jupyter_nb_url(),
     }
     return render(request, 'project_edit.html', context)
 
@@ -211,13 +209,13 @@ def model_new(request, project_id):
     
     model_new_dropdown_selected = None
     dataset = Dataset.objects.all().filter(project=project).order_by('-id').reverse()
-    text = get_version()
     
     context = {
         'model_new_dropdown_selected': model_new_dropdown_selected,
         'dataset': dataset,
         'form': form,
-        'text': text
+        'text': get_version(),
+        'jupyter_nb_url': get_jupyter_nb_url(),
     }
     return render(request, 'model_new.html', context)
 
@@ -284,13 +282,13 @@ def model_edit(request, project_id, model_id):
     
     model_edit_dropdown_selected = model.dataset
     dataset = Dataset.objects.all().filter(project=project).order_by('-id').reverse()
-    text = get_version()
     
     context = {
         'model_edit_dropdown_selected': model_edit_dropdown_selected,
         'dataset': dataset,
         'form': form,
-        'text': text
+        'text': get_version(),
+        'jupyter_nb_url': get_jupyter_nb_url(),
     }
     return render(request, 'model_edit.html', context)
 
