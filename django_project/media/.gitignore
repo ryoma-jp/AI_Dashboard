@@ -1,8 +1,20 @@
-*
-!.gitignore
-!documents
-!dataset
-!config
-!model
-!notebooks
+/*
+!/.gitignore
+
+!/documents
+/documents/*
+
+!/dataset
+/dataset/*
+
+!/config
+/config/*
+
+!/model
+/model/*
+
+!/notebooks
+/notebooks/*
+!/notebooks/.gitignore
+!/notebooks/samples
 
