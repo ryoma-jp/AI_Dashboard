@@ -1286,4 +1286,12 @@ $ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 * 参照
   * [Docker ComposeでDockerfileをビルドする際に親ディレクトリのファイルをコピーする](https://zukucode.com/2020/08/docker-compose-parent-directory.html)
 
+### docker-compose.ymlでコンテナの環境変数を動的に与える
+
+* ホストPCのIPアドレスやホスト名など，環境の移行や複製で変化が生じるパラメータを自動で取得し，ALLOWD_HOSTSなどを動的に変更したいことがある
+* docker-compose.ymlには記載できない仕様の為，ホストPCの環境変数を読み込む順序で対応するしかない模様
+
+* 参照
+  * [docker-composeで環境変数を設定する](https://qiita.com/reflet/items/a96752b4cd3838ea6932)
+  * [Docker Compose v2 以降環境変数にインラインコマンドが使えないっぽい](https://ema-hiro.hatenablog.com/entry/2021/10/11/131455)
 

@@ -5,6 +5,8 @@ chmod a+w django_project/media/dataset
 chmod a+w django_project/media/model
 chmod a+w django_project/media/notebooks
 
+export ALLOWED_HOSTS=`hostname -I | cut -d " " -f1`
+
 docker-compose build
 STAT_BUILD=$?
 if [ ! ${STAT_BUILD} -eq 0 ]; then

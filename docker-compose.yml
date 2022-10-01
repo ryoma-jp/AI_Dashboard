@@ -20,6 +20,8 @@ services:
       - 8000
     ports:
       - 6006:6006
+    environment:
+      ALLOWED_HOSTS: "localhost ${ALLOWED_HOSTS}"
     env_file:
       - ./.env.dev
     depends_on:
@@ -64,6 +66,8 @@ services:
         target: "/tf/lib"
     ports:
       - 35000:8888
+    environment:
+      AI_DASHBORARD_IPADDR: ${ALLOWED_HOSTS}
     env_file:
       - ./django_project/env/jupyter_notebook_tf/.env
     deploy:
