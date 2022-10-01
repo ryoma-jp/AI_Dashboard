@@ -11,7 +11,7 @@ from django.conf import settings
 from app.models import Project, Dataset, MlModel
 from app.forms import ProjectForm, MlModelForm
 
-from views_common import SidebarActiveStatus, get_version, load_dataset
+from views_common import SidebarActiveStatus, get_version, load_dataset, get_jupyter_nb_url
 
 # Create your views here.
 

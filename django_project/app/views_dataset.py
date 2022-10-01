@@ -111,8 +111,9 @@ def dataset(request):
         sidebar_status = SidebarActiveStatus()
         sidebar_status.dataset = 'active'
         
+        project_num = project.count()
         project_name = request.session.get('dataset_view_dropdown_selected_project', None)
-        if (project_name is not None):
+        if ((project_name is not None) and (project_num > 0)):
             dropdown_selected_project = Project.objects.get(name=project_name)
         else:
             dropdown_selected_project = None

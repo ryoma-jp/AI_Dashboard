@@ -5,6 +5,10 @@ from rest_framework.generics import ListCreateAPIView
 from serializers import ProjectSerializer, DatasetSerializer
 
 class get_project_list(ListCreateAPIView):
+    """get_project_list
+    
+    プロジェクトリストを取得する
+    """
     # 対象とするモデルのオブジェクトを定義
     queryset = Project.objects.all()
     
@@ -18,6 +22,10 @@ class get_project_list(ListCreateAPIView):
     http_method_names = ['get']
 
 class get_dataset_list(ListCreateAPIView):
+    """get_project_list
+    
+    データセットのリストを取得する
+    """
     # 対象とするモデルのオブジェクトを定義
     queryset = Dataset.objects.filter(download_status='Done')
     

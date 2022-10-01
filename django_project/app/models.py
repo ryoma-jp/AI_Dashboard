@@ -36,6 +36,7 @@ class Dataset(models.Model):
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
     dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
+    dataset_dir_offset = models.CharField('', max_length=512, blank=True)    # dataset directory under 'DATASET_DIR'
     
     train_zip = models.FileField(upload_to=train_dataset_path, max_length=512)
     valid_zip = models.FileField(upload_to=validation_dataset_path, max_length=512)
@@ -80,6 +81,9 @@ class Dataset(models.Model):
             self.dataset_dir = os.path.join(
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'DATASET_DIR', None),
+                                   self.project.hash,
+                                   f'dataset_{self.id}')
+            self.dataset_dir_offset = os.path.join(
                                    self.project.hash,
                                    f'dataset_{self.id}')
             
