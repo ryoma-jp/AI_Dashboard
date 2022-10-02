@@ -146,8 +146,7 @@ class DataLoaderCIFAR10(DataLoader):
 					tar.extractall(path=dataset_dir)
 			else:
 				logging.debug('CIFAR-10 dataset is exists (Skip Download)')
-			
-			dataset_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
+		dataset_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
 			
 		# --- load training data ---
 		train_data_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
