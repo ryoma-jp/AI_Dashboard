@@ -32,27 +32,28 @@ class Trainer():
 			self.trainer_ctrl_fifo = trainer_ctrl_fifo
 			
 		def on_train_batch_end(self, batch, logs=None):
-			fd = os.open(self.trainer_ctrl_fifo, os.O_RDONLY | os.O_NONBLOCK)
-			flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-			flags &= ~os.O_NONBLOCK
-			fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+			if (self.trainer_ctrl_fifo is not None):
+				fd = os.open(self.trainer_ctrl_fifo, os.O_RDONLY | os.O_NONBLOCK)
+				flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+				flags &= ~os.O_NONBLOCK
+				fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+				
+				try:
+					command = os.read(fd, 128)
+					command = command.decode()[:-1]
+					while (True):
+						buf = os.read(fd, 65536)
+						if not buf:
+							break
+				finally:
+					os.close(fd)
 			
-			try:
-				command = os.read(fd, 128)
-				command = command.decode()[:-1]
-				while (True):
-					buf = os.read(fd, 65536)
-					if not buf:
-						break
-			finally:
-				os.close(fd)
-			
-			if (command):
-				if (command == 'stop'):
-					print('End batch: recv command={}'.format(command))
-					self.model.stop_training = True
-				else:
-					print('End batch: recv unknown command={}'.format(command))
+				if (command):
+					if (command == 'stop'):
+						print('End batch: recv command={}'.format(command))
+						self.model.stop_training = True
+					else:
+						print('End batch: recv unknown command={}'.format(command))
 			
 		def on_epoch_end(self, epoch, logs=None):
 			keys = list(logs.keys())
@@ -127,7 +128,9 @@ class Trainer():
 		return
 	
 	# --- 学習 ---
-	def fit(self, web_app_ctrl_fifo, trainer_ctrl_fifo, x_train, y_train, x_val=None, y_val=None, x_test=None, y_test=None,
+	def fit(self, x_train, y_train,
+			x_val=None, y_val=None, x_test=None, y_test=None,
+			web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
 			da_params=None,
 			batch_size=32, epochs=200,
 			verbose=0):
@@ -193,8 +196,9 @@ class Trainer():
 			plt.close()
 		
 		# --- 学習完了をアプリへ通知 ---
-		with open(web_app_ctrl_fifo, 'w') as f:
-			f.write('trainer_done\n')
+		if (web_app_ctrl_fifo is not None):
+			with open(web_app_ctrl_fifo, 'w') as f:
+				f.write('trainer_done\n')
 		
 		return
 	

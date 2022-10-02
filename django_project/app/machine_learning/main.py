@@ -180,8 +180,9 @@ def main():
 	
 	if (args.mode == 'train'):
 		# --- 学習 ---
-		trainer.fit(web_app_ctrl_fifo, trainer_ctrl_fifo, 
-			x_train, y_train, x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+		trainer.fit(x_train, y_train,
+			x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
+			web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
 			batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
 		trainer.save_model()
 		
