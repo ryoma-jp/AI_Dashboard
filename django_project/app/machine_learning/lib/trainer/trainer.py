@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from pathlib import Path
+
 import tensorflow as tf
 from tensorflow.python.client import device_lib
 from tensorflow import keras
@@ -135,12 +137,12 @@ class Trainer():
 			batch_size=32, epochs=200,
 			verbose=0):
 		# --- 学習 ---
-		os.makedirs(os.path.join(self.output_dir, 'checkpoints'), exist_ok=True)
-		checkpoint_path = os.path.join(self.output_dir, 'checkpoints', 'model.ckpt')
+		os.makedirs(Path(self.output_dir, 'checkpoints'), exist_ok=True)
+		checkpoint_path = Path(self.output_dir, 'checkpoints', 'model.ckpt')
 		cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
 		es_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto')
 		custom_callback = self.CustomCallback(trainer_ctrl_fifo)
-		tensorboard_logdir = os.path.join(self.output_dir, 'logs')
+		tensorboard_logdir = Path(self.output_dir, 'logs')
 		tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
 		#callbacks = [cp_callback, es_callback]
 		callbacks = [cp_callback, custom_callback, tensorboard_callback]
@@ -177,9 +179,9 @@ class Trainer():
 		
 		# --- メトリクスを保存 ---
 		metrics = history.history
-		os.makedirs(os.path.join(self.output_dir, 'metrics'), exist_ok=True)
+		os.makedirs(Path(self.output_dir, 'metrics'), exist_ok=True)
 		df_metrics = pd.DataFrame(metrics)
-		df_metrics.to_csv(os.path.join(self.output_dir, 'metrics', 'metrics.csv'), index_label='epoch')
+		df_metrics.to_csv(Path(self.output_dir, 'metrics', 'metrics.csv'), index_label='epoch')
 		
 		epoch = df_metrics.index.values
 		for column in df_metrics.columns:
@@ -190,7 +192,7 @@ class Trainer():
 			plt.grid(True)
 			plt.tight_layout()
 			
-			graph_name = os.path.join(self.output_dir, 'metrics', '{}.png'.format(column))
+			graph_name = Path(self.output_dir, 'metrics', '{}.png'.format(column))
 			plt.savefig(graph_name)
 			
 			plt.close()
@@ -210,19 +212,19 @@ class Trainer():
 	# --- モデル保存 ---
 	def save_model(self):
 		# --- 保存先ディレクトリ作成 ---
-		model_dir = os.path.join(self.output_dir, 'models')
-		os.makedirs(os.path.join(model_dir, 'checkpoint'), exist_ok=True)
-		os.makedirs(os.path.join(model_dir, 'saved_model'), exist_ok=True)
-		os.makedirs(os.path.join(model_dir, 'hdf5'), exist_ok=True)
+		model_dir = Path(self.output_dir, 'models')
+		os.makedirs(Path(model_dir, 'checkpoint'), exist_ok=True)
+		os.makedirs(Path(model_dir, 'saved_model'), exist_ok=True)
+		os.makedirs(Path(model_dir, 'hdf5'), exist_ok=True)
 		
 		# --- checkpoint ---
-		self.model.save_weights(os.path.join(model_dir, 'checkpoint', 'model.ckpt'))
+		self.model.save_weights(Path(model_dir, 'checkpoint', 'model.ckpt'))
 		
 		# --- saved_model ---
-		self.model.save(os.path.join(model_dir, 'saved_model'))
+		self.model.save(Path(model_dir, 'saved_model'))
 		
 		# --- hdf5 ---
-		self.model.save(os.path.join(model_dir, 'hdf5', 'model.h5'))
+		self.model.save(Path(model_dir, 'hdf5', 'model.h5'))
 		
 		return
 	
@@ -403,7 +405,7 @@ class TrainerResNet(Trainer):
 				return
 			
 		if (self.output_dir is not None):
-			keras.utils.plot_model(self.model, os.path.join(self.output_dir, 'plot_model.png'), show_shapes=True)
+			keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
 		
 		return
 	
@@ -485,7 +487,7 @@ class TrainerCNN(Trainer):
 		
 		self._compile_model(optimizer=optimizer, loss=loss)
 		if (self.output_dir is not None):
-			keras.utils.plot_model(self.model, os.path.join(self.output_dir, 'plot_model.png'), show_shapes=True)
+			keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
 		
 		return
 	
@@ -515,7 +517,7 @@ class TrainerMLP(Trainer):
 			self.model = _load_model(input_shape)
 			self._compile_model(optimizer=optimizer)
 			if (self.output_dir is not None):
-				keras.utils.plot_model(self.model, os.path.join(self.output_dir, 'plot_model.png'), show_shapes=True)
+				keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
 		
 		return
 	

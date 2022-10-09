@@ -5,6 +5,8 @@ import json
 import cv2
 import shutil
 
+from pathlib import Path
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 
@@ -33,7 +35,7 @@ def _save_image_files(images, image_shape, labels, output_dir, name='images'):
     """
     
     # --- create output directory ---
-    os.makedirs(os.path.join(output_dir, name), exist_ok=True)
+    os.makedirs(Path(output_dir, name), exist_ok=True)
     
     # --- save image files ---
     dict_image_file = {
@@ -42,17 +44,17 @@ def _save_image_files(images, image_shape, labels, output_dir, name='images'):
         'class_id': [],
     }
     for i, (image, label) in enumerate(zip(images, labels)):
-        image_file = os.path.join(name, f'{i:08}.png')
+        image_file = Path(name, f'{i:08}.png')
         image = image.reshape(image_shape)
-        cv2.imwrite(os.path.join(output_dir, image_file), image)
+        cv2.imwrite(str(Path(output_dir, image_file)), image)
         
         dict_image_file['id'].append(i)
-        dict_image_file['file'].append(image_file)
+        dict_image_file['file'].append(str(image_file))
         # dict_image_file['class_id'].append(int(np.argmax(label)))
         dict_image_file['class_id'].append(int(label))
     
     # --- save image files information to json file ---
-    with open(os.path.join(output_dir, f'info_{name}.json'), 'w') as f:
+    with open(Path(output_dir, f'info_{name}.json'), 'w') as f:
         json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
     
     return None
@@ -66,7 +68,8 @@ def dataset(request):
     # --- reset dataset detail parameters ---
     if ('dropdown_dataset_info' in request.session.keys()):
         del request.session['dropdown_dataset_info']
-        del request.session['selected_dataset_type']
+        if ('selected_dataset_type' in request.session.keys()):
+            del request.session['selected_dataset_type']
     
     if (request.method == 'POST'):
         if ('dataset_view_dropdown' in request.POST):
@@ -92,9 +95,9 @@ def dataset(request):
                           )
         
                 # --- unzip ---
-                train_dir = os.path.dirname(dataset.train_zip.path)
-                valid_dir = os.path.dirname(dataset.valid_zip.path)
-                test_dir = os.path.dirname(dataset.test_zip.path)
+                train_dir = Path(dataset.train_zip.path).parent
+                valid_dir = Path(dataset.valid_zip.path).parent
+                test_dir  = Path(dataset.test_zip.path).parent
                 
                 shutil.unpack_archive(dataset.train_zip.path, train_dir)
                 shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
@@ -141,11 +144,11 @@ def dataset_detail(request, project_id, dataset_id):
     """
     
     def _get_dataloader_obj(dataset):
-        dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
-        download_dir = os.path.join(dataset_dir, f'dataset_{dataset.id}')
-        if (os.path.exists(os.path.join(download_dir, 'dataset.pkl'))):
+        dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
+        download_dir = Path(dataset_dir, f'dataset_{dataset.id}')
+        if (Path(download_dir, 'dataset.pkl').exists()):
             download_button_state = "disabled"
-            with open(os.path.join(download_dir, 'dataset.pkl'), 'rb') as f:
+            with open(Path(download_dir, 'dataset.pkl'), 'rb') as f:
                 dataloader_obj = pickle.load(f)
         else:
             download_button_state = ""
@@ -265,7 +268,7 @@ def dataset_detail(request, project_id, dataset_id):
             images_page_now = request.session.get('image_gallery_page_now', 1)
             images_per_page = 50
             
-            json_file = os.path.join(download_dir, f'info_{selected_dataset_type}.json')
+            json_file = Path(download_dir, f'info_{selected_dataset_type}.json')
             with open(json_file, 'r') as f:
                 json_data = json.load(f)
             
@@ -275,7 +278,7 @@ def dataset_detail(request, project_id, dataset_id):
             for i in range((images_page_now-1)*images_per_page, ((images_page_now-1)*images_per_page)+images_per_page):
                 image_gallery_data.append({
                     'id': json_data['id'][i],
-                    'file': os.path.join(settings.MEDIA_URL,
+                    'file': Path(settings.MEDIA_URL,
                                          settings.DATASET_DIR,
                                          dataset.project.hash,
                                          f'dataset_{dataset.id}',

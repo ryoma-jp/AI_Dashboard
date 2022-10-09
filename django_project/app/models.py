@@ -1,5 +1,4 @@
-import os
-
+from pathlib import Path
 from django.db import models
 from django.conf import settings
 
@@ -21,15 +20,15 @@ class Project(models.Model):
 #---------------------------------------
 def train_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
-    return os.path.join(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'train', filename)
+    return Path(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'train', filename)
     
 def validation_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
-    return os.path.join(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'validation', filename)
+    return Path(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'validation', filename)
     
 def test_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
-    return os.path.join(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'test', filename)
+    return Path(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'test', filename)
     
 class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
@@ -78,12 +77,12 @@ class Dataset(models.Model):
                 kwargs.pop('force_insert')
         
             # --- set dataset_dir ---
-            self.dataset_dir = os.path.join(
+            self.dataset_dir = Path(
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'DATASET_DIR', None),
                                    self.project.hash,
                                    f'dataset_{self.id}')
-            self.dataset_dir_offset = os.path.join(
+            self.dataset_dir_offset = Path(
                                    self.project.hash,
                                    f'dataset_{self.id}')
             

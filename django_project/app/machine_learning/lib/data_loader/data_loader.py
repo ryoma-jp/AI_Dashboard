@@ -12,6 +12,8 @@ import tarfile
 import gzip
 import cv2
 
+from pathlib import Path
+
 #---------------------------------
 # クラス; データ取得基底クラス
 #---------------------------------
@@ -25,7 +27,7 @@ class DataLoader():
 	
 	# --- ファイルダウンロード ---
 	def file_download(self, dir, url):
-		save_file = os.path.join(dir, os.path.basename(url))
+		save_file = Path(dir, Path(url).name)
 		content = requests.get(url).content
 		
 		with open(save_file, mode='wb') as f:
@@ -138,11 +140,12 @@ class DataLoaderCIFAR10(DataLoader):
 		if (download):
 			logging.debug('[DataLoaderCIFAR10] {}'.format(dataset_dir))
 			os.makedirs(dataset_dir, exist_ok=True)
-			if (not os.path.exists(os.path.join(dataset_dir, 'cifar-10-batches-py'))):
+			if (not Path(dataset_dir, 'cifar-10-batches-py').exists()):
 				url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 				save_file = self.file_download(dataset_dir, url)
 				
 				with tarfile.open(save_file) as tar:
+					# --- CVE-2007-4559 start ---
 					def is_within_directory(directory, target):
 						
 						abs_directory = os.path.abspath(directory)
@@ -155,31 +158,31 @@ class DataLoaderCIFAR10(DataLoader):
 					def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
 					
 						for member in tar.getmembers():
-							member_path = os.path.join(path, member.name)
+							member_path = Path(path, member.name)
 							if not is_within_directory(path, member_path):
 								raise Exception("Attempted Path Traversal in Tar File")
 					
 						tar.extractall(path, members, numeric_owner=numeric_owner) 
 						
-					
 					safe_extract(tar, path=dataset_dir)
+					# --- CVE-2007-4559 end ---
 			else:
 				logging.debug('CIFAR-10 dataset is exists (Skip Download)')
-		dataset_dir = os.path.join(dataset_dir, 'cifar-10-batches-py')
+		dataset_dir = Path(dataset_dir, 'cifar-10-batches-py')
 			
 		# --- load training data ---
 		train_data_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
-		dict_data = unpickle(os.path.join(dataset_dir, train_data_list[0]))
+		dict_data = unpickle(Path(dataset_dir, train_data_list[0]))
 		train_images = dict_data[b'data']
 		train_labels = dict_data[b'labels'].copy()
 		for train_data in train_data_list[1:]:
-			dict_data = unpickle(os.path.join(dataset_dir, train_data))
+			dict_data = unpickle(Path(dataset_dir, train_data))
 			train_images = np.vstack((train_images, dict_data[b'data']))
 			train_labels = np.hstack((train_labels, dict_data[b'labels']))
 		
 		# --- load test data ---
 		test_data = "test_batch"
-		dict_data = unpickle(os.path.join(dataset_dir, test_data))
+		dict_data = unpickle(Path(dataset_dir, test_data))
 		test_images = dict_data[b'data']
 		test_labels = dict_data[b'labels'].copy()
 		
@@ -233,14 +236,14 @@ class DataLoaderMNIST(DataLoader):
 			]
 			
 			for mnist_file in mnist_files:
-				if (not os.path.exists(os.path.join(dataset_dir, mnist_file))):
+				if (not Path(dataset_dir, mnist_file).exists()):
 					url = 'http://yann.lecun.com/exdb/mnist/' + mnist_file
 					save_file = self.file_download(dataset_dir, url)
 					
 					with gzip.open(save_file, 'rb') as gz:
 						gz_content = gz.read()
 					
-					save_file = os.path.join(dataset_dir, mnist_file[:-3])
+					save_file = Path(dataset_dir, mnist_file[:-3])
 					with open(save_file, 'wb') as f:
 						f.write(gz_content)
 					
@@ -248,7 +251,7 @@ class DataLoaderMNIST(DataLoader):
 					logging.debug('{} is exists (Skip Download)'.format(mnist_file))
 			
 		# --- load training data ---
-		f = open(os.path.join(dataset_dir, 'train-images-idx3-ubyte'))
+		f = open(Path(dataset_dir, 'train-images-idx3-ubyte'))
 		byte_data = np.fromfile(f, dtype=np.uint8)
 		
 		n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
@@ -261,7 +264,7 @@ class DataLoaderMNIST(DataLoader):
 			self.train_images = byte_data[16:].reshape(n_items, img_h, img_w, 1)
 		
 		# --- load training label ---
-		f = open(os.path.join(dataset_dir, 'train-labels-idx1-ubyte'))
+		f = open(Path(dataset_dir, 'train-labels-idx1-ubyte'))
 		byte_data = np.fromfile(f, dtype=np.uint8)
 		
 		n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
@@ -272,7 +275,7 @@ class DataLoaderMNIST(DataLoader):
 			self.train_labels = np.array([identity[i] for i in self.train_labels])
 		
 		# --- load test data ---
-		f = open(os.path.join(dataset_dir, 't10k-images-idx3-ubyte'))
+		f = open(Path(dataset_dir, 't10k-images-idx3-ubyte'))
 		byte_data = np.fromfile(f, dtype=np.uint8)
 		
 		n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
@@ -285,7 +288,7 @@ class DataLoaderMNIST(DataLoader):
 			self.test_images = byte_data[16:].reshape(n_items, img_h, img_w, 1)
 		
 		# --- load test label ---
-		f = open(os.path.join(dataset_dir, 't10k-labels-idx1-ubyte'))
+		f = open(Path(dataset_dir, 't10k-labels-idx1-ubyte'))
 		byte_data = np.fromfile(f, dtype=np.uint8)
 		
 		n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
@@ -327,10 +330,10 @@ class DataLoaderCustom(DataLoader):
 				[引数説明]
 				  * data_dir: カスタムデータセットのディレクトリ
 			"""
-			json_file = os.path.join(data_dir, 'info.json')
+			json_file = Path(data_dir, 'info.json')
 			df_data = pd.read_json(json_file, orient='records')
 			
-			img = cv2.imread(os.path.join(data_dir, df_data['file'][0]))
+			img = cv2.imread(Path(data_dir, df_data['file'][0]))
 			n_items = len(df_data)
 			if (img.ndim) == 3:
 				img_h, img_w, n_channel = img.shape
@@ -338,7 +341,7 @@ class DataLoaderCustom(DataLoader):
 			images = []
 			labels = []
 			for data_ in df_data.itertuples():
-				images.append(list(cv2.imread(os.path.join(data_dir, data_.file))))
+				images.append(list(cv2.imread(Path(data_dir, data_.file))))
 				labels.append(data_.class_id)
 			
 			return np.array(images), np.array(labels)

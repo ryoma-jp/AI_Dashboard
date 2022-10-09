@@ -5,6 +5,8 @@ import signal
 import subprocess
 import json
 
+from pathlib import Path
+
 from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel
@@ -32,12 +34,12 @@ def training(request):
             logging.debug(selected_model)
             
             # --- Load config ---
-            config_path = os.path.join(selected_model.model_dir, 'config.json')
+            config_path = Path(selected_model.model_dir, 'config.json')
             with open(config_path, 'r') as f:
                 config_data = json.load(f)
             
             # --- Training Model ---
-            main_path = os.path.abspath('./app/machine_learning/main.py')
+            main_path = Path('./app/machine_learning/main.py').resolve()
             logging.debug(f'main_path: {main_path}')
             logging.debug(f'current working directory: {os.getcwd()}')
             subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
@@ -56,7 +58,7 @@ def training(request):
             logging.debug(selected_model)
             
             # --- Load config ---
-            config_path = os.path.join(selected_model.model_dir, 'config.json')
+            config_path = Path(selected_model.model_dir, 'config.json')
             with open(config_path, 'r') as f:
                 config_data = json.load(f)
             
@@ -78,7 +80,7 @@ def training(request):
         return
     
     def _launch_tensorboard(model):
-        config_path = os.path.join(model.model_dir, 'config.json')
+        config_path = Path(model.model_dir, 'config.json')
         with open(config_path, 'r') as f:
             config_data = json.load(f)
         
@@ -168,7 +170,7 @@ def training(request):
         
         # --- Get Tensorboard PORT ---
         if (model_dropdown_selected is not None):
-            config_path = os.path.join(model_dropdown_selected.model_dir, 'config.json')
+            config_path = Path(model_dropdown_selected.model_dir, 'config.json')
             with open(config_path, 'r') as f:
                 config_data = json.load(f)
             tensorboard_port = config_data["env"]["tensorboard_port"]["value"]
@@ -211,7 +213,7 @@ def model_paraemter_edit(request, model_id):
     model = MlModel.objects.get(pk=model_id)
     
     # --- load config ---
-    with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+    with open(Path(model.model_dir, 'config.json'), 'r') as f:
         config_data = json.load(f)
     
     # logging.info('-------------------------------------')
@@ -237,7 +239,7 @@ def model_paraemter_edit(request, model_id):
             save_config_list = [key for key in config_data['training_parameter'].keys() if config_data['training_parameter'][key]['configurable']]
             _set_config_parameters(config_data['training_parameter'], save_config_list)
             
-            with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
+            with open(Path(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
         
         return redirect('model_paraemter_edit', model_id)

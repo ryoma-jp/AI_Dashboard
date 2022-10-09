@@ -5,6 +5,8 @@ import pickle
 import hashlib
 import shutil
 
+from pathlib import Path
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 
@@ -50,7 +52,7 @@ def project_new(request):
             Dataset.objects.create(name='CIFAR-10', project=project)
             
             # --- create project directory ---
-            os.makedirs(os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
+            os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
             
             return redirect('index')
     else:
@@ -97,12 +99,12 @@ def project_edit(request, project_id):
                 
         elif ('project_delete' in request.POST):
             # --- delete project data ---
-            project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
-            if (os.path.exists(project_dir)):
+            project_dir = Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
+            if (project_dir.exists()):
                 shutil.rmtree(project_dir)
             
-            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
-            if (os.path.exists(dataset_dir)):
+            dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
+            if (dataset_dir.exists()):
                 shutil.rmtree(dataset_dir)
             
             # --- delete database ---
@@ -148,14 +150,14 @@ def model_new(request, project_id):
             model.hash = _create_model_hash(project, model)
             
             # --- create model directory ---
-            project_dir = os.path.join(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
-            model_dir = os.path.join(project_dir, model.hash)
-            dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
+            project_dir = Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
+            model_dir = Path(project_dir, model.hash)
+            dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
             os.makedirs(model_dir)
             model.model_dir = model_dir
             
             # --- create environment directory ---
-            env_dir = os.path.join(settings.ENV_DIR, project.hash, model.hash)
+            env_dir = Path(settings.ENV_DIR, project.hash, model.hash)
             os.makedirs(env_dir, exist_ok=True)
             
             # --- create dataset directory ---
@@ -168,15 +170,15 @@ def model_new(request, project_id):
                 config_file = 'config_cifar10.json'
             else:
                 config_file = 'config_blank.json'
-            with open(os.path.join(settings.MEDIA_ROOT, settings.CONFIG_DIR, config_file), 'r') as f:
+            with open(Path(settings.MEDIA_ROOT, settings.CONFIG_DIR, config_file), 'r') as f:
                 dict_config = json.load(f)
             
             # --- set parameters ---
-            dict_config['env']['web_app_ctrl_fifo']['value'] = os.path.join(env_dir, 'web_app_ctrl_fifo')
-            dict_config['env']['trainer_ctrl_fifo']['value'] = os.path.join(env_dir, 'fifo_trainer_ctrl')
-            dict_config['env']['result_dir']['value'] = model.model_dir
-            dict_config['dataset']['dataset_dir']['value'] = model.model_dir	# directory that contains 'dataset.pkl'
-            with open(os.path.join(model.model_dir, 'config.json'), 'w') as f:
+            dict_config['env']['web_app_ctrl_fifo']['value'] = str(Path(env_dir, 'web_app_ctrl_fifo'))
+            dict_config['env']['trainer_ctrl_fifo']['value'] = str(Path(env_dir, 'fifo_trainer_ctrl'))
+            dict_config['env']['result_dir']['value'] = str(model.model_dir)
+            dict_config['dataset']['dataset_dir']['value'] = str(model.model_dir)	# directory that contains 'dataset.pkl'
+            with open(Path(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(dict_config, f, ensure_ascii=False, indent=4)
             
             # logging.info('-------------------------------------')
@@ -185,7 +187,7 @@ def model_new(request, project_id):
             
             # --- preparing dataset ---
             dataset = load_dataset(model.dataset)
-            model.dataset_pickle = os.path.join(model.model_dir, 'dataset.pkl')
+            model.dataset_pickle = Path(model.model_dir, 'dataset.pkl')
             with open(model.dataset_pickle, 'wb') as f:
                 pickle.dump(dataset, f)
             
@@ -195,12 +197,12 @@ def model_new(request, project_id):
             
             # --- Create trainer control FIFO ---
             fifo = dict_config['env']['trainer_ctrl_fifo']['value']
-            if (not os.path.exists(fifo)):
+            if (not Path(fifo).exists()):
                 os.mkfifo(fifo)
             
             # --- Create web app control FIFO ---
             fifo = dict_config['env']['web_app_ctrl_fifo']['value']
-            if (not os.path.exists(fifo)):
+            if (not Path(fifo).exists()):
                 os.mkfifo(fifo)
             
             return redirect('index')
@@ -244,13 +246,13 @@ def model_edit(request, project_id, model_id):
                 model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_dataset))
                 
                 # --- load config ---
-                with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+                with open(Path(model.model_dir, 'config.json'), 'r') as f:
                     config_data = json.load(f)
                 dataset_dir = config_data['dataset']['dataset_dir']['value']
                 
                 # --- preparing dataset ---
                 dataset = load_dataset(model.dataset)
-                model.dataset_pickle = os.path.join(dataset_dir, 'dataset.pkl')
+                model.dataset_pickle = Path(dataset_dir, 'dataset.pkl')
                 with open(model.dataset_pickle, 'wb') as f:
                     pickle.dump(dataset, f)
                 

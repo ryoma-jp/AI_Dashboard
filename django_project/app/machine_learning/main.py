@@ -45,6 +45,8 @@ import numpy as np
 import pandas as pd
 import pickle
 
+from pathlib import Path
+
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
 from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 
@@ -122,7 +124,7 @@ def main():
 	epochs = config_data['training_parameter']['epochs']['value']
 	
 	# --- データセット読み込み ---
-	with open(os.path.join(dataset_dir, 'dataset.pkl'), 'rb') as f:
+	with open(Path(dataset_dir, 'dataset.pkl'), 'rb') as f:
 		dataset = pickle.load(f)
 	
 	if (loss_func == "sparse_categorical_crossentropy"):
@@ -146,8 +148,8 @@ def main():
 	
 	# --- モデル取得 ---
 	if (args.mode == 'predict'):
-		model_file = os.path.join(result_dir, 'models', 'hdf5', 'model.h5')
-		if (not os.path.exists(model_file)):
+		model_file = Path(result_dir, 'models', 'hdf5', 'model.h5')
+		if (not model_file.exists()):
 			model_file = None
 	else:
 		model_file = None
@@ -197,7 +199,7 @@ def main():
 				'prediction': int(prediction),
 				'label': int(label),
 			})
-		with open(os.path.join(result_dir, 'prediction.json'), 'w') as f:
+		with open(Path(result_dir, 'prediction.json'), 'w') as f:
 			json.dump(json_data, f, ensure_ascii=False, indent=4)
 		
 	else:

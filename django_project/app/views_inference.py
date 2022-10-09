@@ -3,6 +3,8 @@ import json
 import subprocess
 import logging
 
+from pathlib import Path
+
 from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel, Dataset
@@ -30,12 +32,12 @@ def inference(request):
             logging.debug(selected_model)
             
             # --- Load config ---
-            config_path = os.path.join(selected_model.model_dir, 'config.json')
+            config_path = Path(selected_model.model_dir, 'config.json')
             with open(config_path, 'r') as f:
                 config_data = json.load(f)
             
             # --- Predict ---
-            main_path = os.path.abspath('./app/machine_learning/main.py')
+            main_path = Path('./app/machine_learning/main.py').resolve()
             logging.debug(f'main_path: {main_path}')
             logging.debug(f'current working directory: {os.getcwd()}')
             subproc_inference = subprocess.Popen(['python', main_path, '--mode', 'predict', '--config', config_path])
@@ -119,8 +121,8 @@ def inference(request):
         
         # --- Load prediction ---
         if (dataset_dropdown_selected is not None):
-            prediction_json = os.path.join(model_dropdown_selected.model_dir, 'prediction.json')
-            if (os.path.exists(prediction_json)):
+            prediction_json = Path(model_dropdown_selected.model_dir, 'prediction.json')
+            if (prediction_json.exists()):
                 with open(prediction_json, 'r') as f:
                     prediction = json.load(f)
             else:

@@ -4,6 +4,8 @@ import logging
 import json
 import pickle
 
+from pathlib import Path
+
 from django.conf import settings
 
 from app.models import Project, MlModel
@@ -70,7 +72,7 @@ def get_all_fifo_command():
         models = MlModel.objects.filter(project=project).order_by('-id').reverse()
         
         for model in models:
-            with open(os.path.join(model.model_dir, 'config.json'), 'r') as f:
+            with open(Path(model.model_dir, 'config.json'), 'r') as f:
                 dict_config = json.load(f)
             
             while (True):
@@ -95,9 +97,9 @@ def load_dataset(dataset):
     """
     
     # --- load dataset ---
-    dataset_dir = os.path.join(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
-    download_dir = os.path.join(dataset_dir, f'dataset_{dataset.id}')
-    if (os.path.exists(download_dir)):
+    dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
+    download_dir = Path(dataset_dir, f'dataset_{dataset.id}')
+    if (download_dir.exists()):
         download = False
     else:
         download = True
@@ -108,13 +110,13 @@ def load_dataset(dataset):
     elif (dataset.name == 'CIFAR-10'):
         dataloader = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
     else:
-        train_dir = os.path.splitext(dataset.train_zip.path)[0]
-        valid_dir = os.path.splitext(dataset.valid_zip.path)[0]
-        test_dir = os.path.splitext(dataset.test_zip.path)[0]
+        train_dir = Path(dataset.train_zip.path).parent
+        valid_dir = Path(dataset.valid_zip.path).parent
+        test_dir  = Path(dataset.test_zip.path).parent
         dataloader = DataLoaderCustom(train_dir, test_dir, validation_dir=valid_dir, one_hot=False)
     
     # --- save dataset object to pickle file ---
-    with open(os.path.join(download_dir, 'dataset.pkl'), 'wb') as f:
+    with open(Path(download_dir, 'dataset.pkl'), 'wb') as f:
         pickle.dump(dataloader, f)
     
     # --- set done status for dataset download ---
