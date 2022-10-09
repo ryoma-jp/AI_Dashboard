@@ -22,6 +22,7 @@ class DataLoader():
 	def __init__(self):
 		self.one_hot = True
 		self.output_dims = -1
+		self.verified = False
 		
 		return
 	
@@ -135,6 +136,7 @@ class DataLoaderCIFAR10(DataLoader):
 		# --- initialize super class ---
 		super().__init__()
 		self.one_hot = one_hot
+		self.verified = True
 		
 		# --- download dataset and extract ---
 		if (download):
@@ -223,6 +225,7 @@ class DataLoaderMNIST(DataLoader):
 		# --- initialize super class ---
 		super().__init__()
 		self.one_hot = one_hot
+		self.verified = True
 		
 		# --- download dataset and extract ---
 		if (download):
@@ -310,17 +313,56 @@ class DataLoaderMNIST(DataLoader):
 # クラス; カスタムデータセット取得
 #---------------------------------
 class DataLoaderCustom(DataLoader):
-	# --- コンストラクタ ---
-	def __init__(self, train_dir, test_dir, validation_dir=None, validation_split=0.0, flatten=False, one_hot=False, download=False):
-		"""
-			[引数説明]
-				* train_dir: 学習データセットのディレクトリ
-				* test_dir: テストデータセットのディレクトリ
-				* validation_dir: バリデーションデータセットのディレクトリ
-				* validation_split: validation dataとして使用する学習データの比率(0.0 ～ 1.0)
-				                    validation_dirが指定されている場合は，validation_splitは無視する
-				* flatten: 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
-				* one_hot: one hot形式(=True)かラベルインデックス(=False;default)かを選択する
+	"""DataLoaderCustom
+	
+	Data loader for custom dataset(user dataset).
+	
+	Attributes:
+		train_images (numpy.ndarray): Train images
+		train_labels (numpy.ndarray): Train labels
+		validation_images (numpy.ndarray): Validation images
+		validation_labels (numpy.ndarray): Validation labels
+		test_images (numpy.ndarray): Test images
+		test_labels (numpy.ndarray): Test labels
+		one_hot (bool): one hot or not about labels style
+		output_dims (int): output layer dimensions
+		verified (bool): verified status (True: OK, False: NG)
+	
+	"""
+	
+	def __init__(self):
+		"""constructor"""
+		
+		# --- initialize super class ---
+		super().__init__()
+		
+		self.train_images = None
+		self.train_labels = None
+		self.validation_images = None
+		self.validation_labels = None
+		self.test_images = None
+		self.test_labels = None
+		self.one_hot = True
+		self.output_dims = 0
+		self.verified = False
+		
+		return
+	
+	def load_data(self, train_dir, test_dir, validation_dir=None, validation_split=0.0, flatten=False, one_hot=False):
+		"""load_data
+		
+		データをロードしてクラス変数へ設定する
+		
+		Args:
+			train_dir (PosixPath): 学習データセットのディレクトリ
+			test_dir (PosixPath): テストデータセットのディレクトリ
+			validation_dir (PosixPath): バリデーションデータセットのディレクトリ
+			validation_split (float): validation dataとして使用する学習データの比率(0.0 ～ 1.0)．validation_dirが指定されている場合は，validation_splitは無視する
+			flatten (bool): 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
+			one_hot (bool): one hot形式(=True)かラベルインデックス(=False;default)かを選択する
+		
+		Returns:
+			None
 		"""
 		
 		def _load_data(data_dir):
@@ -367,3 +409,34 @@ class DataLoaderCustom(DataLoader):
 		
 		return
 	
+	def verify(self, train_dir, validation_dir=None, test_dir=None):
+		"""verify
+		
+		データ形式の整合検証
+		
+		Args:
+			train_dir (PosixPath): Train data (zip extracted)
+			validation_dir (PosixPath): Validation data (zip extracted)
+			test_dir (PosixPath): Test data (zip extracted)
+		
+		Returns:
+			bool: Result of verification (True: OK, False: NG)
+		
+		"""
+		
+		self.verified = False
+		
+		if (not Path(train_dir, 'info.json').exists()):
+			return False
+		
+		if (validation_dir is not None):
+			if (not Path(validation_dir, 'info.json').exists()):
+				return False
+		
+		if (test_dir is not None):
+			if (not Path(test_dir, 'info.json').exists()):
+				return False
+		
+		self.verified = True
+		return True
+

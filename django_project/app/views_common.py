@@ -113,7 +113,9 @@ def load_dataset(dataset):
         train_dir = Path(dataset.train_zip.path).parent
         valid_dir = Path(dataset.valid_zip.path).parent
         test_dir  = Path(dataset.test_zip.path).parent
-        dataloader = DataLoaderCustom(train_dir, test_dir, validation_dir=valid_dir, one_hot=False)
+        dataloader = DataLoaderCustom()
+        if (dataloader.verify(train_dir, validation_dir=valid_dir, test_dir=test_dir)):
+            dataloader.load_data(train_dir, validation_dir=valid_dir, test_dir=test_dir, one_hot=False)
     
     # --- save dataset object to pickle file ---
     with open(Path(download_dir, 'dataset.pkl'), 'wb') as f:

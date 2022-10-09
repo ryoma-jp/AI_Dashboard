@@ -255,12 +255,13 @@ def dataset_detail(request, project_id, dataset_id):
         
         # --- set keys ---
         image_gallery_keys = []
-        if (dataloader_obj.train_images is not None):
-            image_gallery_keys.append('train_images')
-        if (dataloader_obj.validation_images is not None):
-            image_gallery_keys.append('validation_images')
-        if (dataloader_obj.test_images is not None):
-            image_gallery_keys.append('test_images')
+        if (dataloader_obj.verified):
+            if (dataloader_obj.train_images is not None):
+                image_gallery_keys.append('train_images')
+            if (dataloader_obj.validation_images is not None):
+                image_gallery_keys.append('validation_images')
+            if (dataloader_obj.test_images is not None):
+                image_gallery_keys.append('test_images')
         
         # --- set image data file ---
         image_gallery_data = []
