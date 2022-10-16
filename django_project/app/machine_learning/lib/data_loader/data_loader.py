@@ -32,6 +32,11 @@ class DataLoader():
         validation_labels (numpy.ndarray): Validation用画像の真値
         test_images (numpy.ndarray): Test用画像
         test_labels (numpy.ndarray): Test用画像の真値
+        dataset_type (str): データセット種別
+            - 'img_clf': 画像データの分類タスク
+            - 'img_reg': 画像データの回帰タスク
+            - 'table_clf': テーブルデータの分類タスク
+            - 'table_reg': テーブルデータの回帰タスク
     
     """
     # --- コンストラクタ ---
@@ -39,6 +44,7 @@ class DataLoader():
         self.one_hot = True
         self.output_dims = -1
         self.verified = False
+        self.dataset_type = 'img_clf'
         
         return
     
@@ -256,6 +262,9 @@ class DataLoaderCIFAR10(DataLoader):
         # --- 出力次元数を保持 ---
         self.output_dims = 10
         
+        # --- 画像分類タスク ---
+        self.dataset_type = 'img_clf'
+        
         return
         
 #---------------------------------
@@ -360,8 +369,39 @@ class DataLoaderMNIST(DataLoader):
         # --- 出力次元数を保持 ---
         self.output_dims = 10
         
+        # --- 画像分類タスク ---
+        self.dataset_type = 'img_clf'
+        
         return
     
+
+#---------------------------------
+# クラス; California Housingデータセット取得
+#---------------------------------
+class DataLoaderCaliforniaHousing(DataLoader):
+    """DataLoaderCaliforniaHousing
+    
+    カリフォルニア住宅価格予測用データセットのロード用クラス
+    """
+    
+    # --- コンストラクタ ---
+    def __init__(self, dataset_dir):
+        from sklearn.datasets import fetch_california_housing
+        
+        self.one_hot = False
+        self.output_dims = 1
+        self.verified = False
+        self.dataset_type = 'table_reg'
+        
+        california_housing = fetch_california_housing(data_home=dataset_dir)
+        self.train_x = pd.DataFrame(california_housing.data, columns=california_housing.feature_names)
+        self.train_y = pd.DataFrame(california_housing.target, columns=['TARGET'])
+        self.validation_x = None
+        self.validation_y = None
+        self.test_x = None
+        self.test_y = None
+        
+        return
 
 #---------------------------------
 # クラス; カスタムデータセット取得

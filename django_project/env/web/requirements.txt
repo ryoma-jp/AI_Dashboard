@@ -10,3 +10,4 @@ pydotplus==2.0.2
 graphviz==0.19.1
 numba==0.54.1
 opencv-python==4.5.5.64
+scikit-learn==1.1.2

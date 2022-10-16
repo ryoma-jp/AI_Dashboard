@@ -58,9 +58,6 @@ import pickle
 
 from pathlib import Path
 
-from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
-from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
-
 from machine_learning.lib.trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
 
 #---------------------------------

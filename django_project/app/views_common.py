@@ -10,7 +10,10 @@ from django.conf import settings
 
 from app.models import Project, MlModel
 
-from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10, DataLoaderMNIST, DataLoaderCustom
+from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
+from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
+from machine_learning.lib.data_loader.data_loader import DataLoaderCaliforniaHousing
+from machine_learning.lib.data_loader.data_loader import DataLoaderCustom
 
 # Create your views here.
 
@@ -109,6 +112,8 @@ def load_dataset(dataset):
         dataloader = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
     elif (dataset.name == 'CIFAR-10'):
         dataloader = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
+    elif (dataset.name == 'CaliforniaHousing'):
+        dataloader = DataLoaderCaliforniaHousing(download_dir)
     else:
         train_dir = Path(dataset.train_zip.path).parent
         valid_dir = Path(dataset.valid_zip.path).parent

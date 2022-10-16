@@ -50,6 +50,7 @@ def project_new(request):
             # --- create default dataset ---
             Dataset.objects.create(name='MNIST', project=project)
             Dataset.objects.create(name='CIFAR-10', project=project)
+            Dataset.objects.create(name='CaliforniaHousing', project=project)
             
             # --- create project directory ---
             os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
