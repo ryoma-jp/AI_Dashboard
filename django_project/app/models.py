@@ -34,6 +34,18 @@ class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
+    DATASET_TYPE_NONE = 'None'
+    DATASET_TYPE_IMAGE = 'Image'
+    DATASET_TYPE_TABLE = 'Table'
+    DATASET_TYPE_TIMESERIES = 'Time Series'
+    DATASET_TYPE = (
+        (DATASET_TYPE_NONE, DATASET_TYPE_NONE),
+        (DATASET_TYPE_IMAGE, DATASET_TYPE_IMAGE),
+        (DATASET_TYPE_TABLE, DATASET_TYPE_TABLE),
+        (DATASET_TYPE_TIMESERIES, DATASET_TYPE_TIMESERIES),
+    )
+    dataset_type = models.CharField(max_length=32, choices=DATASET_TYPE, default=DATASET_TYPE_NONE)
+    
     dataset_dir = models.CharField('Dataset directory in the Project directory', max_length=512, blank=True)
     dataset_dir_offset = models.CharField('', max_length=512, blank=True)    # dataset directory under 'DATASET_DIR'
     

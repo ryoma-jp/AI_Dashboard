@@ -162,13 +162,13 @@ def dataset_detail(request, project_id, dataset_id):
     # logging.info(request.method)
     # logging.info('-------------------------------------')
     
-    dataset_info = [
-        'Images',
-        'Statistics',
-    ]
-    
     project = get_object_or_404(Project, pk=project_id)
     dataset = get_object_or_404(Dataset, pk=dataset_id, project=project)
+    
+    dataset_info = []
+    if (dataset.dataset_type == Dataset.DATASET_TYPE_IMAGE):
+        dataset_info.append('Images')
+    dataset_info.append('Statistics')
     
     if (request.method == 'POST'):
         logging.info('-------------------------------------')

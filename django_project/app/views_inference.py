@@ -62,10 +62,14 @@ def inference(request):
             curr_model = MlModel.objects.get(name=request.session['inference_view_selected_model'], project=curr_project)
             
         elif ('inference_view_dataset_dropdown' in request.POST):
-            curr_project = Project.objects.get(name=request.session['inference_view_selected_project'])
+            pass
+            # (T.B.D)
+            #   * dataset dropdown will be selected dataset that user required to inference
             
-            request.session['inference_view_selected_dataset'] = request.POST.getlist('inference_view_dataset_dropdown')[0]
-            curr_dataset = Dataset.objects.get(name=request.session['inference_view_selected_dataset'], project=curr_project)
+            # for debug
+            # request.session['inference_view_selected_dataset'] = request.POST.getlist('inference_view_dataset_dropdown')[0]
+            # curr_project = Project.objects.get(name=request.session['inference_view_selected_project'])
+            # curr_dataset = Dataset.objects.get(name=request.session['inference_view_selected_dataset'], project=curr_project)
             
         elif ('inference_run' in request.POST):
             _inference_run()

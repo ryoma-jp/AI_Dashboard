@@ -48,9 +48,9 @@ def project_new(request):
             # logging.info('-------------------------------------')
             
             # --- create default dataset ---
-            Dataset.objects.create(name='MNIST', project=project)
-            Dataset.objects.create(name='CIFAR-10', project=project)
-            Dataset.objects.create(name='CaliforniaHousing', project=project)
+            Dataset.objects.create(name='MNIST', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
+            Dataset.objects.create(name='CIFAR-10', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
+            Dataset.objects.create(name='CaliforniaHousing', project=project, dataset_type=Dataset.DATASET_TYPE_TABLE)
             
             # --- create project directory ---
             os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
@@ -169,6 +169,9 @@ def model_new(request, project_id):
                 config_file = 'config_mnist.json'
             elif (model.dataset.name == 'CIFAR-10'):
                 config_file = 'config_cifar10.json'
+            elif (model.dataset.name == 'CaliforniaHousing'):
+                # T.B.D
+                config_file = 'config_blank.json'
             else:
                 config_file = 'config_blank.json'
             with open(Path(settings.MEDIA_ROOT, settings.CONFIG_DIR, config_file), 'r') as f:
