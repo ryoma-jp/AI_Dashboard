@@ -116,9 +116,17 @@ def load_dataset(dataset):
         dataloader = DataLoaderCaliforniaHousing(download_dir)
     else:
         train_dir = Path(dataset.train_zip.path).parent
-        valid_dir = Path(dataset.valid_zip.path).parent
-        test_dir  = Path(dataset.test_zip.path).parent
-        meta_dir  = Path(dataset.meta_zip.path).parent
+        
+        if (dataset.valid_zip):
+            valid_dir = Path(dataset.valid_zip.path).parent
+        else:
+            valid_dir = None
+        
+        if (dataset.test_zip):
+            test_dir = Path(dataset.test_zip.path).parent
+        else:
+            test_dir = None
+        
         dataloader = DataLoaderCustom()
         if (dataloader.verify(train_dir, validation_dir=valid_dir, test_dir=test_dir)):
             dataloader.load_data(train_dir, validation_dir=valid_dir, test_dir=test_dir, one_hot=False)

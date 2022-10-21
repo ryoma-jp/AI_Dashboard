@@ -54,9 +54,9 @@ class Dataset(models.Model):
     dataset_dir_offset = models.CharField('', max_length=512, blank=True)    # dataset directory under 'DATASET_DIR'
     
     train_zip = models.FileField(upload_to=train_dataset_path, max_length=512)
-    valid_zip = models.FileField(upload_to=validation_dataset_path, max_length=512)
-    test_zip = models.FileField(upload_to=test_dataset_path, max_length=512)
-    meta_zip = models.FileField(upload_to=meta_dataset_path, max_length=512)
+    valid_zip = models.FileField(upload_to=validation_dataset_path, max_length=512, blank=True, null=True)
+    test_zip = models.FileField(upload_to=test_dataset_path, max_length=512, blank=True, null=True)
+    meta_zip = models.FileField(upload_to=meta_dataset_path, max_length=512, blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     STATUS_NONE = 'None'

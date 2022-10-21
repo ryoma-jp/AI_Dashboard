@@ -97,14 +97,19 @@ def dataset(request):
         
                 # --- unzip ---
                 train_dir = Path(dataset.train_zip.path).parent
-                valid_dir = Path(dataset.valid_zip.path).parent
-                test_dir  = Path(dataset.test_zip.path).parent
-                meta_dir  = Path(dataset.meta_zip.path).parent
-                
                 shutil.unpack_archive(dataset.train_zip.path, train_dir)
-                shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
-                shutil.unpack_archive(dataset.test_zip.path, test_dir)
-                shutil.unpack_archive(dataset.meta_zip.path, meta_dir)
+                
+                if (dataset.test_zip.name):
+                    test_dir  = Path(dataset.test_zip.path).parent
+                    shutil.unpack_archive(dataset.test_zip.path, test_dir)
+                
+                if (dataset.valid_zip.name):
+                    valid_dir = Path(dataset.valid_zip.path).parent
+                    shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
+                
+                if (dataset.meta_zip):
+                    meta_dir  = Path(dataset.meta_zip.path).parent
+                    shutil.unpack_archive(dataset.meta_zip.path, meta_dir)
                 
                 # --- preparing ---
                 load_dataset(dataset)
