@@ -12,7 +12,8 @@ class DatasetForm(forms.ModelForm):
         fields = ('name',
                   'train_zip',
                   'valid_zip',
-                  'test_zip', )
+                  'test_zip',
+                  'meta_zip', )
 
 class MlModelForm(forms.ModelForm):
     class Meta:

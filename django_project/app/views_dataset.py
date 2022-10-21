@@ -89,6 +89,7 @@ def dataset(request):
                               train_zip=form_custom_dataset.cleaned_data.get('train_zip'),
                               valid_zip=form_custom_dataset.cleaned_data.get('valid_zip'),
                               test_zip=form_custom_dataset.cleaned_data.get('test_zip'),
+                              meta_zip=form_custom_dataset.cleaned_data.get('meta_zip'),
                               uploaded_at=form_custom_dataset.cleaned_data.get('uploaded_at'),
                               download_status=Dataset.STATUS_NONE,
                               image_gallery_status=Dataset.STATUS_NONE,
@@ -98,10 +99,12 @@ def dataset(request):
                 train_dir = Path(dataset.train_zip.path).parent
                 valid_dir = Path(dataset.valid_zip.path).parent
                 test_dir  = Path(dataset.test_zip.path).parent
+                meta_dir  = Path(dataset.meta_zip.path).parent
                 
                 shutil.unpack_archive(dataset.train_zip.path, train_dir)
                 shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
                 shutil.unpack_archive(dataset.test_zip.path, test_dir)
+                shutil.unpack_archive(dataset.meta_zip.path, meta_dir)
                 
                 # --- preparing ---
                 load_dataset(dataset)

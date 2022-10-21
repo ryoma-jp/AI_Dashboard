@@ -30,6 +30,10 @@ def test_dataset_path(instance, filename):
     base_dir = getattr(settings, 'DATASET_DIR', None)
     return Path(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'test', filename)
     
+def meta_dataset_path(instance, filename):
+    base_dir = getattr(settings, 'DATASET_DIR', None)
+    return Path(base_dir, f'{instance.project.hash}', f'dataset_{instance.id}', 'meta', filename)
+    
 class Dataset(models.Model):
     name = models.CharField('DatasetName', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
@@ -52,6 +56,7 @@ class Dataset(models.Model):
     train_zip = models.FileField(upload_to=train_dataset_path, max_length=512)
     valid_zip = models.FileField(upload_to=validation_dataset_path, max_length=512)
     test_zip = models.FileField(upload_to=test_dataset_path, max_length=512)
+    meta_zip = models.FileField(upload_to=meta_dataset_path, max_length=512)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     STATUS_NONE = 'None'
@@ -76,15 +81,18 @@ class Dataset(models.Model):
             _tmp_train_zip = self.train_zip
             _tmp_valid_zip = self.valid_zip
             _tmp_test_zip = self.test_zip
+            _tmp_meta_zip = self.meta_zip
             
             self.train_zip = None
             self.valid_zip = None
             self.test_zip = None
+            self.meta_zip = None
             super().save(*args, **kwargs)
             
             self.train_zip = _tmp_train_zip
             self.valid_zip = _tmp_valid_zip
             self.test_zip = _tmp_test_zip
+            self.meta_zip = _tmp_meta_zip
             if ('force_insert' in kwargs):
                 kwargs.pop('force_insert')
         
