@@ -164,17 +164,17 @@ def main():
         one_hot = True
     dataset.convert_label_encoding(one_hot=one_hot)
     
-    print_ndarray_shape(dataset.train_images)
-    print_ndarray_shape(dataset.train_labels)
-    print_ndarray_shape(dataset.validation_images)
-    print_ndarray_shape(dataset.validation_labels)
-    print_ndarray_shape(dataset.test_images)
-    print_ndarray_shape(dataset.test_labels)
+    print_ndarray_shape(dataset.train_x)
+    print_ndarray_shape(dataset.train_y)
+    print_ndarray_shape(dataset.validation_x)
+    print_ndarray_shape(dataset.validation_y)
+    print_ndarray_shape(dataset.test_x)
+    print_ndarray_shape(dataset.test_y)
     
     x_train, x_val, x_test = dataset.normalization(data_norm)
-    y_train = dataset.train_labels
-    y_val = dataset.validation_labels
-    y_test = dataset.test_labels
+    y_train = dataset.train_y
+    y_val = dataset.validation_y
+    y_test = dataset.test_y
     output_dims = dataset.output_dims
     
     # --- モデル取得 ---
@@ -186,24 +186,24 @@ def main():
         model_file = None
     
     if (model_type == 'MLP'):
-        trainer = TrainerMLP(dataset.train_images.shape[1:],
+        trainer = TrainerMLP(dataset.train_x.shape[1:],
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, initializer=initializer)
     elif (model_type == 'SimpleCNN'):
-        trainer = TrainerCNN(dataset.train_images.shape[1:],
+        trainer = TrainerCNN(dataset.train_x.shape[1:],
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, loss=loss_func, initializer=initializer)
     elif (model_type == 'DeepCNN'):
-        trainer = TrainerCNN(dataset.train_images.shape[1:],
+        trainer = TrainerCNN(dataset.train_x.shape[1:],
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model')
     elif (model_type == 'SimpleResNet'):
-        trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims,
+        trainer = TrainerResNet(dataset.train_x.shape[1:], output_dims,
             output_dir=result_dir, model_file=model_file,
             model_type='custom', 
             optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
     elif (model_type == 'DeepResNet'):
-        trainer = TrainerResNet(dataset.train_images.shape[1:], output_dims,
+        trainer = TrainerResNet(dataset.train_x.shape[1:], output_dims,
             output_dir=result_dir, model_file=model_file,
             model_type='custom_deep', 
             optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)

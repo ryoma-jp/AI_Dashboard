@@ -237,15 +237,15 @@ def dataset_detail(request, project_id, dataset_id):
             dataset.image_gallery_status = dataset.STATUS_PROCESSING
             dataset.save()
             
-            if (dataloader_obj.train_images is not None):
-                _save_image_files(dataloader_obj.train_images, dataloader_obj.train_images.shape[1:],
-                                 dataloader_obj.train_labels, download_dir, name='train_images')
-            if (dataloader_obj.validation_images is not None):
-                _save_image_files(dataloader_obj.validation_images, dataloader_obj.validation_images.shape[1:],
-                                 dataloader_obj.validation_labels, download_dir, name='validation_images')
-            if (dataloader_obj.test_images is not None):
-                _save_image_files(dataloader_obj.test_images, dataloader_obj.test_images.shape[1:],
-                                 dataloader_obj.test_labels, download_dir, name='test_images')
+            if (dataloader_obj.train_x is not None):
+                _save_image_files(dataloader_obj.train_x, dataloader_obj.train_x.shape[1:],
+                                 dataloader_obj.train_labels, download_dir, name='train_x')
+            if (dataloader_obj.validation_x is not None):
+                _save_image_files(dataloader_obj.validation_x, dataloader_obj.validation_x.shape[1:],
+                                 dataloader_obj.validation_labels, download_dir, name='validation_x')
+            if (dataloader_obj.test_x is not None):
+                _save_image_files(dataloader_obj.test_x, dataloader_obj.test_x.shape[1:],
+                                 dataloader_obj.test_labels, download_dir, name='test_x')
             
             dataset.image_gallery_status = dataset.STATUS_DONE
             dataset.save()
@@ -256,12 +256,12 @@ def dataset_detail(request, project_id, dataset_id):
         # --- set keys ---
         image_gallery_keys = []
         if (dataloader_obj.verified):
-            if (dataloader_obj.train_images is not None):
-                image_gallery_keys.append('train_images')
-            if (dataloader_obj.validation_images is not None):
-                image_gallery_keys.append('validation_images')
-            if (dataloader_obj.test_images is not None):
-                image_gallery_keys.append('test_images')
+            if (dataloader_obj.train_x is not None):
+                image_gallery_keys.append('Train')
+            if (dataloader_obj.validation_x is not None):
+                image_gallery_keys.append('Validation')
+            if (dataloader_obj.test_x is not None):
+                image_gallery_keys.append('Test')
         
         # --- set image data file ---
         image_gallery_data = []

@@ -26,12 +26,12 @@ class DataLoader():
         one_hot (bool): 真値がonehot表現の場合にTrueにセット
         output_dims (int): 出力次元数
         verified (bool): Webアプリでの解析可否の検証結果(Webアプリで解析可能な場合にTrueにセット)
-        train_images (numpy.ndarray): 学習用画像
-        train_labels (numpy.ndarray): 学習用画像の真値
-        validation_images (numpy.ndarray): Validation用画像
-        validation_labels (numpy.ndarray): Validation用画像の真値
-        test_images (numpy.ndarray): Test用画像
-        test_labels (numpy.ndarray): Test用画像の真値
+        train_x (numpy.ndarray): 学習用画像
+        train_y (numpy.ndarray): 学習用画像の真値
+        validation_x (numpy.ndarray): Validation用画像
+        validation_y (numpy.ndarray): Validation用画像の真値
+        test_x (numpy.ndarray): Test用画像
+        test_y (numpy.ndarray): Test用画像の真値
         dataset_type (str): データセット種別
             - 'img_clf': 画像データの分類タスク
             - 'img_reg': 画像データの回帰タスク
@@ -88,23 +88,23 @@ class DataLoader():
         
         """
         if (mode == 'max'):
-            train_norm = self.train_images / 255.
-            validation_norm = self.validation_images / 255.
-            test_norm = self.test_images / 255.
+            train_norm = self.train_x / 255.
+            validation_norm = self.validation_x / 255.
+            test_norm = self.test_x / 255.
         elif (mode == 'max-min'):
-            train_min = np.min(self.train_images)
-            train_diff = np.max(self.train_images) - np.min(self.train_images)
+            train_min = np.min(self.train_x)
+            train_diff = np.max(self.train_x) - np.min(self.train_x)
             
-            train_norm = (self.train_images - train_min) / train_diff
-            validation_norm = (self.validation_images - train_min) / train_diff
-            test_norm = (self.test_images - train_min) / train_diff
+            train_norm = (self.train_x - train_min) / train_diff
+            validation_norm = (self.validation_x - train_min) / train_diff
+            test_norm = (self.test_x - train_min) / train_diff
         elif (mode == 'z-score'):
-            train_mean = np.mean(self.train_images)
-            train_std = np.std(self.train_images)
+            train_mean = np.mean(self.train_x)
+            train_std = np.std(self.train_x)
             
-            train_norm = (self.train_images - train_mean) / train_std
-            validation_norm = (self.validation_images - train_mean) / train_std
-            test_norm = (self.test_images - train_mean) / train_std
+            train_norm = (self.train_x - train_mean) / train_std
+            validation_norm = (self.validation_x - train_mean) / train_std
+            test_norm = (self.test_x - train_mean) / train_std
         else:
             logging.debug('[ERROR] Unknown data normalization mode: {}'.format(mode))
             quit()
@@ -121,23 +121,23 @@ class DataLoader():
             validation_split (float): Validationデータの比率
         
         """
-        idx = np.arange(len(self.train_images))
+        idx = np.arange(len(self.train_x))
         np.random.shuffle(idx)
         
         if ((1.0 - validation_split) == 1.0):
-            self.validation_images = None
-            self.validation_labels = None
+            self.validation_x = None
+            self.validation_y = None
         elif ((1.0 - validation_split) == 0.0):
-            self.validation_images = self.train_images
-            self.validation_labels = self.train_labels
-            self.train_images = None
-            self.train_labels = None
+            self.validation_x = self.train_x
+            self.validation_y = self.train_y
+            self.train_x = None
+            self.train_y = None
         else:
-            validation_index = int(len(self.train_images) * (1.0-validation_split))
-            self.validation_images = self.train_images[validation_index:]
-            self.validation_labels = self.train_labels[validation_index:]
-            self.train_images = self.train_images[0:validation_index]
-            self.train_labels = self.train_labels[0:validation_index]
+            validation_index = int(len(self.train_x) * (1.0-validation_split))
+            self.validation_x = self.train_x[validation_index:]
+            self.validation_y = self.train_y[validation_index:]
+            self.train_x = self.train_x[0:validation_index]
+            self.train_y = self.train_y[0:validation_index]
         
         return
     
@@ -152,13 +152,13 @@ class DataLoader():
         
         if ((not self.one_hot) and (one_hot)):
             identity = np.eye(self.output_dims, dtype=np.int)
-            self.train_labels = np.array([identity[i] for i in self.train_labels])
-            self.validation_labels = np.array([identity[i] for i in self.validation_labels])
-            self.test_labels = np.array([identity[i] for i in self.test_labels])
+            self.train_y = np.array([identity[i] for i in self.train_y])
+            self.validation_y = np.array([identity[i] for i in self.validation_y])
+            self.test_y = np.array([identity[i] for i in self.test_y])
         elif ((self.one_hot) and (not one_hot)):
-            self.train_labels = self.train_labels.argmax(axis=1)
-            self.validation_labels = self.validation_labels.argmax(axis=1)
-            self.test_labels = self.test_labels.argmax(axis=1)
+            self.train_y = self.train_y.argmax(axis=1)
+            self.validation_y = self.validation_y.argmax(axis=1)
+            self.test_y = self.test_y.argmax(axis=1)
             
         self.one_hot = one_hot
         
@@ -230,31 +230,31 @@ class DataLoaderCIFAR10(DataLoader):
         # --- load training data ---
         train_data_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
         dict_data = unpickle(Path(dataset_dir, train_data_list[0]))
-        train_images = dict_data[b'data']
-        train_labels = dict_data[b'labels'].copy()
+        train_x = dict_data[b'data']
+        train_y = dict_data[b'labels'].copy()
         for train_data in train_data_list[1:]:
             dict_data = unpickle(Path(dataset_dir, train_data))
-            train_images = np.vstack((train_images, dict_data[b'data']))
-            train_labels = np.hstack((train_labels, dict_data[b'labels']))
+            train_x = np.vstack((train_x, dict_data[b'data']))
+            train_y = np.hstack((train_y, dict_data[b'labels']))
         
         # --- load test data ---
         test_data = "test_batch"
         dict_data = unpickle(Path(dataset_dir, test_data))
-        test_images = dict_data[b'data']
-        test_labels = dict_data[b'labels'].copy()
+        test_x = dict_data[b'data']
+        test_y = dict_data[b'labels'].copy()
         
         # --- transpose: [N, C, H, W] -> [N, H, W, C] ---
-        self.train_images = train_images.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
-        self.test_images = test_images.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+        self.train_x = train_x.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+        self.test_x = test_x.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
         
         # --- labels ---
         if (self.one_hot):
             identity = np.eye(10, dtype=np.int)
-            self.train_labels = np.array([identity[i] for i in train_labels])
-            self.test_labels = np.array([identity[i] for i in test_labels])
+            self.train_y = np.array([identity[i] for i in train_y])
+            self.test_y = np.array([identity[i] for i in test_y])
         else:
-            self.train_labels = np.array(train_labels)
-            self.test_labels = np.array(test_labels)
+            self.train_y = np.array(train_y)
+            self.test_y = np.array(test_y)
         
         # --- 学習データとバリデーションデータを分割 ---
         self.split_train_val(validation_split)
@@ -325,9 +325,9 @@ class DataLoaderMNIST(DataLoader):
         img_w = (byte_data[12] << 24) | (byte_data[13] << 16) | (byte_data[14] << 8) | (byte_data[15])
         
         if (flatten):
-            self.train_images = byte_data[16:].reshape(n_items, -1)
+            self.train_x = byte_data[16:].reshape(n_items, -1)
         else:
-            self.train_images = byte_data[16:].reshape(n_items, img_h, img_w, 1)
+            self.train_x = byte_data[16:].reshape(n_items, img_h, img_w, 1)
         
         # --- load training label ---
         f = open(Path(dataset_dir, 'train-labels-idx1-ubyte'))
@@ -335,10 +335,10 @@ class DataLoaderMNIST(DataLoader):
         
         n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
         
-        self.train_labels = byte_data[8:]
+        self.train_y = byte_data[8:]
         if (self.one_hot):
             identity = np.eye(10, dtype=np.int)
-            self.train_labels = np.array([identity[i] for i in self.train_labels])
+            self.train_y = np.array([identity[i] for i in self.train_y])
         
         # --- load test data ---
         f = open(Path(dataset_dir, 't10k-images-idx3-ubyte'))
@@ -349,9 +349,9 @@ class DataLoaderMNIST(DataLoader):
         img_w = (byte_data[12] << 24) | (byte_data[13] << 16) | (byte_data[14] << 8) | (byte_data[15])
         
         if (flatten):
-            self.test_images = byte_data[16:].reshape(n_items, -1)
+            self.test_x = byte_data[16:].reshape(n_items, -1)
         else:
-            self.test_images = byte_data[16:].reshape(n_items, img_h, img_w, 1)
+            self.test_x = byte_data[16:].reshape(n_items, img_h, img_w, 1)
         
         # --- load test label ---
         f = open(Path(dataset_dir, 't10k-labels-idx1-ubyte'))
@@ -359,9 +359,9 @@ class DataLoaderMNIST(DataLoader):
         
         n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
         
-        self.test_labels = byte_data[8:]
+        self.test_y = byte_data[8:]
         if (self.one_hot):
-            self.test_labels = np.array([identity[i] for i in self.test_labels])
+            self.test_y = np.array([identity[i] for i in self.test_y])
         
         # --- 学習データとバリデーションデータを分割 ---
         self.split_train_val(validation_split)
@@ -385,7 +385,7 @@ class DataLoaderCaliforniaHousing(DataLoader):
     """
     
     # --- コンストラクタ ---
-    def __init__(self, dataset_dir):
+    def __init__(self, dataset_dir, validation_split=0.2):
         from sklearn.datasets import fetch_california_housing
         
         self.one_hot = False
@@ -396,10 +396,12 @@ class DataLoaderCaliforniaHousing(DataLoader):
         california_housing = fetch_california_housing(data_home=dataset_dir)
         self.train_x = pd.DataFrame(california_housing.data, columns=california_housing.feature_names)
         self.train_y = pd.DataFrame(california_housing.target, columns=['TARGET'])
-        self.validation_x = None
-        self.validation_y = None
-        self.test_x = None
-        self.test_y = None
+        
+        self.split_train_val(validation_split)
+        
+        # T.B.D
+        self.test_x = self.validation_x
+        self.test_y = self.validation_y
         
         return
 
@@ -412,12 +414,12 @@ class DataLoaderCustom(DataLoader):
     Data loader for custom dataset(user dataset).
     
     Attributes:
-        train_images (numpy.ndarray): Train images
-        train_labels (numpy.ndarray): Train labels
-        validation_images (numpy.ndarray): Validation images
-        validation_labels (numpy.ndarray): Validation labels
-        test_images (numpy.ndarray): Test images
-        test_labels (numpy.ndarray): Test labels
+        train_x (numpy.ndarray): Train images
+        train_y (numpy.ndarray): Train labels
+        validation_x (numpy.ndarray): Validation images
+        validation_y (numpy.ndarray): Validation labels
+        test_x (numpy.ndarray): Test images
+        test_y (numpy.ndarray): Test labels
         one_hot (bool): one hot or not about labels style
         output_dims (int): output layer dimensions
         verified (bool): verified status (True: OK, False: NG)
@@ -430,12 +432,12 @@ class DataLoaderCustom(DataLoader):
         # --- initialize super class ---
         super().__init__()
         
-        self.train_images = None
-        self.train_labels = None
-        self.validation_images = None
-        self.validation_labels = None
-        self.test_images = None
-        self.test_labels = None
+        self.train_x = None
+        self.train_y = None
+        self.validation_x = None
+        self.validation_y = None
+        self.test_x = None
+        self.test_y = None
         self.one_hot = True
         self.output_dims = 0
         self.verified = False
@@ -487,14 +489,14 @@ class DataLoaderCustom(DataLoader):
         self.one_hot = one_hot
         
         # --- load training data ---
-        self.train_images, self.train_labels = _load_data(train_dir)
+        self.train_x, self.train_y = _load_data(train_dir)
         
         # --- load test data ---
-        self.test_images, self.test_labels = _load_data(test_dir)
+        self.test_x, self.test_y = _load_data(test_dir)
         
         # --- load validation data ---
         if (validation_dir is not None):
-            self.validation_images, self.validation_labels = _load_data(validation_dir)
+            self.validation_x, self.validation_y = _load_data(validation_dir)
         else:
             self.split_train_val(validation_split)
             
