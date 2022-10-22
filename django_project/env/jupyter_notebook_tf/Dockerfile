@@ -11,6 +11,10 @@ RUN apt update ; \
 RUN pip install setuptools==57.4.0
 RUN pip install opencv-python natsort numpy pandas xfeat seaborn japanize-matplotlib \
                 optuna scikit-learn umap-learn \
+                torch torchvision torchaudio \
                 sphinx sphinx_rtd_theme
+
+RUN pip install -U datasets transformers[ja]
+RUN pip install -U ginza ja_ginza
 
 COPY ./jupyter_notebook_config.py /root/.jupyter/
