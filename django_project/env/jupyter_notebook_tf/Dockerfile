@@ -6,7 +6,7 @@
 FROM tensorflow/tensorflow:2.11.0-gpu-jupyter
 
 RUN apt update ; \
-    apt install -y libgl1-mesa-dev fonts-ipaexfont vim
+    apt install -y libgl1-mesa-dev fonts-ipaexfont vim graphviz
 
 RUN pip install setuptools==57.4.0
 RUN pip install opencv-python==4.6.0.66 \
