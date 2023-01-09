@@ -255,13 +255,13 @@ def dataset_detail(request, project_id, dataset_id):
             
             if (dataloader_obj.train_x is not None):
                 _save_image_files(dataloader_obj.train_x, dataloader_obj.train_x.shape[1:],
-                                 dataloader_obj.train_labels, download_dir, name='train_x')
+                                 dataloader_obj.train_y, download_dir, name='train')
             if (dataloader_obj.validation_x is not None):
                 _save_image_files(dataloader_obj.validation_x, dataloader_obj.validation_x.shape[1:],
-                                 dataloader_obj.validation_labels, download_dir, name='validation_x')
+                                 dataloader_obj.validation_y, download_dir, name='validation')
             if (dataloader_obj.test_x is not None):
                 _save_image_files(dataloader_obj.test_x, dataloader_obj.test_x.shape[1:],
-                                 dataloader_obj.test_labels, download_dir, name='test_x')
+                                 dataloader_obj.test_y, download_dir, name='test')
             
             dataset.image_gallery_status = dataset.STATUS_DONE
             dataset.save()
@@ -285,7 +285,7 @@ def dataset_detail(request, project_id, dataset_id):
             images_page_now = request.session.get('image_gallery_page_now', 1)
             images_per_page = 50
             
-            json_file = Path(download_dir, f'info_{selected_dataset_type}.json')
+            json_file = Path(download_dir, f'info_{selected_dataset_type.lower()}.json')
             with open(json_file, 'r') as f:
                 json_data = json.load(f)
             
