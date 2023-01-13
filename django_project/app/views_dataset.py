@@ -24,7 +24,7 @@ def _save_image_files(images, image_shape, labels, output_dir, name='images'):
     Internal function of views_dataset
     
     Args:
-        images: Image list
+        images: Image list [N, H, W, C(RGB)]
         image_shape: image shape (tuple)
         labels: classification label (ground truth, one_hot)
         output_dir: output directory
@@ -46,7 +46,7 @@ def _save_image_files(images, image_shape, labels, output_dir, name='images'):
     for i, (image, label) in enumerate(zip(images, labels)):
         image_file = Path(name, f'{i:08}.png')
         image = image.reshape(image_shape)
-        cv2.imwrite(str(Path(output_dir, image_file)), image)
+        cv2.imwrite(str(Path(output_dir, image_file)), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
         
         dict_image_file['id'].append(i)
         dict_image_file['file'].append(str(image_file))
