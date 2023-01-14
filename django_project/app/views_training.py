@@ -107,9 +107,15 @@ def training(request):
     # logging.info('-------------------------------------')
     if (request.method == 'POST'):
         if ('training_view_project_dropdown' in request.POST):
+            logging.info('****************************************')
+            logging.info('**** Select project in Training Tab ****')
+            logging.info('****************************************')
             request.session['training_view_selected_project'] = request.POST.getlist('training_view_project_dropdown')[0]
                 
         elif ('training_view_model_dropdown' in request.POST):
+            logging.info('**************************************')
+            logging.info('**** Select model in Training Tab ****')
+            logging.info('**************************************')
             curr_project = Project.objects.get(name=request.session['training_view_selected_project'])
             
             if 'training_view_selected_model' in request.session.keys():
@@ -165,6 +171,9 @@ def training(request):
         
         return redirect('training')
     else:
+        logging.info('***************************')
+        logging.info('**** Open Training Tab ****')
+        logging.info('***************************')
         get_all_fifo_command()
         sidebar_status = SidebarActiveStatus()
         sidebar_status.training = 'active'
@@ -191,7 +200,11 @@ def training(request):
             model_name = request.session.get('training_view_selected_model', None)
             if (model_name is not None):
                 model_dropdown_selected = MlModel.objects.get(name=model_name, project=project_dropdown_selected)
-                _launch_tensorboard(model_dropdown_selected)
+                logging.info('-------------------------------------')
+                logging.info(model_dropdown_selected.tensorboard_pid)
+                logging.info('-------------------------------------')
+                if (model_dropdown_selected.tensorboard_pid is None):
+                    _launch_tensorboard(model_dropdown_selected)
             else:
                 model_dropdown_selected = None
             
