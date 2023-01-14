@@ -87,9 +87,13 @@ def inference(request):
         sidebar_status.inference = 'active'
         
         project = Project.objects.all().order_by('-id').reverse()
-        project_name = request.session.get('inference_view_selected_project', None)
-        if (project_name is not None):
-            project_dropdown_selected = Project.objects.get(name=project_name)
+        
+        # check for existence of selected project name
+        project_name_list = [p.name for p in project]
+        selected_project_name = request.session.get('inference_view_selected_project', None)
+        
+        if ((selected_project_name is not None) and (selected_project_name in project_name_list)):
+            project_dropdown_selected = Project.objects.get(name=selected_project_name)
         else:
             project_dropdown_selected = None
         

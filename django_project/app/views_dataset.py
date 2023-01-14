@@ -73,6 +73,11 @@ def dataset(request):
     
     if (request.method == 'POST'):
         if ('dataset_view_dropdown' in request.POST):
+            logging.info('----------------------------------------')
+            logging.info(f'[DEBUG] {request.method}')
+            logging.info(f'[DEBUG] {request.POST}')
+            logging.info(f'[DEBUG] {request.POST.getlist("dataset_view_dropdown")}')
+            logging.info('----------------------------------------')
             request.session['dataset_view_dropdown_selected_project'] = request.POST.getlist('dataset_view_dropdown')[0]
         
         elif ('dataset_view_upload' in request.POST):
@@ -130,19 +135,21 @@ def dataset(request):
         sidebar_status = SidebarActiveStatus()
         sidebar_status.dataset = 'active'
         
-        project_num = project.count()
-        project_name = request.session.get('dataset_view_dropdown_selected_project', None)
-        if ((project_name is not None) and (project_num > 0)):
-            dropdown_selected_project = Project.objects.get(name=project_name)
+        # check for existence of selected project name
+        project_name_list = [p.name for p in project]
+        selected_project_name = request.session.get('dataset_view_dropdown_selected_project', None)
+        
+        if ((selected_project_name is not None) and (selected_project_name in project_name_list)):
+            dropdown_selected_project = Project.objects.get(name=selected_project_name)
         else:
             dropdown_selected_project = None
         
         form_custom_dataset = DatasetForm()
         
-        # logging.info('-------------------------------------')
-        # logging.info(project_name)
-        # logging.info(dropdown_selected_project)
-        # logging.info('-------------------------------------')
+        logging.info('-------------------------------------')
+        logging.info(project_name_list)
+        logging.info(dropdown_selected_project)
+        logging.info('-------------------------------------')
         context = {
             'project': project,
             'dataset': dataset,
