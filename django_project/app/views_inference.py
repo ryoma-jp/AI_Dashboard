@@ -92,6 +92,11 @@ def inference(request):
         project_name_list = [p.name for p in project]
         selected_project_name = request.session.get('inference_view_selected_project', None)
         
+        logging.info('-------------------------------------')
+        logging.info(project_name_list)
+        logging.info(selected_project_name)
+        logging.info('-------------------------------------')
+        
         if ((selected_project_name is not None) and (selected_project_name in project_name_list)):
             project_dropdown_selected = Project.objects.get(name=selected_project_name)
         else:
@@ -107,14 +112,24 @@ def inference(request):
             else:
                 model_dropdown_selected = None
             
-            # --- get dataset list and selected dataset ---
+            # --- get dataset list and selected dataset (T.B.D) ---
             dataset = Dataset.objects.filter(project=project_dropdown_selected).order_by('-id').reverse()
-            
-            dataset_name = request.session.get('inference_view_selected_dataset', None)
-            if (dataset_name is not None):
-                dataset_dropdown_selected = Dataset.objects.get(name=dataset_name, project=project_dropdown_selected)
+            if (model_dropdown_selected is not None):
+                dataset_dropdown_selected = model_dropdown_selected.dataset
             else:
                 dataset_dropdown_selected = None
+            
+            #
+            #dataset_name_list = [d.name for d in Dataset.objects.all().order_by('-id')]
+            #selected_dataset_name = request.session.get('inference_view_selected_dataset', None)
+            #logging.info('-------------------------------------')
+            #logging.info(dataset_name_list)
+            #logging.info(selected_dataset_name)
+            #logging.info('-------------------------------------')
+            #if ((selected_dataset_name is not None) and (selected_dataset_name in dataset_name_list)):
+            #    dataset_dropdown_selected = Dataset.objects.get(name=selected_dataset_name, project=project_dropdown_selected)
+            #else:
+            #    dataset_dropdown_selected = None
             
             
         else:

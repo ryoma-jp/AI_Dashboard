@@ -153,6 +153,11 @@ def training(request):
         project_name_list = [p.name for p in project]
         selected_project_name = request.session.get('training_view_selected_project', None)
         
+        logging.info('-------------------------------------')
+        logging.info(project_name_list)
+        logging.info(selected_project_name)
+        logging.info('-------------------------------------')
+        
         if ((selected_project_name is not None) and (selected_project_name in project_name_list)):
             project_dropdown_selected = Project.objects.get(name=selected_project_name)
         else:
