@@ -80,10 +80,18 @@ def training(request):
         return
     
     def _launch_tensorboard(model):
+        logging.info('-------------------------------------')
+        logging.info(model.model_dir)
+        logging.info('-------------------------------------')
+        
         config_path = Path(model.model_dir, 'config.json')
         with open(config_path, 'r') as f:
             config_data = json.load(f)
         
+        logging.info('-------------------------------------')
+        logging.info(model.tensorboard_pid)
+        logging.info(psutil.pids())
+        logging.info('-------------------------------------')
         if (not model.tensorboard_pid in psutil.pids()):
             subproc_tensorboard = subprocess.Popen(['tensorboard', \
                                         '--logdir', model.model_dir, \
@@ -112,9 +120,23 @@ def training(request):
             request.session['training_view_selected_model'] = request.POST.getlist('training_view_model_dropdown')[0]
             curr_model = MlModel.objects.get(name=request.session['training_view_selected_model'], project=curr_project)
             
+            logging.info('-------------------------------------')
+            logging.info(psutil.pids())
+            if (prev_model is not None):
+                logging.info(prev_model.tensorboard_pid)
+            else:
+                logging.info("prev_model is None")
+            if (curr_model is not None):
+                logging.info(curr_model.tensorboard_pid)
+            else:
+                logging.info("curr_model is None")
+            logging.info('-------------------------------------')
             # --- Close previous Tensorboard ---
             #  * https://psutil.readthedocs.io/en/latest/#kill-process-tree
-            if ((prev_model is not None) and (prev_model.tensorboard_pid is not None) and (prev_model.tensorboard_pid in psutil.pids())):
+            if ((prev_model is not None) and
+                ((prev_model.project.hash+prev_model.hash) != (curr_model.project.hash+curr_model.hash)) and
+                (prev_model.tensorboard_pid is not None) and
+                (prev_model.tensorboard_pid in psutil.pids())):
                 p = psutil.Process(prev_model.tensorboard_pid)
                 c = p.children(recursive=True)
                 c.append(p)
