@@ -109,6 +109,11 @@ ToDoのメモ．思いついたら順次追加する．
 
 ![ER Diagram](./figure/erd_ml_project_database.png)
 
+
+ここから下は備忘録
+
+---------------
+
 # 環境構築手順
 
 virtualenv上でDocker-Djangoプロジェクト(ベースツリー)を作成し，これをDocker上で動作するように改変した後，PostgreSQL/Gunicorn/Nginxを設定する流れで環境を構築する．  
