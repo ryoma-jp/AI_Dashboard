@@ -92,7 +92,7 @@ def training(request):
         logging.info(model.tensorboard_pid)
         logging.info(psutil.pids())
         logging.info('-------------------------------------')
-        if (not model.tensorboard_pid in psutil.pids()):
+        if (model.tensorboard_pid not in psutil.pids()):
             subproc_tensorboard = subprocess.Popen(['tensorboard', \
                                         '--logdir', model.model_dir, \
                                         '--port', f'{config_data["env"]["tensorboard_port"]["value"]}'])
@@ -203,7 +203,7 @@ def training(request):
                 logging.info('-------------------------------------')
                 logging.info(model_dropdown_selected.tensorboard_pid)
                 logging.info('-------------------------------------')
-                if (model_dropdown_selected.tensorboard_pid is None):
+                if (model_dropdown_selected.tensorboard_pid not in psutil.pids()):
                     _launch_tensorboard(model_dropdown_selected)
             else:
                 model_dropdown_selected = None

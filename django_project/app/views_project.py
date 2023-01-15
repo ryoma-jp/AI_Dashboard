@@ -4,6 +4,8 @@ import json
 import pickle
 import hashlib
 import shutil
+import psutil
+import signal
 
 from pathlib import Path
 
@@ -30,6 +32,80 @@ def _create_model_hash(project, model):
      * internal function of views_project
     """
     return hashlib.sha256(f'{project.id:08}{model.id:08}'.encode()).hexdigest()
+
+def _model_delete(request, model):
+    """ Delete Model
+    
+    Delete model
+    
+    Args:
+        request : request
+        model : model object
+    """
+    
+    # --- delete model data ---
+    shutil.rmtree(model.model_dir)
+    
+    # --- delete tensorboard process ---
+    if (model.tensorboard_pid is not None):
+        p = psutil.Process(model.tensorboard_pid)
+        c = p.children(recursive=True)
+        c.append(p)
+        for p in c:
+            try:
+                p.send_signal(signal.SIGTERM)
+            except psutil.NoSuchProcess:
+                pass
+        gone, alive = psutil.wait_procs(c, timeout=3)
+    
+    # --- delete session data ---
+    if 'training_view_selected_model' in request.session.keys():
+        if (request.session['training_view_selected_model'] == model.name):
+            del request.session['training_view_selected_model']
+            request.session.modified = True
+    
+    # --- delete database ---
+    model.delete()
+    
+    return
+
+def _project_delete(request, project):
+    """ Delete Project
+    
+    Delete project
+    
+    Args:
+        request : request
+        project : project object
+    """
+    
+    # --- delete model data ---
+    #   * trained data
+    #   * tensorboard process
+    #   * MlModel object
+    for model in MlModel.objects.filter(project=project):
+        _model_delete(request, model)
+    
+    # --- delete project data ---
+    project_dir = Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
+    if (project_dir.exists()):
+        shutil.rmtree(project_dir)
+    
+    dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
+    if (dataset_dir.exists()):
+        shutil.rmtree(dataset_dir)
+    
+    # --- delete session data ---
+    if 'training_view_selected_project' in request.session.keys():
+        if (request.session['training_view_selected_project'] == project.name):
+            del request.session['training_view_selected_project']
+            request.session.modified = True
+    
+    # --- delete database ---
+    project.delete()
+    
+    return
+
 
 def project_new(request):
     """ Function: project_new
@@ -99,18 +175,7 @@ def project_edit(request, project_id):
                 return redirect('index')
                 
         elif ('project_delete' in request.POST):
-            # --- delete project data ---
-            project_dir = Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash)
-            if (project_dir.exists()):
-                shutil.rmtree(project_dir)
-            
-            dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, project.hash)
-            if (dataset_dir.exists()):
-                shutil.rmtree(dataset_dir)
-            
-            # --- delete database ---
-            project.delete()
-            
+            _project_delete(request, project)
             return redirect('index')
     else:
         initial_dict = dict(name=project.name, description=project.description)
@@ -273,13 +338,9 @@ def model_edit(request, project_id, model_id):
                     request.session.modified = True
                 
                 return redirect('index')
+                
         if ('model_delete' in request.POST):
-            # --- delete model data ---
-            shutil.rmtree(model.model_dir)
-            
-            # --- delete database ---
-            model.delete()
-            
+            _model_delete(request, model)
             return redirect('index')
         
     else:
