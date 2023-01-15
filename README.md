@@ -1,4 +1,19 @@
-# AI Dashboard (開発中)
+# AI Dashboard
+
+データ分析や機械学習の効率化を目指して実装を始めたWebアプリ．  
+コンペで使える仕組みづくりを目先の目標として，試行錯誤中．
+
+## 基本思想
+
+* データ分析や機械学習の仕組みとして体系化できた部分をWebアプリとして実装する
+* 特定のタスクに対する特別対応の内容はJupyter Notebookで対応する
+* データ分析や機械学習関係のライブラリは[machine_learningライブラリ](./django_project/app/machine_learning/lib)に記述し，Jupyter Notebookからも呼び出せるようにする
+
+# コンセプト動画
+
+[![コンセプト動画](./figure/concept_movie_thumbnail.png)](https://youtu.be/w2Iu0p9nosk)
+
+## 基本構成
 
 機械学習の実行にPythonを使用する為，WebアプリケーションにはDjangoを使用することとした．  
 WebサーバにはダウンしにくいといわれるNginxを，Djangoとの接続には推奨されている(らしい)Gunicornを使用する．  
@@ -51,7 +66,8 @@ ToDoのメモ．思いついたら順次追加する．
   * [ ] データセット指定（複数データの精度計算）
 * モデル構造分析
   * [ ] Netron導入
-
+* AutoML
+  * [ ] MLFlow連携（お試し含む）
 
 # 使用方法
 
