@@ -110,6 +110,10 @@ ToDoのメモ．思いついたら順次追加する．
 ![ER Diagram](./figure/erd_ml_project_database.png)
 
 
+## カスタムデータセットの仕様
+
+![Custom Dataset Format](./figure/custom_dataset_format.png)
+
 ここから下は備忘録
 
 ---------------
