@@ -15,7 +15,7 @@ import pandas as pd
 
 from pathlib import Path
 from lib.data_sample_loader import load_cifar10_dataset
-from lib.utils import download_file, safe_extract, zip_compress
+from lib.utils import download_file, safe_extract, zip_compress, save_image_files
 
 def ArgParser():
     """Argument Parser
@@ -50,6 +50,8 @@ def main():
     # --- Create output directory ---
     os.makedirs(args.output_dir, exist_ok=True)
     
+    # --- Initialize ---
+    
     # --- Get Data Samples ---
     if (args.dataset_name == 'cifar-10'):
         tar_file = Path(args.output_dir, 'cifar-10-python.tar.gz')
@@ -72,30 +74,66 @@ def main():
         print(f'test_labels.shape = {test_labels.shape}')
     
     # --- Create meta.zip ---
-    dict_meta = {
-        'is_analysis': 'True',
-        'task': 'classification',
-        'input_type': 'image_data',
-        'keys': [
-            {
-                'name': 'img_file',
-                'type': 'image_file',
-            },
-        ],
-    }
-    with open(Path(args.output_dir, 'info.json'), 'w') as f:
-        json.dump(dict_meta, f, ensure_ascii=False, indent=4)
-    
-    meta_files = [
-        [str(Path(args.output_dir, 'info.json')), 'info.json'],
-    ]
-    zip_compress(meta_files, 'meta.zip', args.output_dir)
+    if (args.dataset_name == 'cifar-10'):
+        meta_dir = Path(args.output_dir, 'meta')
+        os.makedirs(meta_dir, exist_ok=True)
+        
+        dict_meta = {
+            'is_analysis': 'True',
+            'task': 'classification',
+            'input_type': 'image_data',
+            'keys': [
+                {
+                    'name': 'img_file',
+                    'type': 'image_file',
+                },
+            ],
+        }
+        with open(Path(meta_dir, 'info.json'), 'w') as f:
+            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+        
+        zip_compress(Path(args.output_dir, 'meta'), meta_dir)
     
     # --- Create train.zip ---
+    if (args.dataset_name == 'cifar-10'):
+        train_dir = Path(args.output_dir, 'train')
+        os.makedirs(train_dir, exist_ok=True)
+        
+        # --- Create index list and shuffle for n_data ---
+        idx_list = np.arange(len(train_images), dtype=np.int32)
+        np.random.shuffle(idx_list)
+        
+        idx_list_shuffled = idx_list[0:min(args.n_data, len(train_images))]
+        save_image_files(train_images[idx_list_shuffled],
+                         train_labels[idx_list_shuffled],
+                         idx_list_shuffled,
+                         train_dir, name='images', key_name='img_file', n_data=args.n_data)
     
+        zip_compress(Path(args.output_dir, 'train'), train_dir)
+        
     # --- Create validation.zip ---
-    
+    if (args.dataset_name == 'cifar-10'):
+        # --- T.B.D ---
+        #  * CIFAR-10 dataset does not have validation data
+        #  * but validation data is be able to create using ``sklearn.model_selection.train_test_split``
+        pass
+        
     # --- Create test.zip ---
+    if (args.dataset_name == 'cifar-10'):
+        test_dir = Path(args.output_dir, 'test')
+        os.makedirs(test_dir, exist_ok=True)
+        
+        # --- Create index list and shuffle for n_data ---
+        idx_list = np.arange(len(test_images), dtype=np.int32)
+        np.random.shuffle(idx_list)
+        
+        idx_list_shuffled = idx_list[0:min(args.n_data, len(test_images))]
+        save_image_files(test_images[idx_list_shuffled],
+                         test_labels[idx_list_shuffled],
+                         idx_list_shuffled,
+                         test_dir, name='images', key_name='img_file', n_data=args.n_data)
+    
+        zip_compress(Path(args.output_dir, 'test'), test_dir)
     
     return
 
