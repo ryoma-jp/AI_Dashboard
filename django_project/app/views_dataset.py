@@ -263,19 +263,24 @@ def dataset_detail(request, project_id, dataset_id):
             dataset.image_gallery_status = dataset.STATUS_PROCESSING
             dataset.save()
             
+            # --- load key_name from meta data ---
+            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'))
+            for key in df_meta['keys']:
+                if (key['type'] == 'image_file'):
+                    key_name = key['name']
+                    break
+            
+            # --- save image files ---
             if (dataloader_obj.train_x is not None):
                 ids = np.arange(len(dataloader_obj.train_x))
-                key_name = 'file'
                 save_image_files(dataloader_obj.train_x, dataloader_obj.train_y, ids,
                                  Path(download_dir, 'train'), name='images', key_name=key_name)
             if (dataloader_obj.validation_x is not None):
                 ids = np.arange(len(dataloader_obj.validation_x))
-                key_name = 'file'
                 save_image_files(dataloader_obj.validation_x, dataloader_obj.validation_y, ids,
                                  Path(download_dir, 'validation'), name='images', key_name=key_name)
             if (dataloader_obj.test_x is not None):
                 ids = np.arange(len(dataloader_obj.test_x))
-                key_name = 'file'
                 save_image_files(dataloader_obj.test_x, dataloader_obj.test_y, ids,
                                  Path(download_dir, 'test'), name='images', key_name=key_name)
             
@@ -302,14 +307,17 @@ def dataset_detail(request, project_id, dataset_id):
             images_per_page = 50
             
             json_data = pd.read_json(Path(download_dir, selected_dataset_type.lower(), 'info.json'))
-            #json_file = Path(download_dir, selected_dataset_type.lower(), 'info.json')
-            #with open(json_file, 'r') as f:
-            #    json_data = json.load(f)
             
             images_page_max = len(json_data) // images_per_page
             images_page_list = [x for x in range(1, images_page_max+1)]
             
-            json_data['file'] = json_data['file'].map(lambda x: Path(settings.MEDIA_URL,
+            # --- load key_name from meta data ---
+            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'))
+            for key in df_meta['keys']:
+                if (key['type'] == 'image_file'):
+                    key_name = key['name']
+                    break
+            json_data[key_name] = json_data[key_name].map(lambda x: Path(settings.MEDIA_URL,
                                                                      settings.DATASET_DIR,
                                                                      dataset.project.hash,
                                                                      f'dataset_{dataset.id}',
@@ -320,16 +328,6 @@ def dataset_detail(request, project_id, dataset_id):
             logging.info(f'[DEBUG] {((images_page_now-1)*images_per_page)+images_per_page}')
             logging.info('----------------------------------------')
             image_gallery_data = json_data.iloc[(images_page_now-1)*images_per_page:((images_page_now-1)*images_per_page)+images_per_page].to_dict('r')
-            #for i in range((images_page_now-1)*images_per_page, ((images_page_now-1)*images_per_page)+images_per_page):
-            #    image_gallery_data.append({
-            #        'id': json_data.iloc[i]['id'],
-            #        'file': Path(settings.MEDIA_URL,
-            #                             settings.DATASET_DIR,
-            #                             dataset.project.hash,
-            #                             f'dataset_{dataset.id}',
-            #                             json_data.iloc[i]['file']),
-            #        'class_id': json_data.iloc[i]['class_id'],
-            #    })
         else:
             images_page_now = 1
             images_page_max = 1

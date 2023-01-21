@@ -109,11 +109,56 @@ def load_dataset(dataset):
         dataset.download_status = dataset.STATUS_PROCESSING
         dataset.save()
     if (dataset.name == 'MNIST'):
+        # --- Create dataloader object ---
         dataloader = DataLoaderMNIST(download_dir, validation_split=0.2, one_hot=False, download=download)
+        
+        # --- Create meta data ---
+        meta_dir = Path(download_dir, 'meta')
+        os.makedirs(meta_dir, exist_ok=True)
+        
+        dict_meta = {
+            'is_analysis': 'True',
+            'task': 'classification',
+            'input_type': 'image_data',
+            'keys': [
+                {
+                    'name': 'img_file',
+                    'type': 'image_file',
+                },
+            ],
+        }
+        with open(Path(meta_dir, 'info.json'), 'w') as f:
+            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+        
     elif (dataset.name == 'CIFAR-10'):
+        # --- Create dataloader object ---
         dataloader = DataLoaderCIFAR10(download_dir, validation_split=0.2, one_hot=False, download=download)
+        
+        # --- Create meta data ---
+        meta_dir = Path(download_dir, 'meta')
+        os.makedirs(meta_dir, exist_ok=True)
+        
+        dict_meta = {
+            'is_analysis': 'True',
+            'task': 'classification',
+            'input_type': 'image_data',
+            'keys': [
+                {
+                    'name': 'img_file',
+                    'type': 'image_file',
+                },
+            ],
+        }
+        with open(Path(meta_dir, 'info.json'), 'w') as f:
+            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+        
     elif (dataset.name == 'CaliforniaHousing'):
+        # --- Create dataloader object ---
         dataloader = DataLoaderCaliforniaHousing(download_dir)
+        
+        # --- Create meta data ---
+        #  * T.B.D
+        
     else:
         train_dir = Path(dataset.train_zip.path).parent
         
