@@ -6,6 +6,8 @@ The common modules are described in this file.
 import os
 import json
 import shutil
+import tarfile
+import gzip
 import cv2
 
 from urllib import request
@@ -26,13 +28,13 @@ def download_file(url, save_dir='output'):
     with open(Path(save_dir, Path(url).name), 'wb') as f:
         f.write(data)
 
-def safe_extract(tar, path, members=None, *, numeric_owner=False):
+def safe_extract_tar(tar_file, path, members=None, *, numeric_owner=False):
     """Extract tarball (applied CVE-2007-4559 Patch)
 
     This function extracts tarball.
 
     Args:
-        tar (string): tar.gz file
+        tar_file (string): tar.gz file
         path (string): the directory to files are extracted
     """
     def _is_within_directory(directory, target):
@@ -43,12 +45,29 @@ def safe_extract(tar, path, members=None, *, numeric_owner=False):
         
         return prefix == abs_directory
     
-    for member in tar.getmembers():
-        member_path = Path(path, member.name)
-        if not _is_within_directory(path, member_path):
-            raise Exception("Attempted Path Traversal in Tar File")
-        
+    with tarfile.open(tar_file) as tar:
+        for member in tar.getmembers():
+            member_path = Path(path, member.name)
+            if not _is_within_directory(path, member_path):
+                raise Exception("Attempted Path Traversal in Tar File")
+            
         tar.extractall(path, members, numeric_owner=numeric_owner)
+
+def safe_extract_gzip(gzip_file, path):
+    """Extract gzip
+    
+    This function extracts gzip file.
+    
+    Args:
+        gzip_file (string): gzip file
+        path (string): the directory to files are extracted
+    """
+
+    with gzip.open(gzip_file, 'rb') as gzip_r:
+        read_data = gzip_r.read()
+        with open(Path(path, os.path.splitext(Path(gzip_file).name)[0]), 'wb') as gzip_w:
+            gzip_w.write(read_data)
+
 
 def zip_compress(zip_name, root_dir):
     """Compress files to zip
@@ -77,12 +96,6 @@ def save_image_files(images, labels, ids, output_dir, name='images', key_name='i
         n_data (int): number of image files to save
     """
 
-    dict_image_file = {
-        'id': [],
-        'file': [],
-        'class_id': [],
-    }
-    
     os.makedirs(Path(output_dir, name), exist_ok=True)
     
     if ((n_data <= 0) or (n_data > len(images))):
@@ -91,7 +104,12 @@ def save_image_files(images, labels, ids, output_dir, name='images', key_name='i
     dict_image_file = []
     for (image, label, id) in zip(images[0:n_data], labels[0:n_data], ids[0:n_data]):
         image_file = str(Path(name, f'{id:08}.png'))
-        cv2.imwrite(str(Path(output_dir, image_file)), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        if (len(image.shape) == 3):
+            # --- RGB ---
+            cv2.imwrite(str(Path(output_dir, image_file)), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+        else:
+            # --- Gray scale ---
+            cv2.imwrite(str(Path(output_dir, image_file)), image)
         
         dict_image_file.append({
             'id': str(id),

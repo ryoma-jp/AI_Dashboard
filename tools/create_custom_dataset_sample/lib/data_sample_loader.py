@@ -11,6 +11,56 @@ import cv2
 import numpy as np
 import pandas as pd
 
+def load_mnist_dataset(input_dir):
+    """Load MNIST data samples
+
+    This function loads data samples as ``numpy.ndarray``.
+
+    Args:
+        input_dir (string): specify the directory included the MNIST python version is extracted.
+
+    Returns:
+        MNIST data samples
+
+        - train_images (numpy.ndarray): image samples for training (shape: [NHW])
+        - train_labels (numpy.ndarray): target labels for training (shape: [N])
+        - test_images (numpy.ndarray): image samples for test (shape: [NHW])
+        - test_labels (numpy.ndarray): target labels for test (shape: [N])
+    """
+    
+    # --- load training data ---
+    f = open(os.path.join(input_dir, 'train-images-idx3-ubyte'))
+    byte_data = np.fromfile(f, dtype=np.uint8)
+    
+    n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
+    img_h = (byte_data[8] << 24) | (byte_data[9] << 16) | (byte_data[10] << 8) | (byte_data[11])
+    img_w = (byte_data[12] << 24) | (byte_data[13] << 16) | (byte_data[14] << 8) | (byte_data[15])
+    train_images = byte_data[16:].reshape(n_items, img_h, img_w)
+    
+    # --- load training label ---
+    f = open(os.path.join(input_dir, 'train-labels-idx1-ubyte'))
+    byte_data = np.fromfile(f, dtype=np.uint8)
+    n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
+    train_labels = byte_data[8:]
+    
+    # --- load test data ---
+    f = open(os.path.join(input_dir, 't10k-images-idx3-ubyte'))
+    byte_data = np.fromfile(f, dtype=np.uint8)
+    
+    n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
+    img_h = (byte_data[8] << 24) | (byte_data[9] << 16) | (byte_data[10] << 8) | (byte_data[11])
+    img_w = (byte_data[12] << 24) | (byte_data[13] << 16) | (byte_data[14] << 8) | (byte_data[15])
+    test_images = byte_data[16:].reshape(n_items, img_h, img_w)
+    
+    # --- load test label ---
+    f = open(os.path.join(input_dir, 't10k-labels-idx1-ubyte'))
+    byte_data = np.fromfile(f, dtype=np.uint8)
+    n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
+    test_labels = byte_data[8:]
+    
+    return train_images, train_labels, test_images, test_labels
+    
+
 def load_cifar10_dataset(input_dir='input'):
     """Load CIFAR-10 data samples
 
