@@ -14,7 +14,8 @@ import pandas as pd
 
 from pathlib import Path
 from lib.data_sample_loader import load_mnist_dataset, load_cifar10_dataset
-from lib.utils import download_file, safe_extract_tar, safe_extract_gzip, zip_compress, save_image_files
+from machine_learning.lib.utils.utils import download_file, safe_extract_tar, safe_extract_gzip, zip_compress, save_image_files
+
 
 def ArgParser():
     """Argument Parser

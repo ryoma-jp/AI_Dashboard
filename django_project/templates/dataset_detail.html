@@ -116,12 +116,12 @@
             
             {% for image_gallery_data_ in image_gallery_data %}
               <!--
-              <p>{{ image_gallery_data_.id }}, {{ image_gallery_data_.file }}, {{ image_gallery_data_.class_id }}</p>
+              <p>{{ image_gallery_data_.id }}, {{ image_gallery_data_.file }}, {{ image_gallery_data_.target }}</p>
               -->
               
               <figure class="figure">
                 <img src="{{ image_gallery_data_.file }}" alt="Responsive image" class="img-fluid img-thumbnail">
-                <figcaption class="figure-caption">id={{ image_gallery_data_.id }}, class_id={{ image_gallery_data_.class_id }}</figcaption>
+                <figcaption class="figure-caption">id={{ image_gallery_data_.id }}, class_id={{ image_gallery_data_.target }}</figcaption>
               </figure>
               
             {% endfor %}
