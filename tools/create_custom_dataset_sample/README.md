@@ -36,12 +36,12 @@ optional arguments:
 ### MNIST
 
 ```
-# python create_custom_dataset_sample.py --dataset_name mnist --output_dir output_mnist --n_data 100
+# python create_custom_dataset_sample.py --dataset_name mnist --output_dir output_mnist --n_data 100 --validation_split 0.2
 ```
 
 ### CIFAR-10
 
 ```
-# python create_custom_dataset_sample.py --dataset_name cifar-10 --output_dir output_cifar10 --n_data 100
+# python create_custom_dataset_sample.py --dataset_name cifar-10 --output_dir output_cifar10 --n_data 100 --validation_split 0.2
 ```
 
