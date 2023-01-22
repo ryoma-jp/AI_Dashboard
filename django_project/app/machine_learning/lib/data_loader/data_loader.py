@@ -10,9 +10,9 @@ import pandas as pd
 import requests
 import tarfile
 import gzip
-import cv2
 
 from pathlib import Path
+from PIL import Image
 
 #---------------------------------
 # クラス; データ取得基底クラス
@@ -87,24 +87,36 @@ class DataLoader():
                 - 'z-score': 標準化(平均と標準偏差を用いて算出)
         
         """
+        # --- Initialize ---
+        train_norm = None
+        validation_norm = None
+        test_norm = None
+        
+        # --- Normalization process ---
         if (mode == 'max'):
             train_norm = self.train_x / 255.
-            validation_norm = self.validation_x / 255.
-            test_norm = self.test_x / 255.
+            if (self.validation_x is not None):
+                validation_norm = self.validation_x / 255.
+            if (self.test_x is not None):
+                test_norm = self.test_x / 255.
         elif (mode == 'max-min'):
             train_min = np.min(self.train_x)
             train_diff = np.max(self.train_x) - np.min(self.train_x)
             
             train_norm = (self.train_x - train_min) / train_diff
-            validation_norm = (self.validation_x - train_min) / train_diff
-            test_norm = (self.test_x - train_min) / train_diff
+            if (self.validation_x is not None):
+                validation_norm = (self.validation_x - train_min) / train_diff
+            if (self.test_x is not None):
+                test_norm = (self.test_x - train_min) / train_diff
         elif (mode == 'z-score'):
             train_mean = np.mean(self.train_x)
             train_std = np.std(self.train_x)
             
             train_norm = (self.train_x - train_mean) / train_std
-            validation_norm = (self.validation_x - train_mean) / train_std
-            test_norm = (self.test_x - train_mean) / train_std
+            if (self.validation_x is not None):
+                validation_norm = (self.validation_x - train_mean) / train_std
+            if (self.test_x is not None):
+                test_norm = (self.test_x - train_mean) / train_std
         else:
             logging.debug('[ERROR] Unknown data normalization mode: {}'.format(mode))
             quit()
@@ -153,12 +165,20 @@ class DataLoader():
         if ((not self.one_hot) and (one_hot)):
             identity = np.eye(self.output_dims, dtype=np.int)
             self.train_y = np.array([identity[i] for i in self.train_y])
-            self.validation_y = np.array([identity[i] for i in self.validation_y])
-            self.test_y = np.array([identity[i] for i in self.test_y])
+            
+            if (self.validation_y is not None):
+                self.validation_y = np.array([identity[i] for i in self.validation_y])
+            
+            if (self.test_y is not None):
+                self.test_y = np.array([identity[i] for i in self.test_y])
         elif ((self.one_hot) and (not one_hot)):
             self.train_y = self.train_y.argmax(axis=1)
-            self.validation_y = self.validation_y.argmax(axis=1)
-            self.test_y = self.test_y.argmax(axis=1)
+            
+            if (self.validation_y is not None):
+                self.validation_y = self.validation_y.argmax(axis=1)
+            
+            if (self.test_y is not None):
+                self.test_y = self.test_y.argmax(axis=1)
             
         self.one_hot = one_hot
         
@@ -467,19 +487,34 @@ class DataLoaderCustom(DataLoader):
                 [引数説明]
                   * data_dir: カスタムデータセットのディレクトリ
             """
+            
+            # --- Load json data ---
             json_file = Path(data_dir, 'info.json')
             df_data = pd.read_json(json_file, orient='records')
             
-            img = cv2.imread(str(Path(data_dir, df_data[key_name][0])))
-            n_items = len(df_data)
-            if (img.ndim) == 3:
-                img_h, img_w, n_channel = img.shape
+            # --- Get channel ---
+            img = Image.open(Path(data_dir, df_data[key_name][0]))
+            if (len(img.size) == 2):
+                # --- Grayscale ---
+                img_channel = 1
+            else:
+                # --- RGB ---
+                img_channle = 3
             
+            # --- Load images ---
+            #   * Loading images should be use Pillow, because OpenCV cannot load the grayscale image as grayscale
+            #     ex) Image.open('grayscale.png').size = [H, W]
+            #         cv2.imread('grayscale.png').shape = [H, W, C] (Auto convert from grayscale to color)
             images = []
             labels = []
-            for index, data_ in df_data.iterrows():
-                images.append(list(cv2.imread(str(Path(data_dir, data_[key_name])))))
-                labels.append(data_['target'])
+            if (img_channel == 1):
+                for index, data_ in df_data.iterrows():
+                    images.append(np.array(Image.open(Path(data_dir, data_[key_name])))[:, :, np.newaxis].tolist())
+                    labels.append(data_['target'])
+            else:
+                for index, data_ in df_data.iterrows():
+                    images.append(np.array(Image.open(Path(data_dir, data_[key_name]))).tolist())
+                    labels.append(data_['target'])
             
             return np.array(images), np.array(labels)
         
