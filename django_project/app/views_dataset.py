@@ -20,49 +20,6 @@ from machine_learning.lib.utils.utils import save_image_files
 
 # Create your views here.
 
-def _save_image_files(images, image_shape, labels, output_dir, name='images'):
-    """Save Image Files
-    
-    Convert image data to image file and save to <dataset_dir>/<name>
-    Internal function of views_dataset
-    
-    Args:
-        images: Image list [N, H, W, C(RGB)]
-        image_shape: image shape (tuple)
-        labels: classification label (ground truth, one_hot)
-        output_dir: output directory
-        name: data name
-    
-    Return:
-        None
-    """
-    
-    # --- create output directory ---
-    os.makedirs(Path(output_dir, name), exist_ok=True)
-    
-    # --- save image files ---
-    dict_image_file = {
-        'id': [],
-        'file': [],
-        'class_id': [],
-    }
-    for i, (image, label) in enumerate(zip(images, labels)):
-        image_file = Path(name, f'{i:08}.png')
-        image = image.reshape(image_shape)
-        cv2.imwrite(str(Path(output_dir, image_file)), cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
-        
-        dict_image_file['id'].append(i)
-        dict_image_file['file'].append(str(image_file))
-        # dict_image_file['class_id'].append(int(np.argmax(label)))
-        dict_image_file['class_id'].append(int(label))
-    
-    # --- save image files information to json file ---
-    with open(Path(output_dir, f'info_{name}.json'), 'w') as f:
-        json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
-    
-    return None
-    
-
 def dataset(request):
     """ Function: dataset
      * dataset top
@@ -121,11 +78,10 @@ def dataset(request):
                     shutil.unpack_archive(dataset.valid_zip.path, valid_dir)
                     logging.info('[INFO] unzip validation.zip DONE')
                 
-                if (dataset.meta_zip):
-                    logging.info('[INFO] unzip meta.zip START')
-                    meta_dir  = Path(dataset.meta_zip.path).parent
-                    shutil.unpack_archive(dataset.meta_zip.path, meta_dir)
-                    logging.info('[INFO] unzip meta.zip DONE')
+                logging.info('[INFO] unzip meta.zip START')
+                meta_dir  = Path(dataset.meta_zip.path).parent
+                shutil.unpack_archive(dataset.meta_zip.path, meta_dir)
+                logging.info('[INFO] unzip meta.zip DONE')
                 
                 # --- preparing ---
                 load_dataset(dataset)
@@ -260,11 +216,15 @@ def dataset_detail(request, project_id, dataset_id):
         
         # --- preparing to display images ---
         if (dataset.image_gallery_status == dataset.STATUS_PREPARING):
+            logging.info('----------------------------------------')
+            logging.info('Dataset preparing START')
+            logging.info('----------------------------------------')
+            
             dataset.image_gallery_status = dataset.STATUS_PROCESSING
             dataset.save()
             
             # --- load key_name from meta data ---
-            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'))
+            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
             for key in df_meta['keys']:
                 if (key['type'] == 'image_file'):
                     key_name = key['name']
@@ -287,10 +247,21 @@ def dataset_detail(request, project_id, dataset_id):
             dataset.image_gallery_status = dataset.STATUS_DONE
             dataset.save()
             
+            logging.info('----------------------------------------')
+            logging.info('Dataset preparing DONE')
+            logging.info('----------------------------------------')
+            
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         selected_dataset_type = request.session.get('selected_dataset_type', None)
+        logging.info('-------------------------------------')
+        logging.info(f'selected_dataset_info = {selected_dataset_info}')
+        logging.info(f'selected_dataset_type = {selected_dataset_type}')
+        logging.info('-------------------------------------')
         
         # --- set keys ---
+        logging.info('-------------------------------------')
+        logging.info(f'dataloader_obj.verified = {dataloader_obj.verified}')
+        logging.info('-------------------------------------')
         image_gallery_keys = []
         if (dataloader_obj.verified):
             if (dataloader_obj.train_x is not None):
@@ -312,7 +283,7 @@ def dataset_detail(request, project_id, dataset_id):
             images_page_list = [x for x in range(1, images_page_max+1)]
             
             # --- load key_name from meta data ---
-            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'))
+            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
             for key in df_meta['keys']:
                 if (key['type'] == 'image_file'):
                     key_name = key['name']

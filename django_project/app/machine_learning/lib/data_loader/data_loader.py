@@ -44,7 +44,7 @@ class DataLoader():
         self.one_hot = True
         self.output_dims = -1
         self.verified = False
-        self.dataset_type = 'img_clf'
+        self.dataset_type = None
         
         return
     
@@ -440,19 +440,18 @@ class DataLoaderCustom(DataLoader):
         self.test_y = None
         self.one_hot = True
         self.output_dims = 0
-        self.verified = False
         
         return
     
-    def load_data(self, train_dir, test_dir, validation_dir=None, validation_split=0.0, flatten=False, one_hot=False):
+    def load_data(self, meta_dir, train_dir, validation_dir=None, test_dir=None, validation_split=0.0, flatten=False, one_hot=False):
         """load_data
         
         データをロードしてクラス変数へ設定する
         
         Args:
             train_dir (PosixPath): 学習データセットのディレクトリ
-            test_dir (PosixPath): テストデータセットのディレクトリ
             validation_dir (PosixPath): バリデーションデータセットのディレクトリ
+            test_dir (PosixPath): テストデータセットのディレクトリ
             validation_split (float): validation dataとして使用する学習データの比率(0.0 ～ 1.0)．validation_dirが指定されている場合は，validation_splitは無視する
             flatten (bool): 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
             one_hot (bool): one hot形式(=True)かラベルインデックス(=False;default)かを選択する
@@ -461,7 +460,7 @@ class DataLoaderCustom(DataLoader):
             None
         """
         
-        def _load_data(data_dir):
+        def _load_data(data_dir, key_name='img_file'):
             """_load_data
                 カスタムデータセットを読み込み，画像とラベルを返す
                 
@@ -471,46 +470,65 @@ class DataLoaderCustom(DataLoader):
             json_file = Path(data_dir, 'info.json')
             df_data = pd.read_json(json_file, orient='records')
             
-            img = cv2.imread(Path(data_dir, df_data['file'][0]))
+            img = cv2.imread(str(Path(data_dir, df_data[key_name][0])))
             n_items = len(df_data)
             if (img.ndim) == 3:
                 img_h, img_w, n_channel = img.shape
             
             images = []
             labels = []
-            for data_ in df_data.itertuples():
-                images.append(list(cv2.imread(Path(data_dir, data_.file))))
-                labels.append(data_.class_id)
+            for index, data_ in df_data.iterrows():
+                images.append(list(cv2.imread(str(Path(data_dir, data_[key_name])))))
+                labels.append(data_['target'])
             
             return np.array(images), np.array(labels)
         
-        # --- initialize super class ---
-        super().__init__()
+        # --- set parameters from arguments ---
         self.one_hot = one_hot
         
-        # --- load training data ---
-        self.train_x, self.train_y = _load_data(train_dir)
+        # --- load meta data ---
+        df_meta = pd.read_json(Path(meta_dir, 'info.json'), typ='series')
+        if ((df_meta['task'] == 'classification') and (df_meta['input_type'] == 'image_data')):
+            self.dataset_type = 'img_clf'
+        elif ((df_meta['task'] == 'regression') and (df_meta['input_type'] == 'image_data')):
+            self.dataset_type = 'img_reg'
+        elif ((df_meta['task'] == 'classification') and (df_meta['input_type'] == 'table_data')):
+            self.dataset_type = 'table_clf'
+        elif ((df_meta['task'] == 'regression') and (df_meta['input_type'] == 'table_data')):
+            self.dataset_type = 'table_reg'
+        else:
+            self.dataset_type = None
         
-        # --- load test data ---
-        self.test_x, self.test_y = _load_data(test_dir)
+        for key in df_meta['keys']:
+            if (key['type'] == 'image_file'):
+                key_name = key['name']
+                break
+        
+        # --- load training data ---
+        self.train_x, self.train_y = _load_data(train_dir, key_name=key_name)
         
         # --- load validation data ---
         if (validation_dir is not None):
-            self.validation_x, self.validation_y = _load_data(validation_dir)
+            self.validation_x, self.validation_y = _load_data(validation_dir, key_name=key_name)
         else:
             self.split_train_val(validation_split)
             
+        # --- load test data ---
+        if (test_dir is not None):
+            self.test_x, self.test_y = _load_data(test_dir, key_name=key_name)
+        
         # --- 出力次元数を保持 ---
         self.output_dims = 10    # T.B.D
         
         return
     
-    def verify(self, train_dir, validation_dir=None, test_dir=None):
+    def verify(self, meta_dir, train_dir, validation_dir=None, test_dir=None):
         """verify
         
         データ形式の整合検証
         
         Args:
+            meta_dir (PosixPath): Meta data (zip extracted)
             train_dir (PosixPath): Train data (zip extracted)
             validation_dir (PosixPath): Validation data (zip extracted)
             test_dir (PosixPath): Test data (zip extracted)
@@ -522,13 +540,16 @@ class DataLoaderCustom(DataLoader):
         
         self.verified = False
         
+        if (not Path(meta_dir, 'info.json').exists()):
+            return False
+            
         if (not Path(train_dir, 'info.json').exists()):
             return False
         
         if (validation_dir is not None):
             if (not Path(validation_dir, 'info.json').exists()):
                 return False
-        
+                
         if (test_dir is not None):
             if (not Path(test_dir, 'info.json').exists()):
                 return False

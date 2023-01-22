@@ -160,6 +160,8 @@ def load_dataset(dataset):
         #  * T.B.D
         
     else:
+        # --- Load dataset ---
+        meta_dir = Path(dataset.meta_zip.path).parent
         train_dir = Path(dataset.train_zip.path).parent
         
         if (dataset.valid_zip):
@@ -173,9 +175,29 @@ def load_dataset(dataset):
             test_dir = None
         
         dataloader = DataLoaderCustom()
-        if (dataloader.verify(train_dir, validation_dir=valid_dir, test_dir=test_dir)):
-            dataloader.load_data(train_dir, validation_dir=valid_dir, test_dir=test_dir, one_hot=False)
+        flg_verified = dataloader.verify(meta_dir, train_dir, validation_dir=valid_dir, test_dir=test_dir)
+        logging.info('-------------------------------------')
+        logging.info(f'flg_verified = {flg_verified}')
+        logging.info('-------------------------------------')
+        if (flg_verified):
+            dataloader.load_data(meta_dir, train_dir, validation_dir=valid_dir, test_dir=test_dir, one_hot=False)
     
+        logging.info('-------------------------------------')
+        logging.info(f'dataloader.verified = {dataloader.verified}')
+        logging.info(f'meta_dir = {meta_dir}')
+        logging.info(f'train_dir = {train_dir}')
+        logging.info(f'valid_dir = {valid_dir}')
+        logging.info(f'test_dir = {test_dir}')
+        logging.info('-------------------------------------')
+        
+        # --- Set dataset_type ---
+        logging.info('-------------------------------------')
+        logging.info(f'dataloader.dataset_type = {dataloader.dataset_type}')
+        logging.info('-------------------------------------')
+        if ((dataloader.dataset_type == 'img_clf') or (dataloader.dataset_type == 'img_reg')):
+            dataset.dataset_type = dataset.DATASET_TYPE_IMAGE
+            dataset.image_gallery_status = dataset.STATUS_DONE
+                
     # --- save dataset object to pickle file ---
     with open(Path(download_dir, 'dataset.pkl'), 'wb') as f:
         pickle.dump(dataloader, f)
