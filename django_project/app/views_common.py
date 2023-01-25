@@ -157,7 +157,19 @@ def load_dataset(dataset):
         dataloader = DataLoaderCaliforniaHousing(download_dir)
         
         # --- Create meta data ---
-        #  * T.B.D
+        meta_dir = Path(download_dir, 'meta')
+        os.makedirs(meta_dir, exist_ok=True)
+        
+        dict_meta = {
+            'is_analysis': 'True',
+            'task': 'regression',
+            'input_type': 'table_data',
+            'keys': [
+                {'name': key, 'type': 'number'} for key in dataloader.train_x.keys()
+            ],
+        }
+        with open(Path(meta_dir, 'info.json'), 'w') as f:
+            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
         
     else:
         # --- Load dataset ---

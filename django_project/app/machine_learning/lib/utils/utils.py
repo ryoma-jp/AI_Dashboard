@@ -9,6 +9,7 @@ import shutil
 import tarfile
 import gzip
 import cv2
+import pandas as pd
 
 from urllib import request
 from pathlib import Path
@@ -68,7 +69,6 @@ def safe_extract_gzip(gzip_file, path):
         with open(Path(path, os.path.splitext(Path(gzip_file).name)[0]), 'wb') as gzip_w:
             gzip_w.write(read_data)
 
-
 def zip_compress(zip_name, root_dir):
     """Compress files to zip
     
@@ -81,10 +81,28 @@ def zip_compress(zip_name, root_dir):
     
     shutil.make_archive(zip_name, 'zip', root_dir=root_dir)
 
+def load_keys_from_meta(df_meta):
+    """Load keys from meta
+    
+    This function loads keys from ``info.json`` of meta data.
+    
+    Args:
+        df_meta (pandas.DataFrame): meta data
+    
+    Returns:
+        list: keys
+    """
+    
+    keys = []
+    for key in df_meta['keys']:
+        keys.append(key['name'])
+    
+    return keys
+
 def save_image_files(images, labels, ids, output_dir, name='images', key_name='img_file', n_data=0):
     """Save Image Files
 
-    This function creates and saves image files to ``output_dir``, and also creates "info.json".
+    This function creates and saves image files to ``output_dir``, and also creates ``info.json``.
 
     Args:
         images (numpy.ndarray): images (shape: [NHWC](or [NHW] if C=1), channel shape: [RGB])
@@ -123,6 +141,30 @@ def save_image_files(images, labels, ids, output_dir, name='images', key_name='i
     
     return None
 
-
+def save_table_info(df_meta, df_x, df_y, output_dir):
+    """Save Table Information (info.json)
+    
+    This function creates ``info.json``.
+    
+    Args:
+        df_meta (pandas.DataFrame): meta data
+        df_x (pandas.DataFrame): input data
+        df_y (pandas.DataFrame): target
+        output_dir (string): directory path to ``info.json``
+    
+    """
+    
+    os.makedirs(output_dir, exist_ok=True)
+    keys = load_keys_from_meta(df_meta)
+    df_table_info = pd.concat([
+                        pd.DataFrame({'id':[n for n in range(len(df_x))]}),
+                        df_x.reset_index()[keys],
+                        pd.DataFrame({'target':df_y.values.reshape(-1)})], axis=1)
+    
+    with open(Path(output_dir, 'info.json'), 'w') as f:
+        json.dump(df_table_info.to_dict(orient='records'), f, ensure_ascii=False, indent=4)
+    
+    return None
+    
 
 

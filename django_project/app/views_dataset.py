@@ -16,7 +16,7 @@ from app.models import Project, Dataset
 from app.forms import DatasetForm
 
 from views_common import SidebarActiveStatus, get_version, load_dataset, get_jupyter_nb_url
-from machine_learning.lib.utils.utils import save_image_files
+from machine_learning.lib.utils.utils import save_image_files, save_table_info
 
 # Create your views here.
 
@@ -208,23 +208,16 @@ def dataset_detail(request, project_id, dataset_id):
             
     # --- check dataset download ---
     if (dataset.download_status == dataset.STATUS_PREPARING):
+        # --- load dataest and dataloader objects
         load_dataset(dataset)
-        
-    # --- check download directory ---
-    if (dataset.download_status == dataset.STATUS_DONE):
         dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
         
-        # --- preparing to display images ---
-        if (dataset.image_gallery_status == dataset.STATUS_PREPARING):
-            logging.info('----------------------------------------')
-            logging.info('Dataset preparing START')
-            logging.info('----------------------------------------')
-            
-            dataset.image_gallery_status = dataset.STATUS_PROCESSING
-            dataset.save()
-            
-            # --- load key_name from meta data ---
-            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
+        
+        # --- load key_name from meta data ---
+        df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
+        
+        if (df_meta['input_type'] == 'image_data'):
+            # --- get key_name ---
             for key in df_meta['keys']:
                 if (key['type'] == 'image_file'):
                     key_name = key['name']
@@ -243,6 +236,25 @@ def dataset_detail(request, project_id, dataset_id):
                 ids = np.arange(len(dataloader_obj.test_x))
                 save_image_files(dataloader_obj.test_x, dataloader_obj.test_y, ids,
                                  Path(download_dir, 'test'), name='images', key_name=key_name)
+        
+        elif (df_meta['input_type'] == 'table_data'):
+            save_table_info(df_meta, dataloader_obj.train_x, dataloader_obj.train_y, Path(download_dir, 'train'))
+            save_table_info(df_meta, dataloader_obj.validation_x, dataloader_obj.validation_y, Path(download_dir, 'validation'))
+            save_table_info(df_meta, dataloader_obj.test_x, dataloader_obj.test_y, Path(download_dir, 'test'))
+        
+    # --- check download directory ---
+    if (dataset.download_status == dataset.STATUS_DONE):
+        dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
+        
+        # --- preparing to display images ---
+        if (dataset.image_gallery_status == dataset.STATUS_PREPARING):
+            logging.info('----------------------------------------')
+            logging.info('Dataset preparing START')
+            logging.info('----------------------------------------')
+            
+            dataset.image_gallery_status = dataset.STATUS_PROCESSING
+            dataset.save()
+            
             
             dataset.image_gallery_status = dataset.STATUS_DONE
             dataset.save()

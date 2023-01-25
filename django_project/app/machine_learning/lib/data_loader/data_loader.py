@@ -11,6 +11,7 @@ import requests
 import tarfile
 import gzip
 
+from sklearn.model_selection import train_test_split
 from pathlib import Path
 from PIL import Image
 
@@ -152,6 +153,23 @@ class DataLoader():
             self.train_y = self.train_y[0:validation_index]
         
         return
+    
+    def train_valid_test_split(self, validation_size=0.2, test_size=0.3):
+        """Split Dataset
+        
+        This function split dataset from train to train, validation and test.
+        
+        Args:
+            validation_size (float): validation data rate (0.0 <= validation_size < 1.0)
+            test_size (float): validation data rate (0.0 <= validation_size < 1.0)
+        """
+        
+        self.train_x, self.test_x, self.train_y, self.test_y = train_test_split(
+            self.train_x, self.train_y, test_size=test_size, random_state=42)
+        
+        self.train_x, self.validation_x, self.train_y, self.validation_y = train_test_split(
+            self.train_x, self.train_y, test_size=validation_size, random_state=42)
+        
     
     def convert_label_encoding(self, one_hot=True):
         """Convert Label Encoding
@@ -405,7 +423,7 @@ class DataLoaderCaliforniaHousing(DataLoader):
     """
     
     # --- コンストラクタ ---
-    def __init__(self, dataset_dir, validation_split=0.2):
+    def __init__(self, dataset_dir, validation_size=0.2, test_size=0.3):
         from sklearn.datasets import fetch_california_housing
         
         self.one_hot = False
@@ -417,11 +435,7 @@ class DataLoaderCaliforniaHousing(DataLoader):
         self.train_x = pd.DataFrame(california_housing.data, columns=california_housing.feature_names)
         self.train_y = pd.DataFrame(california_housing.target, columns=['TARGET'])
         
-        self.split_train_val(validation_split)
-        
-        # T.B.D
-        self.test_x = self.validation_x
-        self.test_y = self.validation_y
+        self.train_valid_test_split(validation_size=validation_size, test_size=test_size)
         
         return
 
