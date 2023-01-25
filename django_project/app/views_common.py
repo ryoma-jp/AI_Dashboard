@@ -208,8 +208,7 @@ def load_dataset(dataset):
         logging.info('-------------------------------------')
         if ((dataloader.dataset_type == 'img_clf') or (dataloader.dataset_type == 'img_reg')):
             dataset.dataset_type = dataset.DATASET_TYPE_IMAGE
-            dataset.image_gallery_status = dataset.STATUS_DONE
-                
+            
     # --- save dataset object to pickle file ---
     with open(Path(download_dir, 'dataset.pkl'), 'wb') as f:
         pickle.dump(dataloader, f)

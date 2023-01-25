@@ -70,7 +70,6 @@ class Dataset(models.Model):
         (STATUS_DONE, STATUS_DONE),
     )
     download_status = models.CharField(max_length=32, choices=STATUS, default=STATUS_NONE)
-    image_gallery_status = models.CharField(max_length=32, choices=STATUS, default=STATUS_NONE)
     
     def __str__(self):
         return self.name

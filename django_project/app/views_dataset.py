@@ -57,7 +57,6 @@ def dataset(request):
                               meta_zip=form_custom_dataset.cleaned_data.get('meta_zip'),
                               uploaded_at=form_custom_dataset.cleaned_data.get('uploaded_at'),
                               download_status=Dataset.STATUS_NONE,
-                              image_gallery_status=Dataset.STATUS_NONE,
                           )
         
                 # --- unzip ---
@@ -177,26 +176,6 @@ def dataset_detail(request, project_id, dataset_id):
             selected_dataset_info = request.POST['dropdown_dataset_info']
             request.session['dropdown_dataset_info'] = selected_dataset_info
             
-            if ((selected_dataset_info == 'Images') and (dataset.image_gallery_status == dataset.STATUS_NONE)):
-                dataset.image_gallery_status = dataset.STATUS_PREPARING
-                dataset.save()
-            
-                dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
-                context = {
-                    'text': get_version(),
-                    'jupyter_nb_url': get_jupyter_nb_url(),
-                    'project_id': project.id,
-                    'dataset_id': dataset.id,
-                    'dataset_name': dataset.name,
-                    'dataloader_obj': dataloader_obj,
-                    'download_status': dataset.download_status,
-                    'download_button_state': download_button_state,
-                    'dataset_info': dataset_info,
-                    'selected_dataset_info': selected_dataset_info,
-                    'image_gallery_status': dataset.image_gallery_status,
-                }
-                return render(request, 'dataset_detail.html', context)
-            
         if ('image_gallery_key' in request.POST.keys()):
             selected_dataset_type = request.POST['image_gallery_key']
             request.session['selected_dataset_type'] = selected_dataset_type
@@ -211,7 +190,6 @@ def dataset_detail(request, project_id, dataset_id):
         # --- load dataest and dataloader objects
         load_dataset(dataset)
         dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
-        
         
         # --- load key_name from meta data ---
         df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
@@ -246,23 +224,6 @@ def dataset_detail(request, project_id, dataset_id):
     if (dataset.download_status == dataset.STATUS_DONE):
         dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
         
-        # --- preparing to display images ---
-        if (dataset.image_gallery_status == dataset.STATUS_PREPARING):
-            logging.info('----------------------------------------')
-            logging.info('Dataset preparing START')
-            logging.info('----------------------------------------')
-            
-            dataset.image_gallery_status = dataset.STATUS_PROCESSING
-            dataset.save()
-            
-            
-            dataset.image_gallery_status = dataset.STATUS_DONE
-            dataset.save()
-            
-            logging.info('----------------------------------------')
-            logging.info('Dataset preparing DONE')
-            logging.info('----------------------------------------')
-            
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         selected_dataset_type = request.session.get('selected_dataset_type', None)
         logging.info('-------------------------------------')
@@ -326,7 +287,6 @@ def dataset_detail(request, project_id, dataset_id):
             'download_button_state': download_button_state,
             'dataset_info': dataset_info,
             'selected_dataset_info': selected_dataset_info,
-            'image_gallery_status': dataset.image_gallery_status,
             'image_gallery_keys': image_gallery_keys,
             'image_gallery_selected_item': selected_dataset_type,
             'image_gallery_data': image_gallery_data,

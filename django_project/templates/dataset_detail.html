@@ -80,7 +80,6 @@
       </form>
       {% if selected_dataset_info|stringformat:'s' == 'Images' %}
         <h3>Images</h3>
-        {% if image_gallery_status|stringformat:'s' == 'Done' %}
           <form method="post">
           {% csrf_token %}
             <div class="btn-group col-1 my-1">
@@ -127,18 +126,6 @@
             {% endfor %}
           {% endif %}
           
-        {% elif image_gallery_status|stringformat:'s' != 'None' %}
-          <p>Imagefile Loading ...</p>
-          <div class="spinner-border text-primary" role="status">
-            <span class="sr-only"></span>
-          </div>
-          
-          {% if image_gallery_status|stringformat:'s' == 'Preparing' %}
-          <script>
-            window.location.href = "{% url 'dataset_detail' project_id dataset_id %}"
-          </script>
-          {% endif %}
-        {% endif %}
       {% endif %}
     {% endif %}
     
