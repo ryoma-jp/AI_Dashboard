@@ -99,6 +99,30 @@ def load_keys_from_meta(df_meta):
     
     return keys
 
+def save_meta(output_dir, is_analysis, task, input_type, keys):
+    """Save Meta data (info.json)
+
+    This function creates ``info.json``.
+
+    Args:
+        output_dir (string): specify the output directory
+        is_analysis (string): meta parameter (see meta data apecification)
+        task (string): meta parameter (see meta data apecification)
+        input_type (string): meta parameter (see meta data apecification)
+        keys (list): meta parameter (see meta data apecification)
+    """
+    
+    os.makedirs(output_dir, exist_ok=True)
+    
+    dict_meta = {
+        'is_analysis': is_analysis,
+        'task': task,
+        'input_type': input_type,
+        'keys': keys,
+    }
+    with open(Path(output_dir, 'info.json'), 'w') as f:
+        json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+
 def save_image_files(images, labels, ids, output_dir, name='images', key_name='img_file', n_data=0):
     """Save Image Files
 

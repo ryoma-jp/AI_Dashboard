@@ -14,6 +14,7 @@ from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
 from machine_learning.lib.data_loader.data_loader import DataLoaderCaliforniaHousing
 from machine_learning.lib.data_loader.data_loader import DataLoaderCustom
+from machine_learning.lib.utils.utils import save_meta
 
 # Create your views here.
 
@@ -114,21 +115,11 @@ def load_dataset(dataset):
         
         # --- Create meta data ---
         meta_dir = Path(download_dir, 'meta')
-        os.makedirs(meta_dir, exist_ok=True)
-        
-        dict_meta = {
-            'is_analysis': 'True',
-            'task': 'classification',
-            'input_type': 'image_data',
-            'keys': [
-                {
+        keys = [{
                     'name': 'img_file',
                     'type': 'image_file',
-                },
-            ],
-        }
-        with open(Path(meta_dir, 'info.json'), 'w') as f:
-            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+                }]
+        save_meta(meta_dir, 'True', 'classification', 'image_data', keys)
         
     elif (dataset.name == 'CIFAR-10'):
         # --- Create dataloader object ---
@@ -136,21 +127,11 @@ def load_dataset(dataset):
         
         # --- Create meta data ---
         meta_dir = Path(download_dir, 'meta')
-        os.makedirs(meta_dir, exist_ok=True)
-        
-        dict_meta = {
-            'is_analysis': 'True',
-            'task': 'classification',
-            'input_type': 'image_data',
-            'keys': [
-                {
+        keys = [{
                     'name': 'img_file',
                     'type': 'image_file',
-                },
-            ],
-        }
-        with open(Path(meta_dir, 'info.json'), 'w') as f:
-            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+                }]
+        save_meta(meta_dir, 'True', 'classification', 'image_data', keys)
         
     elif (dataset.name == 'CaliforniaHousing'):
         # --- Create dataloader object ---
@@ -158,18 +139,8 @@ def load_dataset(dataset):
         
         # --- Create meta data ---
         meta_dir = Path(download_dir, 'meta')
-        os.makedirs(meta_dir, exist_ok=True)
-        
-        dict_meta = {
-            'is_analysis': 'True',
-            'task': 'regression',
-            'input_type': 'table_data',
-            'keys': [
-                {'name': key, 'type': 'number'} for key in dataloader.train_x.keys()
-            ],
-        }
-        with open(Path(meta_dir, 'info.json'), 'w') as f:
-            json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+        keys = [{'name': key, 'type': 'number'} for key in dataloader.train_x.keys()]
+        save_meta(meta_dir, 'True', 'regression', 'table_data', keys)
         
     else:
         # --- Load dataset ---
