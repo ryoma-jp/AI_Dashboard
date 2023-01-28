@@ -126,6 +126,60 @@
             {% endfor %}
           {% endif %}
           
+      {% elif selected_dataset_info|stringformat:'s' == 'Statistic' %}
+        <h3>Statistic</h3>
+          <form method="post">
+          {% csrf_token %}
+            <div class="btn-group col-1 my-1">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if statistic_selected_item %}
+                  {{ statistic_selected_item }}
+                {% else %}
+                  Select Type
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for statistic_key in dataloader_obj.statistic_keys %}
+                <li><button class="dropdown-item" type="submit" name="statistic_key" value="{{ statistic_key }}">{{ statistic_key }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+          </form>
+          
+          <!-- Draw Chart -->
+          {% if statistic_selected_item|stringformat:'s' == 'Target Distributions' %}
+            <canvas id="chart_target_distributions" width="900" height="380"></canvas>
+            <script type="text/javascript">
+              var ctx = document.getElementById('chart_target_distributions')
+              var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: {{ dataloader_obj.target_distributions.train.hist_x }},
+                  datasets: [{
+                    data: {{ dataloader_obj.target_distributions.train.hist_y }},
+                    label: "Train",
+                    lineTension: 0,
+                    borderColor: '#007bff',
+                    borderWidth: 1,
+                    pointBackgroundColor: '#007bff'
+                  }]
+                },
+                options: {
+                  scales: {
+                    yAxes: [{
+                      ticks: {
+                        beginAtZero: false
+                      }
+                    }]
+                  },
+                  legend: {
+                    display: false
+                  }
+                }
+              })
+            </script>
+          {% endif %}
+          
       {% endif %}
     {% endif %}
     

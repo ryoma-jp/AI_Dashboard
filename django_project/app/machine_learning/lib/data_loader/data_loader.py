@@ -38,6 +38,7 @@ class DataLoader():
             - 'img_reg': 画像データの回帰タスク
             - 'table_clf': テーブルデータの分類タスク
             - 'table_reg': テーブルデータの回帰タスク
+        target_distributions (dict): target分布
     
     """
     # --- コンストラクタ ---
@@ -46,8 +47,9 @@ class DataLoader():
         self.output_dims = -1
         self.verified = False
         self.dataset_type = None
+        self.target_distributions = None
+        self.statistic_keys = []
         
-        return
     
     # --- ファイルダウンロード ---
     def file_download(self, dir, url):
@@ -202,6 +204,37 @@ class DataLoader():
         
         return
     
+    def data_analysis(self):
+        """Data Analysis
+        
+        This function analylizies dataset.
+        """
+        
+        # --- Calculate target distribution ---
+        if (self.target_distributions is None):
+            self.target_distributions = {}
+            self.statistic_keys.append('Target Distributions')
+            
+            if (self.train_y is not None):
+                self.target_distributions['train'] = {}
+                hist_y, hist_x = np.histogram(self.train_y)
+                self.target_distributions['train']['hist_y'] = hist_y.tolist()
+                self.target_distributions['train']['hist_x'] = hist_x.tolist()
+            else:
+                self.target_distributions['train'] = None
+            
+            if (self.validation_y is not None):
+                self.target_distributions['validation'] = {}
+                self.target_distributions['validation']['hist_y'], self.target_distributions['validation']['hist_x'] = np.histogram(self.validation_y)
+            else:
+                self.target_distributions['validation'] = None
+            
+            if (self.test_y is not None):
+                self.target_distributions['test'] = {}
+                self.target_distributions['test']['hist_y'], self.target_distributions['test']['hist_x'] = np.histogram(self.test_y)
+            else:
+                self.target_distributions['test'] = None
+            
 #---------------------------------
 # クラス; CIFAR-10データセット取得
 #---------------------------------
@@ -425,6 +458,9 @@ class DataLoaderCaliforniaHousing(DataLoader):
     # --- コンストラクタ ---
     def __init__(self, dataset_dir, validation_size=0.2, test_size=0.3):
         from sklearn.datasets import fetch_california_housing
+        
+        # --- initialize super class ---
+        super().__init__()
         
         self.one_hot = False
         self.output_dims = 1

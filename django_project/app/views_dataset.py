@@ -149,7 +149,7 @@ def dataset_detail(request, project_id, dataset_id):
     dataset_info = []
     if (dataset.dataset_type == Dataset.DATASET_TYPE_IMAGE):
         dataset_info.append('Images')
-    dataset_info.append('Statistics')
+    dataset_info.append('Statistic')
     
     if (request.method == 'POST'):
         logging.info('-------------------------------------')
@@ -177,6 +177,11 @@ def dataset_detail(request, project_id, dataset_id):
             request.session['dropdown_dataset_info'] = selected_dataset_info
             
         if ('image_gallery_key' in request.POST.keys()):
+            # --- remove other menu ---
+            if ('statistic_selected_item' in request.session.keys()):
+                del request.session['statistic_selected_item']
+            
+            # --- set image gallery parameters ---
             selected_dataset_type = request.POST['image_gallery_key']
             request.session['selected_dataset_type'] = selected_dataset_type
             request.session['image_gallery_page_now'] = 1
@@ -185,6 +190,15 @@ def dataset_detail(request, project_id, dataset_id):
             selected_page = int(request.POST['select_page'])
             request.session['image_gallery_page_now'] = selected_page
             
+        if ('statistic_key' in request.POST.keys()):
+            # --- remove other menu ---
+            if ('selected_dataset_type' in request.session.keys()):
+                del request.session['selected_dataset_type']
+            
+            # --- set statistic parameters ---
+            statistic_selected_item = request.POST['statistic_key']
+            request.session['statistic_selected_item'] = statistic_selected_item
+        
     # --- check dataset download ---
     if (dataset.download_status == dataset.STATUS_PREPARING):
         # --- load dataest and dataloader objects
@@ -226,74 +240,105 @@ def dataset_detail(request, project_id, dataset_id):
         
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         selected_dataset_type = request.session.get('selected_dataset_type', None)
+        statistic_selected_item = request.session.get('statistic_selected_item', None)
         logging.info('-------------------------------------')
         logging.info(f'selected_dataset_info = {selected_dataset_info}')
         logging.info(f'selected_dataset_type = {selected_dataset_type}')
+        logging.info(f'statistic_selected_item = {statistic_selected_item}')
         logging.info('-------------------------------------')
         
-        # --- set keys ---
-        logging.info('-------------------------------------')
-        logging.info(f'dataloader_obj.verified = {dataloader_obj.verified}')
-        logging.info('-------------------------------------')
-        image_gallery_keys = []
-        if (dataloader_obj.verified):
-            if (dataloader_obj.train_x is not None):
-                image_gallery_keys.append('Train')
-            if (dataloader_obj.validation_x is not None):
-                image_gallery_keys.append('Validation')
-            if (dataloader_obj.test_x is not None):
-                image_gallery_keys.append('Test')
-        
-        # --- set image data file ---
-        image_gallery_data = []
-        if (selected_dataset_type is not None):
-            images_page_now = request.session.get('image_gallery_page_now', 1)
-            images_per_page = 50
+        if (selected_dataset_info == 'Images'):
+            # --- set keys ---
+            logging.info('-------------------------------------')
+            logging.info(f'dataloader_obj.verified = {dataloader_obj.verified}')
+            logging.info('-------------------------------------')
+            image_gallery_keys = []
+            if (dataloader_obj.verified):
+                if (dataloader_obj.train_x is not None):
+                    image_gallery_keys.append('Train')
+                if (dataloader_obj.validation_x is not None):
+                    image_gallery_keys.append('Validation')
+                if (dataloader_obj.test_x is not None):
+                    image_gallery_keys.append('Test')
             
-            json_data = pd.read_json(Path(download_dir, selected_dataset_type.lower(), 'info.json'))
+            # --- set image data file ---
+            image_gallery_data = []
+            if (selected_dataset_type is not None):
+                images_page_now = request.session.get('image_gallery_page_now', 1)
+                images_per_page = 50
+                
+                json_data = pd.read_json(Path(download_dir, selected_dataset_type.lower(), 'info.json'))
+                
+                images_page_max = len(json_data) // images_per_page
+                images_page_list = [x for x in range(1, images_page_max+1)]
+                
+                # --- load key_name from meta data ---
+                df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
+                for key in df_meta['keys']:
+                    if (key['type'] == 'image_file'):
+                        key_name = key['name']
+                        break
+                json_data[key_name] = json_data[key_name].map(lambda x: Path(settings.MEDIA_URL,
+                                                                         settings.DATASET_DIR,
+                                                                         dataset.project.hash,
+                                                                         f'dataset_{dataset.id}',
+                                                                         selected_dataset_type.lower(),
+                                                                         x))
+                logging.info('----------------------------------------')
+                logging.info(f'[DEBUG] {(images_page_now-1)*images_per_page}')
+                logging.info(f'[DEBUG] {((images_page_now-1)*images_per_page)+images_per_page}')
+                logging.info('----------------------------------------')
+                image_gallery_data = json_data.iloc[(images_page_now-1)*images_per_page:((images_page_now-1)*images_per_page)+images_per_page].to_dict('r')
+            else:
+                images_page_now = 1
+                images_page_max = 1
+                images_page_list = []
+                
             
-            images_page_max = len(json_data) // images_per_page
-            images_page_list = [x for x in range(1, images_page_max+1)]
+            context = {
+                'text': get_version(),
+                'jupyter_nb_url': get_jupyter_nb_url(),
+                'dataset_name': dataset.name,
+                'dataloader_obj': dataloader_obj,
+                'download_status': dataset.download_status,
+                'download_button_state': download_button_state,
+                'dataset_info': dataset_info,
+                'selected_dataset_info': selected_dataset_info,
+                'image_gallery_keys': image_gallery_keys,
+                'image_gallery_selected_item': selected_dataset_type,
+                'image_gallery_data': image_gallery_data,
+                'images_page_now': images_page_now,
+                'images_page_max': images_page_max,
+                'images_page_list': images_page_list,
+            }
+        elif (selected_dataset_info == 'Statistic'):
+            dataloader_obj.data_analysis()
+            #logging.info('----------------------------------------')
+            #logging.info(f'[DEBUG] dataloader_obj.target_distributions:')
+            #logging.info(f'[DEBUG] {dataloader_obj.target_distributions}')
+            #logging.info('----------------------------------------')
             
-            # --- load key_name from meta data ---
-            df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
-            for key in df_meta['keys']:
-                if (key['type'] == 'image_file'):
-                    key_name = key['name']
-                    break
-            json_data[key_name] = json_data[key_name].map(lambda x: Path(settings.MEDIA_URL,
-                                                                     settings.DATASET_DIR,
-                                                                     dataset.project.hash,
-                                                                     f'dataset_{dataset.id}',
-                                                                     selected_dataset_type.lower(),
-                                                                     x))
-            logging.info('----------------------------------------')
-            logging.info(f'[DEBUG] {(images_page_now-1)*images_per_page}')
-            logging.info(f'[DEBUG] {((images_page_now-1)*images_per_page)+images_per_page}')
-            logging.info('----------------------------------------')
-            image_gallery_data = json_data.iloc[(images_page_now-1)*images_per_page:((images_page_now-1)*images_per_page)+images_per_page].to_dict('r')
+            context = {
+                'text': get_version(),
+                'jupyter_nb_url': get_jupyter_nb_url(),
+                'dataset_name': dataset.name,
+                'dataloader_obj': dataloader_obj,
+                'download_status': dataset.download_status,
+                'download_button_state': download_button_state,
+                'dataset_info': dataset_info,
+                'selected_dataset_info': selected_dataset_info,
+                'statistic_selected_item': statistic_selected_item,
+            }
         else:
-            images_page_now = 1
-            images_page_max = 1
-            images_page_list = []
-            
-        
-        context = {
-            'text': get_version(),
-            'jupyter_nb_url': get_jupyter_nb_url(),
-            'dataset_name': dataset.name,
-            'dataloader_obj': dataloader_obj,
-            'download_status': dataset.download_status,
-            'download_button_state': download_button_state,
-            'dataset_info': dataset_info,
-            'selected_dataset_info': selected_dataset_info,
-            'image_gallery_keys': image_gallery_keys,
-            'image_gallery_selected_item': selected_dataset_type,
-            'image_gallery_data': image_gallery_data,
-            'images_page_now': images_page_now,
-            'images_page_max': images_page_max,
-            'images_page_list': images_page_list,
-        }
+            context = {
+                'text': get_version(),
+                'jupyter_nb_url': get_jupyter_nb_url(),
+                'dataset_name': dataset.name,
+                'dataloader_obj': dataloader_obj,
+                'download_status': dataset.download_status,
+                'download_button_state': download_button_state,
+                'dataset_info': dataset_info,
+            }
         return render(request, 'dataset_detail.html', context)
     else:
         context = {
