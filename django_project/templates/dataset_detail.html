@@ -157,30 +157,21 @@
                 datasets.push({
                     data: {{ dataloader_obj.target_distributions.train.hist_y }},
                     label: "Train",
-                    lineTension: 0,
-                    borderColor: '#007bff',
-                    borderWidth: 1,
-                    pointBackgroundColor: '#007bff'
+                    backgroundColor: '#007bff',
                 })
               {% endif %}
               {% if dataloader_obj.target_distributions.validation %}
                 datasets.push({
                     data: {{ dataloader_obj.target_distributions.validation.hist_y }},
                     label: "Validation",
-                    lineTension: 0,
-                    borderColor: '#7bff00',
-                    borderWidth: 1,
-                    pointBackgroundColor: '#7bff00'
+                    backgroundColor: '#7bff00',
                 })
               {% endif %}
               {% if dataloader_obj.target_distributions.test %}
                 datasets.push({
                     data: {{ dataloader_obj.target_distributions.test.hist_y }},
                     label: "Test",
-                    lineTension: 0,
-                    borderColor: '#ff007b',
-                    borderWidth: 1,
-                    pointBackgroundColor: '#ff007b'
+                    backgroundColor: '#ff007b',
                 })
               {% endif %}
               
@@ -191,19 +182,33 @@
                   datasets: datasets
                 },
                 options: {
+                  plugins: {
+                    title: {
+                      display: true,
+                      text: 'Target Distribution (relative frequency)'
+                    }
+                  },
                   scales: {
-                    yAxes: [{
+                    x: {
+                      display: true,
+                      title: {
+                        display: true,
+                        text: 'Target value'
+                      }
+                    },
+                    y: {
+                      display: true,
+                      title: {
+                        display: true,
+                        text: 'Relative frequency'
+                      },
                       ticks: {
                         beginAtZero: false
                       }
-                    }]
-                  },
-                  title: {
-                    display: true,
-                    text: 'Target Distribution (relative frequency)'
+                    }
                   },
                   legend: {
-                    display: false
+                    display: true
                   }
                 }
               })

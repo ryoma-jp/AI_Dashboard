@@ -212,30 +212,55 @@ class DataLoader():
         
         # --- Calculate target distribution ---
         if (self.target_distributions is None):
+            # --- Initialize ---
             self.target_distributions = {}
             self.statistic_keys.append('Target Distributions')
             
+            # --- Set bins ---
+            if ((self.dataset_type == 'img_clf') or (self.dataset_type == 'table_clf')):
+                # --- Set sequence of scalars to bins if dataset is the classification task ---
+                bins = np.unique(self.train_y)
+                if (self.validation_y is not None):
+                    _targets = np.unique(self.validation_y)
+                    _targets = np.hstack((_targets, max(_targets)+1))
+                    if (len(bins) < len(_targets)):
+                        bins = _targets
+                if (self.test_y is not None):
+                    _targets = np.unique(self.test_y)
+                    if (len(bins) < len(_targets)):
+                        bins = _targets
+            else:
+                # --- Set scalar to bins if dataset is the regression task ---
+                bins = 20
+            
+            # --- Create histograms ---
             if (self.train_y is not None):
                 self.target_distributions['train'] = {}
-                hist_y, hist_x = np.histogram(self.train_y)
+                hist_y, hist_x = np.histogram(self.train_y, bins=bins)
+                if ((self.dataset_type == 'img_reg') or (self.dataset_type == 'table_reg')):
+                    hist_x = np.round(hist_x, decimals=2)
                 self.target_distributions['train']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
-                self.target_distributions['train']['hist_x'] = hist_x.tolist()
+                self.target_distributions['train']['hist_x'] = hist_x.tolist()[:-1]
             else:
                 self.target_distributions['train'] = None
             
             if (self.validation_y is not None):
                 self.target_distributions['validation'] = {}
-                hist_y, hist_x = np.histogram(self.validation_y)
+                hist_y, hist_x = np.histogram(self.validation_y, bins=bins)
+                if ((self.dataset_type == 'img_reg') or (self.dataset_type == 'table_reg')):
+                    hist_x = np.round(hist_x, decimals=2)
                 self.target_distributions['validation']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
-                self.target_distributions['validation']['hist_x'] = hist_x.tolist()
+                self.target_distributions['validation']['hist_x'] = hist_x.tolist()[:-1]
             else:
                 self.target_distributions['validation'] = None
             
             if (self.test_y is not None):
                 self.target_distributions['test'] = {}
-                hist_y, hist_x = np.histogram(self.test_y)
+                hist_y, hist_x = np.histogram(self.test_y, bins=bins)
+                if ((self.dataset_type == 'img_reg') or (self.dataset_type == 'table_reg')):
+                    hist_x = np.round(hist_x, decimals=2)
                 self.target_distributions['test']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
-                self.target_distributions['test']['hist_x'] = hist_x.tolist()
+                self.target_distributions['test']['hist_x'] = hist_x.tolist()[:-1]
             else:
                 self.target_distributions['test'] = None
             
