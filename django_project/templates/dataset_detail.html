@@ -151,18 +151,44 @@
             <canvas id="chart_target_distributions" width="900" height="380"></canvas>
             <script type="text/javascript">
               var ctx = document.getElementById('chart_target_distributions')
-              var myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                  labels: {{ dataloader_obj.target_distributions.train.hist_x }},
-                  datasets: [{
+              
+              var datasets = []
+              {% if dataloader_obj.target_distributions.train %}
+                datasets.push({
                     data: {{ dataloader_obj.target_distributions.train.hist_y }},
                     label: "Train",
                     lineTension: 0,
                     borderColor: '#007bff',
                     borderWidth: 1,
                     pointBackgroundColor: '#007bff'
-                  }]
+                })
+              {% endif %}
+              {% if dataloader_obj.target_distributions.validation %}
+                datasets.push({
+                    data: {{ dataloader_obj.target_distributions.validation.hist_y }},
+                    label: "Validation",
+                    lineTension: 0,
+                    borderColor: '#7bff00',
+                    borderWidth: 1,
+                    pointBackgroundColor: '#7bff00'
+                })
+              {% endif %}
+              {% if dataloader_obj.target_distributions.test %}
+                datasets.push({
+                    data: {{ dataloader_obj.target_distributions.test.hist_y }},
+                    label: "Test",
+                    lineTension: 0,
+                    borderColor: '#ff007b',
+                    borderWidth: 1,
+                    pointBackgroundColor: '#ff007b'
+                })
+              {% endif %}
+              
+              var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: {{ dataloader_obj.target_distributions.train.hist_x }},
+                  datasets: datasets
                 },
                 options: {
                   scales: {
@@ -171,6 +197,10 @@
                         beginAtZero: false
                       }
                     }]
+                  },
+                  title: {
+                    display: true,
+                    text: 'Target Distribution (relative frequency)'
                   },
                   legend: {
                     display: false

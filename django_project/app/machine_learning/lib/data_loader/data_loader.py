@@ -218,20 +218,24 @@ class DataLoader():
             if (self.train_y is not None):
                 self.target_distributions['train'] = {}
                 hist_y, hist_x = np.histogram(self.train_y)
-                self.target_distributions['train']['hist_y'] = hist_y.tolist()
+                self.target_distributions['train']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
                 self.target_distributions['train']['hist_x'] = hist_x.tolist()
             else:
                 self.target_distributions['train'] = None
             
             if (self.validation_y is not None):
                 self.target_distributions['validation'] = {}
-                self.target_distributions['validation']['hist_y'], self.target_distributions['validation']['hist_x'] = np.histogram(self.validation_y)
+                hist_y, hist_x = np.histogram(self.validation_y)
+                self.target_distributions['validation']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
+                self.target_distributions['validation']['hist_x'] = hist_x.tolist()
             else:
                 self.target_distributions['validation'] = None
             
             if (self.test_y is not None):
                 self.target_distributions['test'] = {}
-                self.target_distributions['test']['hist_y'], self.target_distributions['test']['hist_x'] = np.histogram(self.test_y)
+                hist_y, hist_x = np.histogram(self.test_y)
+                self.target_distributions['test']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
+                self.target_distributions['test']['hist_x'] = hist_x.tolist()
             else:
                 self.target_distributions['test'] = None
             
