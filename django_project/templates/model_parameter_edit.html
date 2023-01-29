@@ -46,7 +46,7 @@
       {% endif %}
     {% endfor %}
     <h4>Data Augmentation</h4>
-    {% for key, value in config.dataset.data_augmentation.items %}
+    {% for key, value in config.dataset.image_data_augmentation.items %}
       {% if value.configurable %}
           {% if value.selectable %}
             <label class="form-label">{{ value.name }}</label>

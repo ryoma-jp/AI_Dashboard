@@ -16,7 +16,7 @@
   - dataset_name: データセット名(Preset: MNIST, CIFAR-10)
   - dataset_dir: データセットを格納したディレクトリ
   - norm: 正規化方式(max, max-min, z-score)
-  - data_augmentation: DataAugmentation関連の設定
+  - image_data_augmentation: DataAugmentation関連の設定
   
     - rotation_range: 画像の回転[deg]
     - width_shift_range: 水平方向の画像幅に対するシフト率[0.0-1.0]
@@ -140,9 +140,9 @@ def main():
     web_app_ctrl_fifo = config_data['env']['web_app_ctrl_fifo']['value']
     trainer_ctrl_fifo = config_data['env']['trainer_ctrl_fifo']['value']
     result_dir = config_data['env']['result_dir']['value']
-    data_augmentation = {}
-    for (key, value) in config_data['dataset']['data_augmentation'].items():
-        data_augmentation[key] = value['value']
+    image_data_augmentation = {}
+    for (key, value) in config_data['dataset']['image_data_augmentation'].items():
+        image_data_augmentation[key] = value['value']
     data_type = config_data['dataset']['dataset_name']['value']
     dataset_dir = config_data['dataset']['dataset_dir']['value']
     data_norm = config_data['dataset']['norm']['value']
@@ -186,15 +186,15 @@ def main():
         model_file = None
     
     if (model_type == 'MLP'):
-        trainer = TrainerMLP(dataset.train_x.shape[1:],
+        trainer = TrainerMLP(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, initializer=initializer)
     elif (model_type == 'SimpleCNN'):
-        trainer = TrainerCNN(dataset.train_x.shape[1:],
+        trainer = TrainerCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, loss=loss_func, initializer=initializer)
     elif (model_type == 'DeepCNN'):
-        trainer = TrainerCNN(dataset.train_x.shape[1:],
+        trainer = TrainerCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model')
     elif (model_type == 'SimpleResNet'):
@@ -216,7 +216,7 @@ def main():
         trainer.fit(x_train, y_train,
             x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
-            batch_size=batch_size, da_params=data_augmentation, epochs=epochs)
+            batch_size=batch_size, da_params=image_data_augmentation, epochs=epochs)
         trainer.save_model()
         
         predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)

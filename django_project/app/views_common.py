@@ -3,6 +3,8 @@ import fcntl
 import logging
 import json
 import pickle
+import numpy as np
+import pandas as pd
 
 from pathlib import Path
 
@@ -14,7 +16,7 @@ from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
 from machine_learning.lib.data_loader.data_loader import DataLoaderCaliforniaHousing
 from machine_learning.lib.data_loader.data_loader import DataLoaderCustom
-from machine_learning.lib.utils.utils import save_meta
+from machine_learning.lib.utils.utils import save_meta, save_image_files
 
 # Create your views here.
 
@@ -179,7 +181,37 @@ def load_dataset(dataset):
         logging.info('-------------------------------------')
         if ((dataloader.dataset_type == 'img_clf') or (dataloader.dataset_type == 'img_reg')):
             dataset.dataset_type = dataset.DATASET_TYPE_IMAGE
-            
+    
+    # --- load key_name from meta data as pandas.DataFrame ---
+    df_meta = pd.read_json(Path(download_dir, 'meta', 'info.json'), typ='series')
+    
+    # --- save ``info.json``
+    if (df_meta['input_type'] == 'image_data'):
+        # --- get key_name ---
+        for key in df_meta['keys']:
+            if (key['type'] == 'image_file'):
+                key_name = key['name']
+                break
+        
+        # --- save image files ---
+        if (dataloader.train_x is not None):
+            ids = np.arange(len(dataloader.train_x))
+            save_image_files(dataloader.train_x, dataloader.train_y, ids,
+                             Path(download_dir, 'train'), name='images', key_name=key_name)
+        if (dataloader.validation_x is not None):
+            ids = np.arange(len(dataloader.validation_x))
+            save_image_files(dataloader.validation_x, dataloader.validation_y, ids,
+                             Path(download_dir, 'validation'), name='images', key_name=key_name)
+        if (dataloader.test_x is not None):
+            ids = np.arange(len(dataloader.test_x))
+            save_image_files(dataloader.test_x, dataloader.test_y, ids,
+                             Path(download_dir, 'test'), name='images', key_name=key_name)
+    
+    elif (df_meta['input_type'] == 'table_data'):
+        save_table_info(df_meta, dataloader.train_x, dataloader.train_y, Path(download_dir, 'train'))
+        save_table_info(df_meta, dataloader.validation_x, dataloader.validation_y, Path(download_dir, 'validation'))
+        save_table_info(df_meta, dataloader.test_x, dataloader.test_y, Path(download_dir, 'test'))
+    
     # --- save dataset object to pickle file ---
     with open(Path(download_dir, 'dataset.pkl'), 'wb') as f:
         pickle.dump(dataloader, f)

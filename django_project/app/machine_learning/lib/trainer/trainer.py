@@ -477,7 +477,7 @@ class TrainerResNet(Trainer):
 #---------------------------------
 class TrainerCNN(Trainer):
     # --- コンストラクタ ---
-    def __init__(self, input_shape, output_dir=None, model_file=None, optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', model_type='baseline'):
+    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', model_type='baseline'):
         # --- モデル構築(baseline) ---
         def _load_model(input_shape, initializer='glorot_uniform'):
             model = keras.models.Sequential()
@@ -489,7 +489,7 @@ class TrainerCNN(Trainer):
             model.add(keras.layers.MaxPooling2D((2, 2)))
             model.add(keras.layers.Flatten(input_shape=input_shape))
             model.add(keras.layers.Dense(64, activation='relu'))
-            model.add(keras.layers.Dense(10, activation='softmax'))
+            model.add(keras.layers.Dense(classes, activation='softmax'))
             
             model.summary()
             
@@ -528,7 +528,7 @@ class TrainerCNN(Trainer):
             x = keras.layers.Dropout(0.5)(x)
             x = keras.layers.Dense(1024, activation="relu")(x)
             x = keras.layers.Dropout(0.5)(x)
-            x = keras.layers.Dense(10, activation="softmax")(x)
+            x = keras.layers.Dense(classes, activation="softmax")(x)
             
             model = keras.models.Model(input, x)
             model.summary()
@@ -560,13 +560,13 @@ class TrainerCNN(Trainer):
 #---------------------------------
 class TrainerMLP(Trainer):
     # --- コンストラクタ ---
-    def __init__(self, input_shape, output_dir=None, model_file=None, optimizer='adam'):
+    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, optimizer='adam'):
         # --- モデル構築 ---
         def _load_model(input_shape):
             model = keras.models.Sequential()
             model.add(keras.layers.Flatten(input_shape=input_shape))
             model.add(keras.layers.Dense(128, activation='relu'))
-            model.add(keras.layers.Dense(10, activation='softmax'))
+            model.add(keras.layers.Dense(classes, activation='softmax'))
             
             model.summary()
             

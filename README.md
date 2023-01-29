@@ -116,6 +116,10 @@ ToDoのメモ．思いついたら順次追加する．
 
 ![Custom Dataset Format](./figure/custom_dataset_format.png)
 
+## コンフィグファイル(``config.json``)の仕様
+
+![Config File Structure](./figure/config_file_structure.png)
+
 ここから下は備忘録
 
 ---------------

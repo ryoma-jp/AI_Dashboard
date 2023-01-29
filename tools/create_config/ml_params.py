@@ -70,7 +70,7 @@ class MlParams():
 					'selectable': True,
 					'items': ['max', 'max-min', 'z-score'],
 				},
-				'data_augmentation': {
+				'image_data_augmentation': {
 					'rotation_range': {
 						'name': 'Rotation Range',
 						'description': 'Rotation range',
@@ -198,7 +198,7 @@ class MlParams_MNIST(MlParams):
 		super().__init__()
 		self.params['dataset']['dataset_name']['value'] = 'MNIST'
 		self.params['dataset']['norm']['value'] = 'max'
-		self.params['dataset']['data_augmentation']['horizontal_flip']['value'] = False
+		self.params['dataset']['image_data_augmentation']['horizontal_flip']['value'] = False
 
 class MlParams_CIFAR10(MlParams):
 	"""Class MlParams_CIFAR10

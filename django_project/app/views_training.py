@@ -234,9 +234,9 @@ def training(request):
         }
         return render(request, 'training.html', context)
 
-def model_paraemter_edit(request, model_id):
-    """ Function: model_paraemter_edit
-     * edit model paramter
+def model_parameter_edit(request, model_id):
+    """ Function: model_parameter_edit
+     * edit model parameter
     """
     def _set_config_parameters(config, save_config_list):
         for key in save_config_list:
@@ -268,12 +268,12 @@ def model_paraemter_edit(request, model_id):
     if (request.method == 'POST'):
         if ('apply_parameters' in request.POST):
             # --- save dataset parameters ---
-            save_config_list = [key for key in config_data['dataset'].keys() if ((key != 'data_augmentation') and (config_data['dataset'][key]['configurable']))]
+            save_config_list = [key for key in config_data['dataset'].keys() if ((key != 'image_data_augmentation') and (config_data['dataset'][key]['configurable']))]
             _set_config_parameters(config_data['dataset'], save_config_list)
             
             # --- save data augmentation parameters ---
-            save_config_list = [key for key in config_data['dataset']['data_augmentation'].keys() if config_data['dataset']['data_augmentation'][key]['configurable']]
-            _set_config_parameters(config_data['dataset']['data_augmentation'], save_config_list)
+            save_config_list = [key for key in config_data['dataset']['image_data_augmentation'].keys() if config_data['dataset']['image_data_augmentation'][key]['configurable']]
+            _set_config_parameters(config_data['dataset']['image_data_augmentation'], save_config_list)
             
             # --- save model parameters ---
             save_config_list = [key for key in config_data['model'].keys() if config_data['model'][key]['configurable']]
@@ -286,7 +286,7 @@ def model_paraemter_edit(request, model_id):
             with open(Path(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
         
-        return redirect('model_paraemter_edit', model_id)
+        return redirect('model_parameter_edit', model_id)
     else:
         context = {
             'config': config_data,

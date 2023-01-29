@@ -631,8 +631,8 @@ class DataLoaderCustom(DataLoader):
         if (test_dir is not None):
             self.test_x, self.test_y = _load_data(test_dir, key_name=key_name)
         
-        # --- 出力次元数を保持 ---
-        self.output_dims = 10    # T.B.D
+        # --- set output dims ---
+        self.output_dims = len(np.unique(self.train_y))
         
         return
     
