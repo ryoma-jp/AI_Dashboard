@@ -16,7 +16,7 @@ from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
 from machine_learning.lib.data_loader.data_loader import DataLoaderCaliforniaHousing
 from machine_learning.lib.data_loader.data_loader import DataLoaderCustom
-from machine_learning.lib.utils.utils import save_meta, save_image_files
+from machine_learning.lib.utils.utils import save_meta, save_image_files, save_table_info
 
 # Create your views here.
 
@@ -230,3 +230,25 @@ def get_jupyter_nb_url():
     return settings.JUPYTER_NB_URL
 
 
+def get_dataloader_obj(dataset):
+    """Get DataLoader object
+    
+    get DataLoader object from Dataset(models.Model)
+    
+    Args:
+        dataset (models.Model): Dataset model
+    
+    Returns:
+        dataloader_obj (DataLoader): DataLoader object
+    
+    """
+    dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
+    download_dir = Path(dataset_dir, f'dataset_{dataset.id}')
+    if (Path(download_dir, 'dataset.pkl').exists()):
+        with open(Path(download_dir, 'dataset.pkl'), 'rb') as f:
+            dataloader_obj = pickle.load(f)
+    else:
+        dataloader_obj = None
+    
+    return dataloader_obj
+    

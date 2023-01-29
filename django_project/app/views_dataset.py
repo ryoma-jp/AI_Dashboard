@@ -15,7 +15,7 @@ from django.conf import settings
 from app.models import Project, Dataset
 from app.forms import DatasetForm
 
-from views_common import SidebarActiveStatus, get_version, load_dataset, get_jupyter_nb_url
+from views_common import SidebarActiveStatus, get_version, load_dataset, get_dataloader_obj, get_jupyter_nb_url
 from machine_learning.lib.utils.utils import save_image_files, save_table_info
 
 # Create your views here.
@@ -124,20 +124,6 @@ def dataset_detail(request, project_id, dataset_id):
      * display dataset details(images, distribution, etc)
     """
     
-    def _get_dataloader_obj(dataset):
-        dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash)
-        download_dir = Path(dataset_dir, f'dataset_{dataset.id}')
-        if (Path(download_dir, 'dataset.pkl').exists()):
-            download_button_state = "disabled"
-            with open(Path(download_dir, 'dataset.pkl'), 'rb') as f:
-                dataloader_obj = pickle.load(f)
-        else:
-            download_button_state = ""
-            dataloader_obj = None
-        
-        return dataloader_obj, download_button_state, download_dir
-    
-    
     # logging.info('-------------------------------------')
     # logging.info(request)
     # logging.info(request.method)
@@ -203,11 +189,19 @@ def dataset_detail(request, project_id, dataset_id):
     if (dataset.download_status == dataset.STATUS_PREPARING):
         # --- load dataest and dataloader objects
         load_dataset(dataset)
-        dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
+        dataloader_obj = get_dataloader_obj(dataset)
+        download_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash, f'dataset_{dataset.id}')
+        download_button_state = ""
+        if (Path(download_dir, 'dataset.pkl').exists()):
+            download_button_state = "disabled"
         
     # --- check download directory ---
     if (dataset.download_status == dataset.STATUS_DONE):
-        dataloader_obj, download_button_state, download_dir = _get_dataloader_obj(dataset)
+        dataloader_obj = get_dataloader_obj(dataset)
+        download_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset.project.hash, f'dataset_{dataset.id}')
+        download_button_state = ""
+        if (Path(download_dir, 'dataset.pkl').exists()):
+            download_button_state = "disabled"
         
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         selected_dataset_type = request.session.get('selected_dataset_type', None)

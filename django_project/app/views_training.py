@@ -11,7 +11,7 @@ from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel
 
-from views_common import SidebarActiveStatus, get_version, get_all_fifo_command, get_jupyter_nb_url
+from views_common import SidebarActiveStatus, get_version, get_all_fifo_command, get_dataloader_obj, get_jupyter_nb_url
 
 # Create your views here.
 
@@ -288,9 +288,11 @@ def model_parameter_edit(request, model_id):
         
         return redirect('model_parameter_edit', model_id)
     else:
+        dataloader_obj = get_dataloader_obj(model.dataset)
         context = {
             'config': config_data,
             'text': get_version(),
+            'dataloader_obj': dataloader_obj,
             'jupyter_nb_url': get_jupyter_nb_url(),
         }
         return render(request, 'model_parameter_edit.html', context)
