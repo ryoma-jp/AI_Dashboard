@@ -19,7 +19,7 @@ class TrainerLightGBM():
     
     """
     
-    def __init__(self, output_dir=None, model_file=None):
+    def __init__(self, output_dir=None, model_file=None, learning_rate=0.001):
         """Constructor
         
         This function is constructor.
@@ -48,7 +48,7 @@ class TrainerLightGBM():
             'subsample_freq': 1,
             'bagging_fraction': 0.8,
             'min_data_in_leaf': 5,
-            'learning_rate': 0.01,
+            'learning_rate': learning_rate,
             'boosting': 'gbdt',
             'lambda_l1': 1,
             'lambda_l2': 5,

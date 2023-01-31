@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel, Dataset
 
-from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url
+from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url, get_dataloader_obj
 
 # Create your views here.
 
@@ -142,8 +142,12 @@ def inference(request):
         # --- Check prediction filter ---
         prediction_filter_selected = request.session.get('prediction_filter', 'All')
         
-        # --- Load prediction ---
+        # --- Load DataLoader object and prediction ---
         if (dataset_dropdown_selected is not None):
+            # --- get DataLoader object ---
+            dataloader_obj = get_dataloader_obj(dataset_dropdown_selected)
+            
+            # --- get prediction ---
             prediction_json = Path(model_dropdown_selected.model_dir, 'prediction.json')
             if (prediction_json.exists()):
                 with open(prediction_json, 'r') as f:
@@ -151,8 +155,10 @@ def inference(request):
             else:
                 prediction = None
         else:
+            dataloader_obj = None
             prediction = None
-            
+        
+        
         context = {
             'project': project,
             'model': model,
@@ -165,6 +171,7 @@ def inference(request):
             'dataset_dropdown_selected': dataset_dropdown_selected,
             'prediction': prediction,
             'prediction_filter_selected': prediction_filter_selected,
+            'dataloader_obj': dataloader_obj,
         }
         return render(request, 'inference.html', context)
 

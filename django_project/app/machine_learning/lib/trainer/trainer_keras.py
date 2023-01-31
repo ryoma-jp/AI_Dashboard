@@ -76,7 +76,9 @@ class Trainer():
             print("End epoch {}: {}".format(epoch, log_str))
             
     # --- コンストラクタ ---
-    def __init__(self, output_dir=None, model_file=None, optimizer='adam', loss='sparse_categorical_crossentropy'):
+    def __init__(self, output_dir=None, model_file=None,
+                 optimizer='adam', loss='sparse_categorical_crossentropy',
+                 learning_rate=0.001):
         # --- 出力ディレクトリ作成 ---
         self.output_dir = output_dir
         if (output_dir is not None):
@@ -91,24 +93,24 @@ class Trainer():
         
         self.model = _load_model(model_file)
         if (self.model is not None):
-            self._compile_model(optimizer=optimizer, loss=loss)
+            self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
         
         return
     
     # --- モデルの構成 ---
     #   * lr_decay: 学習率減衰する(=True)，しない(=False; default)を指定
-    def _compile_model(self, optimizer='adam', loss='sparse_categorical_crossentropy'):
+    def _compile_model(self, optimizer='adam', loss='sparse_categorical_crossentropy', init_lr=0.001):
         
         if (optimizer == 'adam'):
-            opt = tf.keras.optimizers.Adam()
+            opt = tf.keras.optimizers.Adam(learning_rate=init_lr)
         elif (optimizer == 'sgd'):
-            opt = tf.keras.optimizers.SGD()
+            opt = tf.keras.optimizers.SGD(learning_rate=init_lr)
         elif (optimizer == 'adam_lrs'):
             # --- parameters ---
             #  https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/schedules/ExponentialDecay
             #    but, initial learning rate is default of Adam()
             lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                0.001,
+                init_lr,
                 decay_steps=1000,
                 decay_rate=0.90,
                 staircase=True)
@@ -118,7 +120,7 @@ class Trainer():
             #  https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/schedules/ExponentialDecay
             #    but, initial learning rate is default of Adam()
             lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-                0.01,
+                init_lr,
                 decay_steps=1000,
                 decay_rate=0.9,
                 staircase=True)
@@ -126,8 +128,7 @@ class Trainer():
         elif (optimizer == 'momentum'):
             # --- parameters ---
             #  https://qiita.com/8128/items/2d441e46643f73c0ca19
-            opt = tf.keras.optimizers.SGD(learning_rate=0.1, decay=1e-4, momentum=0.9, nesterov=True)
-#            opt = tf.keras.optimizers.SGD(learning_rate=0.2, momentum=0.8, nesterov=True)
+            opt = tf.keras.optimizers.SGD(learning_rate=init_lr, decay=1e-4, momentum=0.9, nesterov=True)
         else:
             print('[ERROR] Unknown optimizer: {}'.format(optimizer))
             quit()
@@ -326,7 +327,9 @@ class Trainer():
 #---------------------------------
 class TrainerKerasResNet(Trainer):
     # --- コンストラクタ ---
-    def __init__(self, input_shape, classes, output_dir=None, model_file=None, model_type='custom', optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', dropout_rate=0.0):
+    def __init__(self, input_shape, classes, output_dir=None, model_file=None, model_type='custom',
+                 optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform',
+                 dropout_rate=0.0, learning_rate=0.001):
         # --- Residual Block ---
         #  * アプリケーションからkeras.applications.resnet.ResNetにアクセスできない為，
         #    必要なモジュールをTensorFlow公式からコピー
@@ -451,7 +454,7 @@ class TrainerKerasResNet(Trainer):
                     return stack1(x, 64, 4, dropout_rate=dropout_rate, name='conv3')
                 
                 self.model = _load_model(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
-                self._compile_model(optimizer=optimizer, loss=loss)
+                self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
             elif (model_type == 'custom_deep'):
                 def stack_fn(x, dropout_rate=0.0):
                     x = stack1(x, 16, 18, stride1=1, dropout_rate=dropout_rate, name='conv2')
@@ -459,10 +462,10 @@ class TrainerKerasResNet(Trainer):
                     return stack1(x, 64, 18, dropout_rate=dropout_rate, name='conv4')
                 
                 self.model = _load_model_deep(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
-                self._compile_model(optimizer=optimizer, loss=loss)
+                self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
             elif (model_type == 'resnet50'):
                 self.model = _load_model_resnet50(input_shape, classes, initializer=initializer, dropout_rate=dropout_rate, pretrained=False)
-                self._compile_model(optimizer=optimizer, loss=loss)
+                self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
             else:
                 print('[ERROR] Unknown model_type: {}'.format(model_type))
                 return
@@ -477,7 +480,9 @@ class TrainerKerasResNet(Trainer):
 #---------------------------------
 class TrainerKerasCNN(Trainer):
     # --- コンストラクタ ---
-    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', model_type='baseline'):
+    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None,
+                 optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform',
+                 model_type='baseline', learning_rate=0.001):
         # --- モデル構築(baseline) ---
         def _load_model(input_shape, initializer='glorot_uniform'):
             model = keras.models.Sequential()
@@ -548,7 +553,7 @@ class TrainerKerasCNN(Trainer):
                 print('[ERROR] Unknown model_type: {}'.format(model_type))
                 quit()
         
-        self._compile_model(optimizer=optimizer, loss=loss)
+        self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
         if (self.output_dir is not None):
             keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
         
@@ -560,7 +565,8 @@ class TrainerKerasCNN(Trainer):
 #---------------------------------
 class TrainerKerasMLP(Trainer):
     # --- コンストラクタ ---
-    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, optimizer='adam'):
+    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None,
+                 optimizer='adam', learning_rate=0.001):
         # --- モデル構築 ---
         def _load_model(input_shape):
             model = keras.models.Sequential()
@@ -578,7 +584,7 @@ class TrainerKerasMLP(Trainer):
         # --- モデル構築 ---
         if (self.model is None):
             self.model = _load_model(input_shape)
-            self._compile_model(optimizer=optimizer)
+            self._compile_model(optimizer=optimizer, init_lr=learning_rate)
             if (self.output_dir is not None):
                 keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
         

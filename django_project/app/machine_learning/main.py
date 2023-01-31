@@ -154,6 +154,7 @@ def main():
     dropout_rate = config_data['training_parameter']['dropout_rate']['value']
     batch_size = config_data['training_parameter']['batch_size']['value']
     epochs = config_data['training_parameter']['epochs']['value']
+    learning_rate = config_data['training_parameter']['learning_rate']['value']
     
     # --- データセット読み込み ---
     with open(Path(dataset_dir, 'dataset.pkl'), 'rb') as f:
@@ -197,27 +198,33 @@ def main():
     if (model_type == 'MLP'):
         trainer = TrainerKerasMLP(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
-            optimizer=optimizer, initializer=initializer)
+            optimizer=optimizer, initializer=initializer,
+            learning_rate=learning_rate)
     elif (model_type == 'SimpleCNN'):
         trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
-            optimizer=optimizer, loss=loss_func, initializer=initializer)
+            optimizer=optimizer, loss=loss_func, initializer=initializer,
+            learning_rate=learning_rate)
     elif (model_type == 'DeepCNN'):
         trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
-            optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model')
+            optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model',
+            learning_rate=learning_rate)
     elif (model_type == 'SimpleResNet'):
         trainer = TrainerKerasResNet(dataset.train_x.shape[1:], output_dims,
             output_dir=result_dir, model_file=model_file,
             model_type='custom', 
-            optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
+            optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate,
+            learning_rate=learning_rate)
     elif (model_type == 'DeepResNet'):
         trainer = TrainerKerasResNet(dataset.train_x.shape[1:], output_dims,
             output_dir=result_dir, model_file=model_file,
             model_type='custom_deep', 
-            optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
+            optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate,
+            learning_rate=learning_rate)
     elif (model_type == 'LightGBM'):
-        trainer = TrainerLightGBM(output_dir=result_dir, model_file=model_file)
+        trainer = TrainerLightGBM(output_dir=result_dir, model_file=model_file,
+            learning_rate=learning_rate)
     else:
         print('[ERROR] Unknown model_type: {}'.format(model_type))
         quit()
@@ -248,8 +255,6 @@ def main():
             predictions = trainer.predict(x_test)
             
             json_data = []
-            print(f'{y_test.values}')
-            print(f'{y_test.values.reshape(-1)}')
             for i, (prediction, target) in enumerate(zip(predictions, y_test.values.reshape(-1))):
                 json_data.append({
                     'id': int(i),

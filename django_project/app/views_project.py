@@ -48,20 +48,26 @@ def _model_delete(request, model):
     
     # --- delete tensorboard process ---
     if (model.tensorboard_pid is not None):
-        p = psutil.Process(model.tensorboard_pid)
-        c = p.children(recursive=True)
-        c.append(p)
-        for p in c:
-            try:
-                p.send_signal(signal.SIGTERM)
-            except psutil.NoSuchProcess:
-                pass
-        gone, alive = psutil.wait_procs(c, timeout=3)
+        if (psutil.pid_exists(model.tensorboard_pid)):
+            p = psutil.Process(model.tensorboard_pid)
+            c = p.children(recursive=True)
+            c.append(p)
+            for p in c:
+                try:
+                    p.send_signal(signal.SIGTERM)
+                except psutil.NoSuchProcess:
+                    pass
+            gone, alive = psutil.wait_procs(c, timeout=3)
     
     # --- delete session data ---
     if 'training_view_selected_model' in request.session.keys():
         if (request.session['training_view_selected_model'] == model.name):
             del request.session['training_view_selected_model']
+            request.session.modified = True
+    
+    if 'inference_view_selected_model' in request.session.keys():
+        if (request.session['inference_view_selected_model'] == model.name):
+            del request.session['inference_view_selected_model']
             request.session.modified = True
     
     # --- delete database ---
@@ -99,6 +105,11 @@ def _project_delete(request, project):
     if 'training_view_selected_project' in request.session.keys():
         if (request.session['training_view_selected_project'] == project.name):
             del request.session['training_view_selected_project']
+            request.session.modified = True
+    
+    if 'inference_view_selected_project' in request.session.keys():
+        if (request.session['inference_view_selected_project'] == project.name):
+            del request.session['inference_view_selected_project']
             request.session.modified = True
     
     # --- delete database ---

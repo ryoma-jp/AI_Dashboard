@@ -138,7 +138,7 @@
         
         <h1 class="h4">Result</h1>
         {% if prediction %}
-          {% if dataset.dataset_type|stringformat:'s' == 'img_clf' or dataset.dataset_type|stringformat:'s' == 'table_clf' %}
+          {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
             <div class="container">
               <div class="row">
                 <div class="col-1">
@@ -173,7 +173,7 @@
               </tr>
             </thead>
             <tbody>
-            {% if dataset.dataset_type|stringformat:'s' == 'img_clf' or dataset.dataset_type|stringformat:'s' == 'table_clf' %}
+            {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
               {% for prediction_ in prediction %}
                 {% if prediction_filter_selected|stringformat:'s' == 'All' %}
                   <tr>
@@ -182,7 +182,7 @@
                     <td>{{ prediction_.target }}</td>
                   </tr>
                 {% elif prediction_filter_selected|stringformat:'s' == 'Correct' %}
-                  {% if prediction_.prediction == prediction_.label %}
+                  {% if prediction_.prediction == prediction_.target %}
                     <tr>
                       <td>{{ prediction_.id }}</td>
                       <td>{{ prediction_.prediction }}</td>
@@ -190,7 +190,7 @@
                     </tr>
                   {% endif %}
                 {% elif prediction_filter_selected|stringformat:'s' == 'Wrong' %}
-                  {% if prediction_.prediction != prediction_.label %}
+                  {% if prediction_.prediction != prediction_.target %}
                     <tr>
                       <td>{{ prediction_.id }}</td>
                       <td>{{ prediction_.prediction }}</td>
