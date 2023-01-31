@@ -324,7 +324,7 @@ class Trainer():
 #---------------------------------
 # クラス; ResNet学習モジュール
 #---------------------------------
-class TrainerResNet(Trainer):
+class TrainerKerasResNet(Trainer):
     # --- コンストラクタ ---
     def __init__(self, input_shape, classes, output_dir=None, model_file=None, model_type='custom', optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', dropout_rate=0.0):
         # --- Residual Block ---
@@ -475,7 +475,7 @@ class TrainerResNet(Trainer):
 #---------------------------------
 # クラス; CNN学習モジュール
 #---------------------------------
-class TrainerCNN(Trainer):
+class TrainerKerasCNN(Trainer):
     # --- コンストラクタ ---
     def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform', model_type='baseline'):
         # --- モデル構築(baseline) ---
@@ -558,7 +558,7 @@ class TrainerCNN(Trainer):
 #---------------------------------
 # クラス; MLP学習モジュール
 #---------------------------------
-class TrainerMLP(Trainer):
+class TrainerKerasMLP(Trainer):
     # --- コンストラクタ ---
     def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, optimizer='adam'):
         # --- モデル構築 ---

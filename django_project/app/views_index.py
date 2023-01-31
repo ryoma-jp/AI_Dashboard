@@ -5,7 +5,7 @@ from app.forms import ProjectForm, DatasetForm, MlModelForm
 
 from views_common import SidebarActiveStatus, get_version, get_all_fifo_command, get_jupyter_nb_url
 
-from machine_learning.lib.trainer.trainer import Trainer
+from machine_learning.lib.trainer.trainer_keras import Trainer
 
 # Create your views here.
 

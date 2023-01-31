@@ -58,7 +58,8 @@ import pickle
 
 from pathlib import Path
 
-from machine_learning.lib.trainer.trainer import TrainerMLP, TrainerCNN, TrainerResNet
+from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet
+from machine_learning.lib.trainer.trainer_lgb import TrainerLightGBM
 
 #---------------------------------
 # 定数定義
@@ -158,11 +159,12 @@ def main():
     with open(Path(dataset_dir, 'dataset.pkl'), 'rb') as f:
         dataset = pickle.load(f)
     
-    if (loss_func == "sparse_categorical_crossentropy"):
-        one_hot = False
-    else:
-        one_hot = True
-    dataset.convert_label_encoding(one_hot=one_hot)
+    if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
+        if (loss_func == "sparse_categorical_crossentropy"):
+            one_hot = False
+        else:
+            one_hot = True
+        dataset.convert_label_encoding(one_hot=one_hot)
     
     print_ndarray_shape(dataset.train_x)
     print_ndarray_shape(dataset.train_y)
@@ -186,27 +188,29 @@ def main():
         model_file = None
     
     if (model_type == 'MLP'):
-        trainer = TrainerMLP(dataset.train_x.shape[1:], classes=output_dims,
+        trainer = TrainerKerasMLP(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, initializer=initializer)
     elif (model_type == 'SimpleCNN'):
-        trainer = TrainerCNN(dataset.train_x.shape[1:], classes=output_dims,
+        trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, loss=loss_func, initializer=initializer)
     elif (model_type == 'DeepCNN'):
-        trainer = TrainerCNN(dataset.train_x.shape[1:], classes=output_dims,
+        trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model')
     elif (model_type == 'SimpleResNet'):
-        trainer = TrainerResNet(dataset.train_x.shape[1:], output_dims,
+        trainer = TrainerKerasResNet(dataset.train_x.shape[1:], output_dims,
             output_dir=result_dir, model_file=model_file,
             model_type='custom', 
             optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
     elif (model_type == 'DeepResNet'):
-        trainer = TrainerResNet(dataset.train_x.shape[1:], output_dims,
+        trainer = TrainerKerasResNet(dataset.train_x.shape[1:], output_dims,
             output_dir=result_dir, model_file=model_file,
             model_type='custom_deep', 
             optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
+    elif (model_type == 'LightGBM'):
+        trainer = TrainerLightGBM(output_dir=result_dir)
     else:
         print('[ERROR] Unknown model_type: {}'.format(model_type))
         quit()
@@ -219,19 +223,22 @@ def main():
             batch_size=batch_size, da_params=image_data_augmentation, epochs=epochs)
         trainer.save_model()
         
-        predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
+        if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
+            predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
+    
     elif (args.mode == 'predict'):
-        predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
-        
-        json_data = []
-        for i, (prediction, label) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):
-            json_data.append({
-                'id': int(i),
-                'prediction': int(prediction),
-                'label': int(label),
-            })
-        with open(Path(result_dir, 'prediction.json'), 'w') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
+        if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
+            predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
+            
+            json_data = []
+            for i, (prediction, label) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):
+                json_data.append({
+                    'id': int(i),
+                    'prediction': int(prediction),
+                    'label': int(label),
+                })
+            with open(Path(result_dir, 'prediction.json'), 'w') as f:
+                json.dump(json_data, f, ensure_ascii=False, indent=4)
         
     else:
         print('[ERROR] Unknown mode: {}'.format(args.mode))

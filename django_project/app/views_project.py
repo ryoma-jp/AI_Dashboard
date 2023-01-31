@@ -229,14 +229,16 @@ def model_new(request, project_id):
             # --- create dataset directory ---
             os.makedirs(dataset_dir, exist_ok=True)
             
+            # --- load dataset ---
+            dataset = load_dataset(model.dataset)
+            
             # --- load config ---
             if (model.dataset.name == 'MNIST'):
                 config_file = 'config_mnist.json'
             elif (model.dataset.name == 'CIFAR-10'):
                 config_file = 'config_cifar10.json'
             elif (model.dataset.name == 'CaliforniaHousing'):
-                # T.B.D
-                config_file = 'config_blank.json'
+                config_file = 'config_california_housing.json'
             else:
                 config_file = 'config_blank.json'
             with open(Path(settings.MEDIA_ROOT, settings.CONFIG_DIR, config_file), 'r') as f:
@@ -254,8 +256,7 @@ def model_new(request, project_id):
             # logging.info(dict_config)
             # logging.info('-------------------------------------')
             
-            # --- preparing dataset ---
-            dataset = load_dataset(model.dataset)
+            # --- save dataset ---
             model.dataset_pickle = Path(model.model_dir, 'dataset.pkl')
             with open(model.dataset_pickle, 'wb') as f:
                 pickle.dump(dataset, f)

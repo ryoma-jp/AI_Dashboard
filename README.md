@@ -54,7 +54,7 @@ ToDoのメモ．思いついたら順次追加する．
   * [x] 画像表示
   * 統計量表示
     * [ ] 入力変数統計量
-    * [ ] 目的変数統計量
+    * [x] 目的変数統計量
   * [x] 分析環境(Jupyter Notebook)
 * ダウンロード
   * [ ] 学習済みモデルのダウンロード(Keras H5)
@@ -76,6 +76,10 @@ ToDoのメモ．思いついたら順次追加する．
 ## サーバ起動
 
 1. 前準備  
+    1. 仮想環境(virtualenv)の構築
+        ```
+        $ virtualenv venv
+        ```
     1. local_settings.py生成  
         ```
         $ source venv/bin/activate
