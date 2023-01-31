@@ -181,8 +181,15 @@ def main():
     
     # --- モデル取得 ---
     if (args.mode == 'predict'):
-        model_file = Path(result_dir, 'models', 'hdf5', 'model.h5')
-        if (not model_file.exists()):
+        if (model_type in ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet']):
+            model_file = Path(result_dir, 'models', 'hdf5', 'model.h5')
+            if (not model_file.exists()):
+                model_file = None
+        elif (model_type in ['LightGBM']):
+            model_file = Path(result_dir, 'models', 'lightgbm_model.pickle')
+            if (not model_file.exists()):
+                model_file = None
+        else:
             model_file = None
     else:
         model_file = None
@@ -210,7 +217,7 @@ def main():
             model_type='custom_deep', 
             optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate)
     elif (model_type == 'LightGBM'):
-        trainer = TrainerLightGBM(output_dir=result_dir)
+        trainer = TrainerLightGBM(output_dir=result_dir, model_file=model_file)
     else:
         print('[ERROR] Unknown model_type: {}'.format(model_type))
         quit()
@@ -231,14 +238,26 @@ def main():
             predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
             
             json_data = []
-            for i, (prediction, label) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):
+            for i, (prediction, target) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):
                 json_data.append({
                     'id': int(i),
                     'prediction': int(prediction),
-                    'label': int(label),
+                    'target': int(target),
                 })
-            with open(Path(result_dir, 'prediction.json'), 'w') as f:
-                json.dump(json_data, f, ensure_ascii=False, indent=4)
+        else:
+            predictions = trainer.predict(x_test)
+            
+            json_data = []
+            print(f'{y_test.values}')
+            print(f'{y_test.values.reshape(-1)}')
+            for i, (prediction, target) in enumerate(zip(predictions, y_test.values.reshape(-1))):
+                json_data.append({
+                    'id': int(i),
+                    'prediction': prediction,
+                    'target': target,
+                })
+        with open(Path(result_dir, 'prediction.json'), 'w') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=4)
         
     else:
         print('[ERROR] Unknown mode: {}'.format(args.mode))

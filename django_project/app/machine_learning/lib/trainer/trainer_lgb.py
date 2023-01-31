@@ -19,7 +19,7 @@ class TrainerLightGBM():
     
     """
     
-    def __init__(self, output_dir=None):
+    def __init__(self, output_dir=None, model_file=None):
         """Constructor
         
         This function is constructor.
@@ -30,6 +30,13 @@ class TrainerLightGBM():
         self.output_dir = output_dir
         if (self.output_dir is not None):
             os.makedirs(self.output_dir, exist_ok=True)
+        
+        # --- load model ---
+        if (model_file is not None):
+            with open(model_file, 'rb') as f:
+                self.model = pickle.load(f)
+        else:
+            self.model = None
         
         # --- set hyper parameters
         self.params = {
@@ -49,6 +56,7 @@ class TrainerLightGBM():
             'random_state': 42,
             'early_stopping_rounds': 100,
         }
+        
 
     def fit(self, x_train, y_train,
             x_val=None, y_val=None, x_test=None, y_test=None,
