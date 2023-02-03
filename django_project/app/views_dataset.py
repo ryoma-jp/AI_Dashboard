@@ -185,6 +185,11 @@ def dataset_detail(request, project_id, dataset_id):
             statistic_selected_item = request.POST['statistic_key']
             request.session['statistic_selected_item'] = statistic_selected_item
         
+        if ('input_key' in request.POST.keys()):
+            # --- set input key parameters ---
+            input_key_selected_item = request.POST['input_key']
+            request.session['input_key_selected_item'] = input_key_selected_item
+        
     # --- check dataset download ---
     if (dataset.download_status == dataset.STATUS_PREPARING):
         # --- load dataest and dataloader objects
@@ -206,10 +211,12 @@ def dataset_detail(request, project_id, dataset_id):
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         selected_dataset_type = request.session.get('selected_dataset_type', None)
         statistic_selected_item = request.session.get('statistic_selected_item', None)
+        input_key_selected_item = request.session.get('input_key_selected_item', None)
         logging.info('-------------------------------------')
         logging.info(f'selected_dataset_info = {selected_dataset_info}')
         logging.info(f'selected_dataset_type = {selected_dataset_type}')
         logging.info(f'statistic_selected_item = {statistic_selected_item}')
+        logging.info(f'input_key_selected_item = {input_key_selected_item}')
         logging.info('-------------------------------------')
         
         if (selected_dataset_info == 'Images'):
@@ -293,6 +300,7 @@ def dataset_detail(request, project_id, dataset_id):
                 'dataset_info': dataset_info,
                 'selected_dataset_info': selected_dataset_info,
                 'statistic_selected_item': statistic_selected_item,
+                'input_key_selected_item': input_key_selected_item,
             }
         else:
             context = {

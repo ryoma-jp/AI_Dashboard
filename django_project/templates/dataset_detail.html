@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load django_bootstrap5 %}
+{% load custom_filter %}
 
 {% block main %}
 <div class="container-fluid">
@@ -148,71 +149,96 @@
           
           <!-- Draw Chart -->
           {% if statistic_selected_item|stringformat:'s' == 'Input Distributions' %}
-            <canvas id="chart_input_distributions" width="900" height="380"></canvas>
-            <script type="text/javascript">
-              var ctx = document.getElementById('chart_input_distributions')
-              
-              var datasets = []
-              {% if dataloader_obj.input_distributions.train %}
-                datasets.push({
-                    data: {{ dataloader_obj.input_distributions.train.MedInc.hist_y }},
-                    label: "Train",
-                    backgroundColor: '#007bff',
-                })
-              {% endif %}
-              {% if dataloader_obj.input_distributions.validation %}
-                datasets.push({
-                    data: {{ dataloader_obj.input_distributions.validation.MedInc.hist_y }},
-                    label: "Validation",
-                    backgroundColor: '#7bff00',
-                })
-              {% endif %}
-              {% if dataloader_obj.input_distributions.test %}
-                datasets.push({
-                    data: {{ dataloader_obj.input_distributions.test.MedInc.hist_y }},
-                    label: "Test",
-                    backgroundColor: '#ff007b',
-                })
-              {% endif %}
-              
-              var myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                  labels: {{ dataloader_obj.input_distributions.train.MedInc.hist_x }},
-                  datasets: datasets
-                },
-                options: {
-                  plugins: {
-                    title: {
-                      display: true,
-                      text: 'Input Distribution (relative frequency)'
-                    }
-                  },
-                  scales: {
-                    x: {
-                      display: true,
-                      title: {
-                        display: true,
-                        text: 'Input value'
-                      }
+          
+            <form method="post">
+            {% csrf_token %}
+              <div class="btn-group col-1 my-1">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  {% if input_key_selected_item %}
+                    {{ input_key_selected_item }}
+                  {% else %}
+                    Select Input Key
+                  {% endif %}
+                </button>
+                <ul class="dropdown-menu">
+                {% for input_key in dataloader_obj.input_distributions.train.keys %}
+                  <li><button class="dropdown-item" type="submit" name="input_key" value="{{ input_key }}">{{ input_key }}</button></li>
+                {% endfor %}
+                </ul>
+              </div>
+            </form>
+
+            {% if input_key_selected_item in dataloader_obj.input_distributions.train.keys %}
+              <canvas id="chart_input_distributions" width="900" height="380"></canvas>
+              <script type="text/javascript">
+                var ctx = document.getElementById('chart_input_distributions')
+                
+                var datasets = []
+                {% with input_key_selected_item|add:",hist_y" as hist_arg %}
+                  {% if dataloader_obj.input_distributions.train %}
+                    datasets.push({
+                        data: {{ dataloader_obj.input_distributions.train|hist_lookup:hist_arg }},
+                        label: "Train",
+                        backgroundColor: '#007bff',
+                    })
+                  {% endif %}
+                  {% if dataloader_obj.input_distributions.validation %}
+                    datasets.push({
+                        data: {{ dataloader_obj.input_distributions.validation|hist_lookup:hist_arg }},
+                        label: "Validation",
+                        backgroundColor: '#7bff00',
+                    })
+                  {% endif %}
+                  {% if dataloader_obj.input_distributions.test %}
+                    datasets.push({
+                        data: {{ dataloader_obj.input_distributions.test|hist_lookup:hist_arg }},
+                        label: "Test",
+                        backgroundColor: '#ff007b',
+                    })
+                  {% endif %}
+                {% endwith %}
+                
+                {% with input_key_selected_item|add:",hist_x" as hist_arg %}
+                  var myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                      labels: {{ dataloader_obj.input_distributions.train|hist_lookup:hist_arg }},
+                      datasets: datasets
                     },
-                    y: {
-                      display: true,
-                      title: {
-                        display: true,
-                        text: 'Relative frequency'
+                    options: {
+                      plugins: {
+                        title: {
+                          display: true,
+                          text: 'Input Distribution (relative frequency)'
+                        }
                       },
-                      ticks: {
-                        beginAtZero: false
+                      scales: {
+                        x: {
+                          display: true,
+                          title: {
+                            display: true,
+                            text: 'Input value'
+                          }
+                        },
+                        y: {
+                          display: true,
+                          title: {
+                            display: true,
+                            text: 'Relative frequency'
+                          },
+                          ticks: {
+                            beginAtZero: false
+                          }
+                        }
+                      },
+                      legend: {
+                        display: true
                       }
                     }
-                  },
-                  legend: {
-                    display: true
-                  }
-                }
-              })
-            </script>
+                  })
+                {% endwith %}
+              </script>
+            {% endif %}
           {% elif statistic_selected_item|stringformat:'s' == 'Target Distributions' %}
             <canvas id="chart_target_distributions" width="900" height="380"></canvas>
             <script type="text/javascript">
