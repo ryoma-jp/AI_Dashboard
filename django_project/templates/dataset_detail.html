@@ -147,7 +147,73 @@
           </form>
           
           <!-- Draw Chart -->
-          {% if statistic_selected_item|stringformat:'s' == 'Target Distributions' %}
+          {% if statistic_selected_item|stringformat:'s' == 'Input Distributions' %}
+            <canvas id="chart_input_distributions" width="900" height="380"></canvas>
+            <script type="text/javascript">
+              var ctx = document.getElementById('chart_input_distributions')
+              
+              var datasets = []
+              {% if dataloader_obj.input_distributions.train %}
+                datasets.push({
+                    data: {{ dataloader_obj.input_distributions.train.MedInc.hist_y }},
+                    label: "Train",
+                    backgroundColor: '#007bff',
+                })
+              {% endif %}
+              {% if dataloader_obj.input_distributions.validation %}
+                datasets.push({
+                    data: {{ dataloader_obj.input_distributions.validation.MedInc.hist_y }},
+                    label: "Validation",
+                    backgroundColor: '#7bff00',
+                })
+              {% endif %}
+              {% if dataloader_obj.input_distributions.test %}
+                datasets.push({
+                    data: {{ dataloader_obj.input_distributions.test.MedInc.hist_y }},
+                    label: "Test",
+                    backgroundColor: '#ff007b',
+                })
+              {% endif %}
+              
+              var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: {{ dataloader_obj.input_distributions.train.MedInc.hist_x }},
+                  datasets: datasets
+                },
+                options: {
+                  plugins: {
+                    title: {
+                      display: true,
+                      text: 'Input Distribution (relative frequency)'
+                    }
+                  },
+                  scales: {
+                    x: {
+                      display: true,
+                      title: {
+                        display: true,
+                        text: 'Input value'
+                      }
+                    },
+                    y: {
+                      display: true,
+                      title: {
+                        display: true,
+                        text: 'Relative frequency'
+                      },
+                      ticks: {
+                        beginAtZero: false
+                      }
+                    }
+                  },
+                  legend: {
+                    display: true
+                  }
+                }
+              })
+            </script>
+          {% elif statistic_selected_item|stringformat:'s' == 'Target Distributions' %}
             <canvas id="chart_target_distributions" width="900" height="380"></canvas>
             <script type="text/javascript">
               var ctx = document.getElementById('chart_target_distributions')
