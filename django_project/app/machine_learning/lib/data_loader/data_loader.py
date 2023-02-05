@@ -551,7 +551,7 @@ class DataLoaderCaliforniaHousing(DataLoader):
         
         self.one_hot = False
         self.output_dims = 1
-        self.verified = False
+        self.verified = True
         self.dataset_type = 'table_reg'
         
         california_housing = fetch_california_housing(data_home=dataset_dir)
@@ -617,8 +617,8 @@ class DataLoaderCustom(DataLoader):
             None
         """
         
-        def _load_data(data_dir, key_name='img_file'):
-            """_load_data
+        def _load_image_data(data_dir, key_name='img_file'):
+            """_load_image_data
                 カスタムデータセットを読み込み，画像とラベルを返す
                 
                 [引数説明]
@@ -655,6 +655,29 @@ class DataLoaderCustom(DataLoader):
             
             return np.array(images), np.array(labels)
         
+        def _load_table_data(data_dir, feature_names):
+            """ _load_table_data
+            
+            This function loads table data from ``info.json``
+            
+            Args:
+                data_dir (string): data directory ``info.json`` in.
+                feature_names (list of string): feature names
+            
+            """
+            # --- Load json data ---
+            json_file = Path(data_dir, 'info.json')
+            df_data = pd.read_json(json_file, orient='records')
+            
+            # --- Split input feature and target
+            X_data = df_data[feature_names]
+            if ("target" in df_data.columns):
+                y_data = df_data["target"]
+            else:
+                y_data = None
+            
+            return X_data, y_data
+            
         # --- set parameters from arguments ---
         self.one_hot = one_hot
         
@@ -671,27 +694,45 @@ class DataLoaderCustom(DataLoader):
         else:
             self.dataset_type = None
         
-        for key in df_meta['keys']:
-            if (key['type'] == 'image_file'):
-                key_name = key['name']
-                break
-        
-        # --- load training data ---
-        self.train_x, self.train_y = _load_data(train_dir, key_name=key_name)
-        
-        # --- load validation data ---
-        if (validation_dir is not None):
-            self.validation_x, self.validation_y = _load_data(validation_dir, key_name=key_name)
-        else:
-            self.split_train_val(validation_split)
+        if (df_meta['input_type'] == 'image_data'):
+            for key in df_meta['keys']:
+                if (key['type'] == 'image_file'):
+                    key_name = key['name']
+                    break
             
-        # --- load test data ---
-        if (test_dir is not None):
-            self.test_x, self.test_y = _load_data(test_dir, key_name=key_name)
-        
-        # --- set output dims ---
-        self.output_dims = len(np.unique(self.train_y))
-        
+            # --- load training data ---
+            self.train_x, self.train_y = _load_image_data(train_dir, key_name=key_name)
+            
+            # --- load validation data ---
+            if (validation_dir is not None):
+                self.validation_x, self.validation_y = _load_image_data(validation_dir, key_name=key_name)
+            else:
+                self.split_train_val(validation_split)
+                
+            # --- load test data ---
+            if (test_dir is not None):
+                self.test_x, self.test_y = _load_image_data(test_dir, key_name=key_name)
+            
+            # --- set output dims ---
+            self.output_dims = len(np.unique(self.train_y))
+            
+        elif (df_meta['input_type'] == 'table_data'):
+            # --- load input feature names ---
+            feature_names = []
+            for key in df_meta['keys']:
+                feature_names.append(key['name'])
+            
+            # --- load training data ---
+            self.train_x, self.train_y = _load_table_data(train_dir, feature_names)
+            
+            # --- load validation data ---
+            if (validation_dir is not None):
+                self.validation_x, self.validation_y = _load_table_data(validation_dir, feature_names)
+            
+            # --- load test data ---
+            if (test_dir is not None):
+                self.test_x, self.test_y = _load_table_data(test_dir, feature_names)
+            
         return
     
     def verify(self, meta_dir, train_dir, validation_dir=None, test_dir=None):

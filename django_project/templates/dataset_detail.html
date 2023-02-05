@@ -23,24 +23,47 @@
     {% if download_status|stringformat:'s' == 'Done' %}
       {% if dataloader_obj %}
         {% if dataloader_obj.verified %}
-          <p><table class="table table-bordered border-primary table-hover ms-4">
-            <thead class="table-dark">
-              <tr>
-                <th scope="col">Image Shape(H, W, C)</th>
-                <th scope="col">Train data num</th>
-                <th scope="col">Validation data num</th>
-                <th scope="col">Test data num</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>({{ dataloader_obj.train_x.shape.1 }}, {{ dataloader_obj.train_x.shape.2 }}, {{ dataloader_obj.train_x.shape.3 }})</td>
-                <td>{{ dataloader_obj.train_x.shape.0 }}</td>
-                <td>{{ dataloader_obj.validation_x.shape.0 }}</td>
-                <td>{{ dataloader_obj.test_x.shape.0 }}</td>
-              </tr>
-            </tbody>
-          </table></p>
+          {% if dataloader_obj.train_x.shape.2 %}
+            <!-- Image data -->
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">Image Shape(H, W, C)</th>
+                  <th scope="col">Train data num</th>
+                  <th scope="col">Validation data num</th>
+                  <th scope="col">Test data num</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>({{ dataloader_obj.train_x.shape.1 }}, {{ dataloader_obj.train_x.shape.2 }}, {{ dataloader_obj.train_x.shape.3 }})</td>
+                  <td>{{ dataloader_obj.train_x.shape.0 }}</td>
+                  <td>{{ dataloader_obj.validation_x.shape.0 }}</td>
+                  <td>{{ dataloader_obj.test_x.shape.0 }}</td>
+                </tr>
+              </tbody>
+            </table></p>
+          {% else %}
+            <!-- Table data -->
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">Image Shape(n_dim)</th>
+                  <th scope="col">Train data num</th>
+                  <th scope="col">Validation data num</th>
+                  <th scope="col">Test data num</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>({{ dataloader_obj.train_x.shape.1 }})</td>
+                  <td>{{ dataloader_obj.train_x.shape.0 }}</td>
+                  <td>{{ dataloader_obj.validation_x.shape.0 }}</td>
+                  <td>{{ dataloader_obj.test_x.shape.0 }}</td>
+                </tr>
+              </tbody>
+            </table></p>
+          {% endif %}
         {% endif %}
       {% endif %}
     {% elif download_status|stringformat:'s' != 'None' %}

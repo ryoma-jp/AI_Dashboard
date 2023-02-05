@@ -255,12 +255,21 @@ def main():
             predictions = trainer.predict(x_test)
             
             json_data = []
-            for i, (prediction, target) in enumerate(zip(predictions, y_test.values.reshape(-1))):
-                json_data.append({
-                    'id': int(i),
-                    'prediction': prediction,
-                    'target': target,
-                })
+            if (y_test is not None):
+                for i, (prediction, target) in enumerate(zip(predictions, y_test.values.reshape(-1))):
+                    json_data.append({
+                        'id': int(i),
+                        'prediction': prediction,
+                        'target': target,
+                    })
+            else:
+                for i, prediction in enumerate(predictions):
+                    json_data.append({
+                        'id': int(i),
+                        'prediction': prediction,
+                        'target': "(no data)",
+                    })
+        
         with open(Path(result_dir, 'prediction.json'), 'w') as f:
             json.dump(json_data, f, ensure_ascii=False, indent=4)
         

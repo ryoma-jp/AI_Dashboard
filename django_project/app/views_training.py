@@ -240,18 +240,19 @@ def model_parameter_edit(request, model_id):
     """
     def _set_config_parameters(config, save_config_list):
         for key in save_config_list:
-            if (request.POST[key] != ''):
-                if (config[key]['dtype'] == 'int'):
-                    config[key]['value'] = int(request.POST[key])
-                elif (config[key]['dtype'] == 'float'):
-                    config[key]['value'] = float(request.POST[key])
-                elif (config[key]['dtype'] == 'bool'):
-                    if (request.POST[key].lower() in ['true']):
-                        config[key]['value'] = True
+            if (key in request.POST.keys()):
+                if (request.POST[key] != ''):
+                    if (config[key]['dtype'] == 'int'):
+                        config[key]['value'] = int(request.POST[key])
+                    elif (config[key]['dtype'] == 'float'):
+                        config[key]['value'] = float(request.POST[key])
+                    elif (config[key]['dtype'] == 'bool'):
+                        if (request.POST[key].lower() in ['true']):
+                            config[key]['value'] = True
+                        else:
+                            config[key]['value'] = False
                     else:
-                        config[key]['value'] = False
-                else:
-                    config[key]['value'] = request.POST[key]
+                        config[key]['value'] = request.POST[key]
 
     # --- load model(id=model_id) ---
     model = MlModel.objects.get(pk=model_id)

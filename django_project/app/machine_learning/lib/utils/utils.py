@@ -160,8 +160,9 @@ def save_image_files(images, labels, ids, output_dir, name='images', key_name='i
         })
         
     # --- save image files information to json file ---
-    with open(Path(output_dir, 'info.json'), 'w') as f:
-        json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
+    if (not Path(output_dir, 'info.json').exists()):
+        with open(Path(output_dir, 'info.json'), 'w') as f:
+            json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
     
     return None
 
@@ -180,13 +181,20 @@ def save_table_info(df_meta, df_x, df_y, output_dir):
     
     os.makedirs(output_dir, exist_ok=True)
     keys = load_keys_from_meta(df_meta)
-    df_table_info = pd.concat([
-                        pd.DataFrame({'id':[n for n in range(len(df_x))]}),
-                        df_x.reset_index()[keys],
-                        pd.DataFrame({'target':df_y.values.reshape(-1)})], axis=1)
     
-    with open(Path(output_dir, 'info.json'), 'w') as f:
-        json.dump(df_table_info.to_dict(orient='records'), f, ensure_ascii=False, indent=4)
+    if (df_y is not None):
+        df_table_info = pd.concat([
+                            pd.DataFrame({'id':[n for n in range(len(df_x))]}),
+                            df_x.reset_index()[keys],
+                            pd.DataFrame({'target':df_y.values.reshape(-1)})], axis=1)
+    else:
+        df_table_info = pd.concat([
+                            pd.DataFrame({'id':[n for n in range(len(df_x))]}),
+                            df_x.reset_index()[keys]], axis=1)
+    
+    if (not Path(output_dir, 'info.json').exists()):
+        with open(Path(output_dir, 'info.json'), 'w') as f:
+            json.dump(df_table_info.to_dict(orient='records'), f, ensure_ascii=False, indent=4)
     
     return None
     
