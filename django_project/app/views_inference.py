@@ -77,6 +77,9 @@ def inference(request):
         elif ('prediction_filter' in request.POST):
             request.session['prediction_filter'] = request.POST.getlist('prediction_filter')[0]
         
+        elif ('prediction_data_type' in request.POST):
+            request.session['prediction_data_type'] = request.POST.getlist('prediction_data_type')[0]
+        
         else:
             logging.warning('Unknown POST command:')
             logging.warning(request.POST)
@@ -142,13 +145,16 @@ def inference(request):
         # --- Check prediction filter ---
         prediction_filter_selected = request.session.get('prediction_filter', 'All')
         
+        # --- Check prediction data type
+        prediction_data_type_selected = request.session.get('prediction_data_type', 'Test')
+        
         # --- Load DataLoader object and prediction ---
         if (dataset_dropdown_selected is not None):
             # --- get DataLoader object ---
             dataloader_obj = get_dataloader_obj(dataset_dropdown_selected)
             
             # --- get prediction ---
-            prediction_json = Path(model_dropdown_selected.model_dir, 'prediction.json')
+            prediction_json = Path(model_dropdown_selected.model_dir, f'{prediction_data_type_selected.lower()}_prediction.json')
             if (prediction_json.exists()):
                 with open(prediction_json, 'r') as f:
                     prediction = json.load(f)
@@ -171,6 +177,7 @@ def inference(request):
             'dataset_dropdown_selected': dataset_dropdown_selected,
             'prediction': prediction,
             'prediction_filter_selected': prediction_filter_selected,
+            'prediction_data_type_selected': prediction_data_type_selected,
             'dataloader_obj': dataloader_obj,
         }
         return render(request, 'inference.html', context)

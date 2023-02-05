@@ -198,6 +198,9 @@ def training(request):
             model = MlModel.objects.filter(project=project_dropdown_selected).order_by('-id').reverse()
             
             model_name = request.session.get('training_view_selected_model', None)
+            if (model_name not in [f.name for f in MlModel.objects.filter(project=project_dropdown_selected)]):
+                model_name = None
+            
             if (model_name is not None):
                 model_dropdown_selected = MlModel.objects.get(name=model_name, project=project_dropdown_selected)
                 logging.info('-------------------------------------')

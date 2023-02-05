@@ -241,37 +241,64 @@ def main():
             predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
     
     elif (args.mode == 'predict'):
-        if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
-            predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
-            
-            json_data = []
-            for i, (prediction, target) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_test, axis=1))):
-                json_data.append({
-                    'id': int(i),
-                    'prediction': int(prediction),
-                    'target': int(target),
-                })
-        else:
-            predictions = trainer.predict(x_test)
-            
-            json_data = []
-            if (y_test is not None):
-                for i, (prediction, target) in enumerate(zip(predictions, y_test.values.reshape(-1))):
-                    json_data.append({
-                        'id': int(i),
-                        'prediction': prediction,
-                        'target': target,
-                    })
-            else:
-                for i, prediction in enumerate(predictions):
-                    json_data.append({
-                        'id': int(i),
-                        'prediction': prediction,
-                        'target': "(no data)",
-                    })
+        predict_data_list = [
+            ['train', x_train, y_train],
+            ['validation', x_val, y_val],
+            ['test', x_test, y_test],
+        ]
         
-        with open(Path(result_dir, 'prediction.json'), 'w') as f:
-            json.dump(json_data, f, ensure_ascii=False, indent=4)
+        for (name, x_, y_) in predict_data_list:
+            if (x_ is not None):
+                if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
+                    predictions = _predict_and_calc_accuracy(trainer, x_, y_)
+                    
+                    json_data = []
+                    if (y_ is not None):
+                        for i, (prediction, target) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_, axis=1))):
+                            json_data.append({
+                                'id': int(i),
+                                'prediction': int(prediction),
+                                'target': int(target),
+                            })
+                    else:
+                        for i, prediction in enumerate(np.argmax(predictions, axis=1)):
+                            json_data.append({
+                                'id': int(i),
+                                'prediction': int(prediction),
+                                'target': '(no data)',
+                            })
+                else:
+                    predictions = trainer.predict(x_)
+                    
+                    json_data = []
+                    if (y_ is not None):
+                        for i, (prediction, target) in enumerate(zip(predictions, y_.values.reshape(-1))):
+                            if ('id' in x_.columns):
+                                sample_id = x_['id'].iloc[i]
+                            else:
+                                sample_id = i
+                            
+                            json_data.append({
+                                'id': sample_id,
+                                'prediction': prediction,
+                                'target': target,
+                            })
+                        
+                    else:
+                        for i, prediction in enumerate(predictions):
+                            if ('id' in x_.columns):
+                                sample_id = x_['id'].iloc[i]
+                            else:
+                                sample_id = i
+                            
+                            json_data.append({
+                                'id': int(i),
+                                'prediction': prediction,
+                                'target': "(no data)",
+                            })
+                
+                with open(Path(result_dir, f'{name}_prediction.json'), 'w') as f:
+                    json.dump(json_data, f, ensure_ascii=False, indent=4)
         
     else:
         print('[ERROR] Unknown mode: {}'.format(args.mode))
