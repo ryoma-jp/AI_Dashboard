@@ -10,6 +10,7 @@ from django.shortcuts import render, redirect
 from app.models import Project, MlModel, Dataset
 
 from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url, get_dataloader_obj
+from django.http import FileResponse
 
 # Create your views here.
 
@@ -182,3 +183,21 @@ def inference(request):
         }
         return render(request, 'inference.html', context)
 
+def download_prediction(request):
+    """ Function: download_prediction
+     * download prediction
+    """
+    
+    # --- get selected project and model ---
+    selected_project_name = request.session.get('inference_view_selected_project', None)
+    selected_model_name = request.session.get('inference_view_selected_model', None)
+    
+    selected_project = Project.objects.get(name=selected_project_name)
+    selected_model = MlModel.objects.get(name=selected_model_name, project=selected_project)
+    
+    # --- get prediction ---
+    prediction_data_type_selected = request.session.get('prediction_data_type', 'Test')
+    prediction_csv = Path(selected_model.model_dir, f'{prediction_data_type_selected.lower()}_prediction.csv')
+    
+    return FileResponse(open(prediction_csv, "rb"), as_attachment=True, filename=prediction_csv.name)
+    

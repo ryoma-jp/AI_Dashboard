@@ -299,6 +299,7 @@ def main():
                 
                 with open(Path(result_dir, f'{name}_prediction.json'), 'w') as f:
                     json.dump(json_data, f, ensure_ascii=False, indent=4)
+                pd.DataFrame(json_data).to_csv(Path(result_dir, f'{name}_prediction.csv'), index=False)
         
     else:
         print('[ERROR] Unknown mode: {}'.format(args.mode))

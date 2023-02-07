@@ -137,8 +137,10 @@
         </form>
         
         <h1 class="h4">Result</h1>
-        {% if prediction %}
         
+        {% if prediction %}
+          <p><a href="{% url 'download_prediction' %}">Download prediction as csv</a></p>
+          
           <div class="container">
             <div class="row">
               <div class="col-1">
