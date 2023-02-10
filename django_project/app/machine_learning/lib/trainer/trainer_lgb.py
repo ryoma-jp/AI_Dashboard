@@ -9,8 +9,26 @@ This file describes the training and the prediction process of LightGBM.
 import os
 import pickle
 import lightgbm as lgb
+from torch.utils.tensorboard import SummaryWriter
 
 from pathlib import Path
+
+class LogSummaryWriterCallback:
+    """ Writing log callable class
+    """
+    
+    def __init__(self, period=1, writer=None):
+        self.period = period
+        self.writer = writer
+    
+    def __call__(self, env):
+        if (self.period > 0) and (env.evaluation_result_list) and (((env.iteration+1) % self.period)==0):
+            if (self.writer is not None):
+                for (name, metric, value, is_higher_better) in env.evaluation_result_list:
+                    self.writer.add_scalar(f'{name}'s {metric}', value, env.iteration+1)
+            else:
+                print(env.evaluation_result_list)
+            
 
 class TrainerLightGBM():
     """ Base Class of Trainer
@@ -57,6 +75,8 @@ class TrainerLightGBM():
             'early_stopping_rounds': 100,
         }
         
+        # --- summary writer ---
+        self.writer = SummaryWriter(log_dir=Path(output_dir, 'logs'))
 
     def fit(self, x_train, y_train,
             x_val=None, y_val=None, x_test=None, y_test=None,
@@ -91,13 +111,19 @@ class TrainerLightGBM():
             valid_names=valid_names,
             valid_sets=valid_sets,
             num_boost_round=50000,
-            callbacks=[lgb.log_evaluation(period=100)]
+            callbacks=[
+                lgb.log_evaluation(period=100),
+                LogSummaryWriterCallback(period=100, writer=self.writer)
+            ]
         )
         
         # --- send finish status to web app ---
         if (web_app_ctrl_fifo is not None):
             with open(web_app_ctrl_fifo, 'w') as f:
                 f.write('trainer_done\n')
+        
+        # --- close writer ---
+        self.writer.close()
         
     def save_model(self):
         """ Save Model
