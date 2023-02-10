@@ -24,8 +24,15 @@ class LogSummaryWriterCallback:
     def __call__(self, env):
         if (self.period > 0) and (env.evaluation_result_list) and (((env.iteration+1) % self.period)==0):
             if (self.writer is not None):
+                scalars = {}
                 for (name, metric, value, is_higher_better) in env.evaluation_result_list:
-                    self.writer.add_scalar(f'{name}'s {metric}', value, env.iteration+1)
+                    if (metric not in scalars.keys()):
+                        scalars[metric] = {}
+                    scalars[metric][name] = value
+                    
+                for key in scalars.keys():
+                    self.writer.add_scalars(key, scalars[key], env.iteration+1)
+                    # self.writer.add_scalar(f"{name}'s {metric}", value, env.iteration+1)
             else:
                 print(env.evaluation_result_list)
             
@@ -59,7 +66,7 @@ class TrainerLightGBM():
         # --- set hyper parameters
         self.params = {
             'objective': 'regression',
-            'metric': 'mae',
+            'metric': 'l1,l2,rmse',
             'num_leaves': 32,
             'max_depth': 4,
             'feature_fraction': 0.5,
