@@ -9,8 +9,9 @@ This file describes the training and the prediction process of LightGBM.
 import os
 import pickle
 import lightgbm as lgb
-from torch.utils.tensorboard import SummaryWriter
+import pandas as pd
 
+from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
 
 class LogSummaryWriterCallback:
@@ -32,7 +33,6 @@ class LogSummaryWriterCallback:
                     
                 for key in scalars.keys():
                     self.writer.add_scalars(key, scalars[key], env.iteration+1)
-                    # self.writer.add_scalar(f"{name}'s {metric}", value, env.iteration+1)
             else:
                 print(env.evaluation_result_list)
             
@@ -157,4 +157,15 @@ class TrainerLightGBM():
         
         return self.model.predict(x)
     
-    
+    def get_importance(self, index=None):
+        """ Get Importance
+        
+        This function returns feature importance as pandas.DataFrame
+        
+        Args:
+            index (list): string list of features
+        
+        """
+        
+        return pd.DataFrame(self.model.feature_importance(), index=index, columns=['importance'])
+        

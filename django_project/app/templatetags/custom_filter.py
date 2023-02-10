@@ -31,3 +31,19 @@ def hist_lookup(value, args):
     else:
         return None
 
+@register.filter
+def importance_lookup(value, arg):
+    """ Lookup for dict object of feature importance
+    
+    Lookup for dict object of feature importance
+    
+    Args:
+        value: object
+        arg (string): specify the key
+    """
+    
+    if (arg is not None):
+        return value[arg]['importance']
+    else:
+        return None
+    

@@ -224,6 +224,16 @@ def training(request):
         else:
             tensorboard_port = None
         
+        # --- Load feature importance ---
+        if (model_dropdown_selected is not None):
+            feature_importance_path = Path(model_dropdown_selected.model_dir, 'feature_importance.json')
+            if (feature_importance_path.exists()):
+                with open(feature_importance_path, 'r') as f:
+                    feature_importance_data = json.load(f)
+            else:
+                feature_importance_data = None
+        else:
+            feature_importance_data = None
         
         context = {
             'project': project,
@@ -233,7 +243,8 @@ def training(request):
             'text': get_version(),
             'jupyter_nb_url': get_jupyter_nb_url(),
             'project_dropdown_selected': project_dropdown_selected,
-            'model_dropdown_selected': model_dropdown_selected
+            'model_dropdown_selected': model_dropdown_selected,
+            'feature_importance': feature_importance_data,
         }
         return render(request, 'training.html', context)
 

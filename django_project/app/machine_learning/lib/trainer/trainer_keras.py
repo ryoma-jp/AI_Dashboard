@@ -322,6 +322,16 @@ class Trainer():
         
         return system_info
     
+    def get_importance(self, index=None):
+        """Get Importance
+        
+        (dummy function)
+        
+        """
+        
+        return None
+    
+    
 #---------------------------------
 # クラス; ResNet学習モジュール
 #---------------------------------

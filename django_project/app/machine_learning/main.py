@@ -237,6 +237,13 @@ def main():
             batch_size=batch_size, da_params=image_data_augmentation, epochs=epochs)
         trainer.save_model()
         
+        # --- save feature importance as json ---
+        if (type(x_train) == pd.DataFrame):
+            df_importance = trainer.get_importance(index=x_train.columns)
+            dict_importance = df_importance.sort_values('importance', ascending=False).to_dict(orient='index')
+            with open(Path(result_dir, 'feature_importance.json'), 'w') as f:
+                json.dump(dict_importance, f, ensure_ascii=False, indent=4)
+        
         if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
             predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
     
