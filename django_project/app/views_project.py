@@ -260,12 +260,14 @@ def model_new(request, project_id):
             dict_config['env']['trainer_ctrl_fifo']['value'] = str(Path(env_dir, 'fifo_trainer_ctrl'))
             dict_config['env']['result_dir']['value'] = str(model.model_dir)
             dict_config['dataset']['dataset_dir']['value'] = str(model.model_dir)	# directory that contains 'dataset.pkl'
-            with open(Path(model.model_dir, 'config.json'), 'w') as f:
-                json.dump(dict_config, f, ensure_ascii=False, indent=4)
-                
+            
             selected_model = request.POST.getlist('model_new_model_dropdown_submit')[0]
             dict_config['model']['model_type']['value'] = selected_model
             
+            # --- save config.json ---
+            with open(Path(model.model_dir, 'config.json'), 'w') as f:
+                json.dump(dict_config, f, ensure_ascii=False, indent=4)
+                
             # logging.info('-------------------------------------')
             # logging.info(dict_config)
             # logging.info('-------------------------------------')

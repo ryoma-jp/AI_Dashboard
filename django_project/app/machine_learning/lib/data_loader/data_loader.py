@@ -87,6 +87,7 @@ class DataLoader():
         
         Args:
             mode (str): 正規化方法を指定する
+                - 'none': スルー
                 - 'max': データの絶対値の最大が1.0となるように正規化(最大値で除算)
                 - 'max-min': データの最大が1.0最小が0.0となるように正規化(最大値と最小値を用いて算出)
                 - 'z-score': 標準化(平均と標準偏差を用いて算出)
@@ -98,7 +99,13 @@ class DataLoader():
         test_norm = None
         
         # --- Normalization process ---
-        if (mode == 'max'):
+        if (mode == 'none'):
+            train_norm = self.train_x
+            if (self.validation_x is not None):
+                validation_norm = self.validation_x
+            if (self.test_x is not None):
+                test_norm = self.test_x
+        elif (mode == 'max'):
             train_norm = self.train_x / 255.
             if (self.validation_x is not None):
                 validation_norm = self.validation_x / 255.
