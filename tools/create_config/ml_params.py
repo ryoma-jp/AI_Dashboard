@@ -65,10 +65,10 @@ class MlParams():
                     'name': 'Normalization',
                     'description': 'Normalization method',
                     'dtype': 'str',
-                    'value': 'z-score',
+                    'value': 'none',
                     'configurable': True,
                     'selectable': True,
-                    'items': ['max', 'max-min', 'z-score'],
+                    'items': ['none', 'max', 'max-min', 'z-score'],
                 },
                 'image_data_augmentation': {
                     'rotation_range': {
@@ -292,6 +292,7 @@ class MlParams_CIFAR10(MlParams):
     def __init__(self):
         super().__init__()
         self.params['dataset']['dataset_name']['value'] = 'CIFAR-10'
+        self.params['dataset']['norm']['value'] = 'z-score'
 
 class MlParams_CaliforniaHousing(MlParams):
     """Class MlParams_CaliforniaHousing

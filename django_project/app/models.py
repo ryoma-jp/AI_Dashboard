@@ -130,14 +130,17 @@ class MlModel(models.Model):
     tensorboard_pid = models.IntegerField('Tensorboard worker PID', null=True, default=None)
     
     # --- Pre-set models ---
-    PRESET_MODELS = [
+    PRESET_DNN_MODELS = [
                 "MLP",
                 "SimpleCNN",
                 "DeepCNN",
                 "SimpleResNet",
                 "DeepResNet",
+    ]
+    PRESET_TREE_MODELS = [
                 "LightGBM"
     ]
+    PRESET_MODELS = PRESET_DNN_MODELS.append(PRESET_TREE_MODELS)
     
     def __str__(self):
         return self.name

@@ -285,7 +285,15 @@ def model_parameter_edit(request, model_id):
     # logging.info('-------------------------------------')
     
     if (request.method == 'POST'):
-        if ('apply_parameters' in request.POST):
+        if ('apply_model' in request.POST):
+            # --- save model parameters ---
+            save_config_list = [key for key in config_data['model'].keys() if config_data['model'][key]['configurable']]
+            _set_config_parameters(config_data['model'], save_config_list)
+            
+            with open(Path(model.model_dir, 'config.json'), 'w') as f:
+                json.dump(config_data, f, ensure_ascii=False, indent=4)
+        
+        elif ('apply_parameters' in request.POST):
             # --- save dataset parameters ---
             save_config_list = [key for key in config_data['dataset'].keys() if ((key != 'image_data_augmentation') and (config_data['dataset'][key]['configurable']))]
             _set_config_parameters(config_data['dataset'], save_config_list)
@@ -293,10 +301,6 @@ def model_parameter_edit(request, model_id):
             # --- save data augmentation parameters ---
             save_config_list = [key for key in config_data['dataset']['image_data_augmentation'].keys() if config_data['dataset']['image_data_augmentation'][key]['configurable']]
             _set_config_parameters(config_data['dataset']['image_data_augmentation'], save_config_list)
-            
-            # --- save model parameters ---
-            save_config_list = [key for key in config_data['model'].keys() if config_data['model'][key]['configurable']]
-            _set_config_parameters(config_data['model'], save_config_list)
             
             # --- save training parameters ---
             save_config_list = [key for key in config_data['dnn_training_parameter'].keys() if config_data['dnn_training_parameter'][key]['configurable']]
@@ -313,6 +317,7 @@ def model_parameter_edit(request, model_id):
         dataloader_obj = get_dataloader_obj(model.dataset)
         context = {
             'config': config_data,
+            'dnn_model_list': MlModel.PRESET_DNN_MODELS,
             'text': get_version(),
             'dataloader_obj': dataloader_obj,
             'jupyter_nb_url': get_jupyter_nb_url(),
