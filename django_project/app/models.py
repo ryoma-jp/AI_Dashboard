@@ -140,7 +140,7 @@ class MlModel(models.Model):
     PRESET_TREE_MODELS = [
                 "LightGBM"
     ]
-    PRESET_MODELS = PRESET_DNN_MODELS.append(PRESET_TREE_MODELS)
+    PRESET_MODELS = PRESET_DNN_MODELS+PRESET_TREE_MODELS
     
     def __str__(self):
         return self.name
