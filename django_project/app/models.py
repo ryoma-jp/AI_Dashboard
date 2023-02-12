@@ -129,5 +129,15 @@ class MlModel(models.Model):
     training_pid = models.IntegerField('Training worker PID', null=True, default=None)
     tensorboard_pid = models.IntegerField('Tensorboard worker PID', null=True, default=None)
     
+    # --- Pre-set models ---
+    PRESET_MODELS = [
+                "MLP",
+                "SimpleCNN",
+                "DeepCNN",
+                "SimpleResNet",
+                "DeepResNet",
+                "LightGBM"
+    ]
+    
     def __str__(self):
         return self.name

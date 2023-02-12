@@ -77,12 +77,51 @@ class Trainer():
             
     # --- コンストラクタ ---
     def __init__(self, output_dir=None, model_file=None,
-                 optimizer='adam', loss='sparse_categorical_crossentropy',
-                 learning_rate=0.001):
-        # --- 出力ディレクトリ作成 ---
+                 web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
+                 initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
+                 dropout_rate=0.0, learning_rate=0.001,
+                 da_params=None,
+                 batch_size=32, epochs=200):
+        """Constructor
+        
+        コンストラクタ
+        
+        Args:
+            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
+            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
+            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
+            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            initializer (:obj:`string`, optional): Initializer
+                - glorot_uniform: Xavierの一様分布
+                - he_normal: Heの正規分布
+                - lecun_normal: LeCunの正規分布
+                - he_uniform: Heの一様分布
+                - lecun_uniform: LeCunの一様分布
+            optimizer (:obj:`string`, optional): Optimizer
+            loss (:obj:`string`, optional): Loss function
+            dropout_rate (:obj:`string`, optional): Dropout rate
+            learning_rate (:obj:`float`, optional): Learning rate
+            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
+            batch_size (:obj:`int`, optional): ミニバッチ数
+            epochs (:obj:`int`, optional): 学習EPOCH数
+        """
+        
+        # --- Load parameters ---
         self.output_dir = output_dir
-        if (output_dir is not None):
-            os.makedirs(output_dir, exist_ok=True)
+        self.web_app_ctrl_fifo = web_app_ctrl_fifo
+        self.trainer_ctrl_fifo = trainer_ctrl_fifo
+        self.initializer = initializer
+        self.optimizer = optimizer
+        self.loss = loss
+        self.dropout_rate = dropout_rate
+        self.learning_rate = learning_rate
+        self.da_params = da_params
+        self.batch_size = batch_size
+        self.epochs = epochs
+        
+        # --- 出力ディレクトリ作成 ---
+        if (self.output_dir is not None):
+            os.makedirs(self.output_dir, exist_ok=True)
         
         # --- モデル構築 ---
         def _load_model(model_file):
@@ -93,7 +132,7 @@ class Trainer():
         
         self.model = _load_model(model_file)
         if (self.model is not None):
-            self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
+            self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
         
         return
     
@@ -143,9 +182,6 @@ class Trainer():
     # --- 学習 ---
     def fit(self, x_train, y_train,
             x_val=None, y_val=None, x_test=None, y_test=None,
-            web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
-            da_params=None,
-            batch_size=32, epochs=200,
             verbose=0):
         """fit
         
@@ -158,11 +194,6 @@ class Trainer():
             y_val (:obj:`numpy.ndarray`, optional): Validationデータの真値
             x_test (:obj:`numpy.ndarray`, optional): Testデータの入力値
             y_test (:obj:`numpy.ndarray`, optional): Testデータの真値
-            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
-            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
-            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
-            batch_size (:obj:`int`, optional): ミニバッチ数
-            epochs (:obj:`int`, optional): 学習EPOCH数
             verbose (:obj:`int`, optional): ログの出力レベル
             
         
@@ -172,34 +203,34 @@ class Trainer():
         checkpoint_path = Path(self.output_dir, 'checkpoints', 'model.ckpt')
         cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
         es_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto')
-        custom_callback = self.CustomCallback(trainer_ctrl_fifo)
+        custom_callback = self.CustomCallback(self.trainer_ctrl_fifo)
         tensorboard_logdir = Path(self.output_dir, 'logs')
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
         #callbacks = [cp_callback, es_callback]
         callbacks = [cp_callback, custom_callback, tensorboard_callback]
         
-        if (da_params is not None):
+        if (self.da_params is not None):
             # --- no tuning ---
             datagen = ImageDataGenerator(
-                rotation_range=da_params['rotation_range'],
-                width_shift_range=da_params['width_shift_range'],
-                height_shift_range=da_params['height_shift_range'],
-                zoom_range=da_params['zoom_range'],
-                channel_shift_range=da_params['channel_shift_range'],
-                horizontal_flip=da_params['horizontal_flip'])
+                rotation_range=self.da_params['rotation_range'],
+                width_shift_range=self.da_params['width_shift_range'],
+                height_shift_range=self.da_params['height_shift_range'],
+                zoom_range=self.da_params['zoom_range'],
+                channel_shift_range=self.da_params['channel_shift_range'],
+                horizontal_flip=self.da_params['horizontal_flip'])
         else:
             datagen = ImageDataGenerator()
         datagen.fit(x_train)
         
         if ((x_val is not None) and (y_val is not None)):
-            history = self.model.fit(datagen.flow(x_train, y_train, batch_size=batch_size),
-                        steps_per_epoch=len(x_train)/batch_size, validation_data=(x_val, y_val),
-                        epochs=epochs, callbacks=callbacks,
+            history = self.model.fit(datagen.flow(x_train, y_train, batch_size=self.batch_size),
+                        steps_per_epoch=len(x_train)/self.batch_size, validation_data=(x_val, y_val),
+                        epochs=self.epochs, callbacks=callbacks,
                         verbose=verbose)
         else:
-            history = self.model.fit(datagen.flow(x_train, y_train, batch_size=batch_size),
-                        steps_per_epoch=len(x_train)/batch_size, validation_split=0.2,
-                        epochs=epochs, callbacks=callbacks,
+            history = self.model.fit(datagen.flow(x_train, y_train, batch_size=self.batch_size),
+                        steps_per_epoch=len(x_train)/self.batch_size, validation_split=0.2,
+                        epochs=self.epochs, callbacks=callbacks,
                         verbose=verbose)
         
         # --- 学習結果を評価 ---
@@ -229,8 +260,8 @@ class Trainer():
             plt.close()
         
         # --- 学習完了をアプリへ通知 ---
-        if (web_app_ctrl_fifo is not None):
-            with open(web_app_ctrl_fifo, 'w') as f:
+        if (self.web_app_ctrl_fifo is not None):
+            with open(self.web_app_ctrl_fifo, 'w') as f:
                 f.write('trainer_done\n')
         
         return
@@ -338,8 +369,39 @@ class Trainer():
 class TrainerKerasResNet(Trainer):
     # --- コンストラクタ ---
     def __init__(self, input_shape, classes, output_dir=None, model_file=None, model_type='custom',
-                 optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform',
-                 dropout_rate=0.0, learning_rate=0.001):
+                 web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
+                 initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
+                 dropout_rate=0.0, learning_rate=0.001,
+                 da_params=None,
+                 batch_size=32, epochs=200):
+        """Constructor
+        
+        コンストラクタ
+        
+        Args:
+            input_shape (:obj:`list`, mandatory): Input shape
+            classes (:obj:`int`, mandatory): Number of classes
+            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
+            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
+            model_type (:obj:`string`, optional): モデルの種類('custom' or 'custom_deep')
+            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
+            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            initializer (:obj:`string`, optional): Initializer
+                - glorot_uniform: Xavierの一様分布
+                - he_normal: Heの正規分布
+                - lecun_normal: LeCunの正規分布
+                - he_uniform: Heの一様分布
+                - lecun_uniform: LeCunの一様分布
+            initializer (:obj:`string`, optional): Initializer
+            optimizer (:obj:`string`, optional): Optimizer
+            loss (:obj:`string`, optional): Loss function
+            dropout_rate (:obj:`string`, optional): Dropout rate
+            learning_rate (:obj:`float`, optional): Learning rate
+            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
+            batch_size (:obj:`int`, optional): ミニバッチ数
+            epochs (:obj:`int`, optional): 学習EPOCH数
+        """
+        
         # --- Residual Block ---
         #  * アプリケーションからkeras.applications.resnet.ResNetにアクセスできない為，
         #    必要なモジュールをTensorFlow公式からコピー
@@ -454,7 +516,12 @@ class TrainerKerasResNet(Trainer):
             return model
         
         # --- 基底クラスの初期化 ---
-        super().__init__(output_dir=output_dir, model_file=model_file)
+        super().__init__(output_dir=output_dir, model_file=model_file,
+                         web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
+                         initializer=initializer, optimizer=optimizer, loss=loss,
+                         dropout_rate=dropout_rate, learning_rate=learning_rate,
+                         da_params=da_params,
+                         batch_size=batch_size, epochs=epochs)
         
         # --- モデル構築 ---
         if (self.model is None):
@@ -463,19 +530,19 @@ class TrainerKerasResNet(Trainer):
                     x = stack1(x, 32, 3, stride1=1, dropout_rate=dropout_rate, name='conv2')
                     return stack1(x, 64, 4, dropout_rate=dropout_rate, name='conv3')
                 
-                self.model = _load_model(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
-                self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
+                self.model = _load_model(input_shape, classes, stack_fn, initializer=self.initializer, dropout_rate=self.dropout_rate)
+                self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             elif (model_type == 'custom_deep'):
                 def stack_fn(x, dropout_rate=0.0):
                     x = stack1(x, 16, 18, stride1=1, dropout_rate=dropout_rate, name='conv2')
                     x = stack1(x, 32, 18, dropout_rate=dropout_rate, name='conv3')
                     return stack1(x, 64, 18, dropout_rate=dropout_rate, name='conv4')
                 
-                self.model = _load_model_deep(input_shape, classes, stack_fn, initializer=initializer, dropout_rate=dropout_rate)
-                self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
+                self.model = _load_model_deep(input_shape, classes, stack_fn, initializer=self.initializer, dropout_rate=self.dropout_rate)
+                self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             elif (model_type == 'resnet50'):
-                self.model = _load_model_resnet50(input_shape, classes, initializer=initializer, dropout_rate=dropout_rate, pretrained=False)
-                self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
+                self.model = _load_model_resnet50(input_shape, classes, initializer=self.initializer, dropout_rate=self.dropout_rate, pretrained=False)
+                self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             else:
                 print('[ERROR] Unknown model_type: {}'.format(model_type))
                 return
@@ -490,9 +557,40 @@ class TrainerKerasResNet(Trainer):
 #---------------------------------
 class TrainerKerasCNN(Trainer):
     # --- コンストラクタ ---
-    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None,
-                 optimizer='adam', loss='sparse_categorical_crossentropy', initializer='glorot_uniform',
-                 model_type='baseline', learning_rate=0.001):
+    def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, model_type='baseline',
+                 web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
+                 initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
+                 dropout_rate=0.0, learning_rate=0.001,
+                 da_params=None,
+                 batch_size=32, epochs=200):
+        """Constructor
+        
+        コンストラクタ
+        
+        Args:
+            input_shape (:obj:`list`, mandatory): Input shape
+            classes (:obj:`int`, mandatory): Number of classes
+            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
+            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
+            model_type (:obj:`string`, optional): モデルの種類('baseline' or 'deep_model')
+            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
+            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            initializer (:obj:`string`, optional): Initializer
+                - glorot_uniform: Xavierの一様分布
+                - he_normal: Heの正規分布
+                - lecun_normal: LeCunの正規分布
+                - he_uniform: Heの一様分布
+                - lecun_uniform: LeCunの一様分布
+            initializer (:obj:`string`, optional): Initializer
+            optimizer (:obj:`string`, optional): Optimizer
+            loss (:obj:`string`, optional): Loss function
+            dropout_rate (:obj:`string`, optional): Dropout rate
+            learning_rate (:obj:`float`, optional): Learning rate
+            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
+            batch_size (:obj:`int`, optional): ミニバッチ数
+            epochs (:obj:`int`, optional): 学習EPOCH数
+        """
+        
         # --- モデル構築(baseline) ---
         def _load_model(input_shape, initializer='glorot_uniform'):
             model = keras.models.Sequential()
@@ -551,19 +649,24 @@ class TrainerKerasCNN(Trainer):
             return model
         
         # --- 基底クラスの初期化 ---
-        super().__init__(output_dir=output_dir, model_file=model_file)
+        super().__init__(output_dir=output_dir, model_file=model_file,
+                         web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
+                         initializer=initializer, optimizer=optimizer, loss=loss,
+                         dropout_rate=dropout_rate, learning_rate=learning_rate,
+                         da_params=da_params,
+                         batch_size=batch_size, epochs=epochs)
         
         # --- モデル構築 ---
         if (self.model is None):
             if (model_type == 'baseline'):
-                self.model = _load_model(input_shape, initializer=initializer)
+                self.model = _load_model(input_shape, initializer=self.initializer)
             elif (model_type == 'deep_model'):
-                self.model = _load_model_deep(input_shape, initializer=initializer)
+                self.model = _load_model_deep(input_shape, initializer=self.initializer)
             else:
                 print('[ERROR] Unknown model_type: {}'.format(model_type))
                 quit()
         
-        self._compile_model(optimizer=optimizer, loss=loss, init_lr=learning_rate)
+        self._compile_model(optimizer=self.optimizer, loss=loss, init_lr=self.learning_rate)
         if (self.output_dir is not None):
             keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
         
@@ -576,7 +679,38 @@ class TrainerKerasCNN(Trainer):
 class TrainerKerasMLP(Trainer):
     # --- コンストラクタ ---
     def __init__(self, input_shape, classes=10, output_dir=None, model_file=None,
-                 optimizer='adam', learning_rate=0.001):
+                 web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
+                 initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
+                 dropout_rate=0.0, learning_rate=0.001,
+                 da_params=None,
+                 batch_size=32, epochs=200):
+        """Constructor
+        
+        コンストラクタ
+        
+        Args:
+            input_shape (:obj:`list`, mandatory): Input shape
+            classes (:obj:`int`, mandatory): Number of classes
+            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
+            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
+            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
+            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            initializer (:obj:`string`, optional): Initializer
+                - glorot_uniform: Xavierの一様分布
+                - he_normal: Heの正規分布
+                - lecun_normal: LeCunの正規分布
+                - he_uniform: Heの一様分布
+                - lecun_uniform: LeCunの一様分布
+            initializer (:obj:`string`, optional): Initializer
+            optimizer (:obj:`string`, optional): Optimizer
+            loss (:obj:`string`, optional): Loss function
+            dropout_rate (:obj:`string`, optional): Dropout rate
+            learning_rate (:obj:`float`, optional): Learning rate
+            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
+            batch_size (:obj:`int`, optional): ミニバッチ数
+            epochs (:obj:`int`, optional): 学習EPOCH数
+        """
+        
         # --- モデル構築 ---
         def _load_model(input_shape):
             model = keras.models.Sequential()
@@ -589,12 +723,17 @@ class TrainerKerasMLP(Trainer):
             return model
         
         # --- 基底クラスの初期化 ---
-        super().__init__(output_dir=output_dir, model_file=model_file)
+        super().__init__(output_dir=output_dir, model_file=model_file,
+                         web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
+                         initializer=initializer, optimizer=optimizer, loss=loss,
+                         dropout_rate=dropout_rate, learning_rate=learning_rate,
+                         da_params=da_params,
+                         batch_size=batch_size, epochs=epochs)
         
         # --- モデル構築 ---
         if (self.model is None):
             self.model = _load_model(input_shape)
-            self._compile_model(optimizer=optimizer, init_lr=learning_rate)
+            self._compile_model(optimizer=self.optimizer, init_lr=self.learning_rate)
             if (self.output_dir is not None):
                 keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
         

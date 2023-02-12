@@ -9,9 +9,41 @@
     {% bootstrap_form form %}
     
     <div class="dropdown my-3">
+      <button type="button" class="btn btn-primary dropdown-toggle" id="model_new_model_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
+        {% if model_new_model_selected %}
+          {{ model_new_model_selected.name }}
+        {% else %}
+          Select Model
+        {% endif %}
+      </button>
+      <ul class="dropdown-menu" area-labelledby="model_new_model_dropdown" id="model_new_model_dropdown_list">
+      {% for model_ in model %}
+        <li><button type="button" class="dropdown-item" value="{{ model_ }}">{{ model_ }}</button></li>
+      {% endfor %}
+      </ul>
+        <script>
+          // id=model_new_model_dropdown_listのdropdown-menu内のliタグに対してリスナにクリックイベントを追加する
+          dropdown_list = document.querySelector('#model_new_model_dropdown_list')
+          dropdown_list.querySelectorAll('li').forEach( function(el) {
+            el.addEventListener('click', function() {
+              // console.log('Click dropdown item');
+              // console.log(el.textContent);
+              
+              display = document.getElementById('model_new_model_dropdown');
+              display.innerText = el.textContent;
+              
+              ele = document.getElementById('model_new_model_dropdown_submit')
+              ele.value = el.textContent;
+            });
+          });
+        </script>
+        <input type="hidden" name="model_new_model_dropdown_submit" id="model_new_model_dropdown_submit" value="">
+    </div>
+    
+    <div class="dropdown my-3">
       <button type="button" class="btn btn-primary dropdown-toggle" id="model_new_dataset_dropdown" data-bs-toggle="dropdown" aria-expanded="false">
-        {% if model_new_dropdown_selected %}
-          {{ model_new_dropdown_selected.name }}
+        {% if model_new_dataset_selected %}
+          {{ model_new_dataset_selected.name }}
         {% else %}
           Select Dataset
         {% endif %}

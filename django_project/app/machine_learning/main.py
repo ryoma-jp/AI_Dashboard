@@ -1,49 +1,9 @@
 #! -*- coding: utf-8 -*-
 
-"""DeepLearning学習処理の実装サンプル
+"""機械学習学習処理
 
-引数に指定する設定ファイルで指定されたパラメータに従い，DeepLearningモデルの学習を実行する実装サンプル．
+引数に指定する設定ファイルで指定されたパラメータに従い，モデルの学習を実行する
 
-設定ファイルで指定するパラメータ:
-
-- env: 環境設定
-
-  - fifo: 学習制御用のFIFOパス
-  - result_dir: 結果を格納するディレクトリ
-
-- dataset: データセット関連の設定
-
-  - dataset_name: データセット名(Preset: MNIST, CIFAR-10)
-  - dataset_dir: データセットを格納したディレクトリ
-  - norm: 正規化方式(max, max-min, z-score)
-  - image_data_augmentation: DataAugmentation関連の設定
-  
-    - rotation_range: 画像の回転[deg]
-    - width_shift_range: 水平方向の画像幅に対するシフト率[0.0-1.0]
-    - height_shift_range: 垂直方向の画像高さに対するシフト率[0.0-1.0]
-    - zoom_range: 拡大率[%]
-    - channel_shift_range: チャネル(RGB)のシフト率[0.0-1.0]
-    - horizontal_flip: 水平方向反転有無(True or False)
-    
-- model: 学習するモデル関連の設定
-
-  - model_type: モデル種別(MLP, SimpleCNN, DeepCNN, SimpleResNet, DeepResNet)
-  
-- training_parameter: ハイパーパラメータ
-
-  - optimizer: 最適化方式(momentum, adam, sgd, adam_lrs, sgd, lrs)
-  - batch_size: バッチサイズ
-  - epochs: EPOCH数
-  - initializer: 重みの初期化アルゴリズム
-  
-      - glrot_uniform: Xavierの一様分布
-      - glrot_normal: Xavierの正規分布
-      - he_uniform: Heの一様分布
-      - he_normal: Heの正規分布
-      
-  - droptout_rate: ドロップアウトによる欠落率[0.0-1.0]
-  - loss_func: 損失関数(tf.keras.lossesのメンバを指定)
-  
 """
 
 #---------------------------------
@@ -56,6 +16,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
+from tqdm import tqdm
 from pathlib import Path
 
 from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet
@@ -137,6 +98,12 @@ def main():
     with open(args.config, 'r') as f:
         config_data = json.load(f)
     
+    print('[INFO] Config data')
+    print(json.dumps(config_data, indent=2))
+    
+    # --- 固定パラメータ ---
+    DNN_MODEL_LIST = ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet']
+    
     # --- 設定パラメータを取得 ---
     web_app_ctrl_fifo = config_data['env']['web_app_ctrl_fifo']['value']
     trainer_ctrl_fifo = config_data['env']['trainer_ctrl_fifo']['value']
@@ -148,23 +115,36 @@ def main():
     dataset_dir = config_data['dataset']['dataset_dir']['value']
     data_norm = config_data['dataset']['norm']['value']
     model_type = config_data['model']['model_type']['value']
-    loss_func = config_data['training_parameter']['loss_func']['value']
-    optimizer = config_data['training_parameter']['optimizer']['value']
-    initializer = config_data['training_parameter']['initializer']['value']
-    dropout_rate = config_data['training_parameter']['dropout_rate']['value']
-    batch_size = config_data['training_parameter']['batch_size']['value']
-    epochs = config_data['training_parameter']['epochs']['value']
-    learning_rate = config_data['training_parameter']['learning_rate']['value']
+    
+    if (model_type in DNN_MODEL_LIST):
+        loss_func = config_data['dnn_training_parameter']['loss_func']['value']
+        if (loss_func == "sparse_categorical_crossentropy"):
+            one_hot = False
+        else:
+            one_hot = True
+        
+        optimizer = config_data['dnn_training_parameter']['optimizer']['value']
+        initializer = config_data['dnn_training_parameter']['initializer']['value']
+        dropout_rate = config_data['dnn_training_parameter']['dropout_rate']['value']
+        batch_size = config_data['dnn_training_parameter']['batch_size']['value']
+        epochs = config_data['dnn_training_parameter']['epochs']['value']
+        learning_rate = config_data['dnn_training_parameter']['learning_rate']['value']
+    elif (model_type == 'LightGBM'):
+        num_leaves = config_data['lgb_training_parameter']['num_leaves']['value']
+        max_depth = config_data['lgb_training_parameter']['max_depth']['value']
+        learning_rate = config_data['lgb_training_parameter']['learning_rate']['value']
+        feature_fraction = config_data['lgb_training_parameter']['feature_fraction']['value']
+        bagging_fraction = config_data['lgb_training_parameter']['bagging_fraction']['value']
+        bagging_freq = config_data['lgb_training_parameter']['bagging_freq']['value']
+        lambda_l1 = config_data['lgb_training_parameter']['lambda_l1']['value']
+        lambda_l2 = config_data['lgb_training_parameter']['lambda_l2']['value']
+        boosting = config_data['lgb_training_parameter']['boosting']['value']
     
     # --- データセット読み込み ---
     with open(Path(dataset_dir, 'dataset.pkl'), 'rb') as f:
         dataset = pickle.load(f)
     
     if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
-        if (loss_func == "sparse_categorical_crossentropy"):
-            one_hot = False
-        else:
-            one_hot = True
         dataset.convert_label_encoding(one_hot=one_hot)
     
     print_ndarray_shape(dataset.train_x)
@@ -182,7 +162,7 @@ def main():
     
     # --- モデル取得 ---
     if (args.mode == 'predict'):
-        if (model_type in ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet']):
+        if (model_type in DNN_MODEL_LIST):
             model_file = Path(result_dir, 'models', 'hdf5', 'model.h5')
             if (not model_file.exists()):
                 model_file = None
@@ -196,35 +176,58 @@ def main():
         model_file = None
     
     if (model_type == 'MLP'):
+        print('Create MLP')
         trainer = TrainerKerasMLP(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
-            optimizer=optimizer, initializer=initializer,
-            learning_rate=learning_rate)
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer, loss=loss_func,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
     elif (model_type == 'SimpleCNN'):
+        print('Create SimpleCNN')
         trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
-            optimizer=optimizer, loss=loss_func, initializer=initializer,
-            learning_rate=learning_rate)
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer, loss=loss_func,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
     elif (model_type == 'DeepCNN'):
+        print('Create DeepCNN')
         trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,
-            output_dir=result_dir, model_file=model_file,
-            optimizer=optimizer, loss=loss_func, initializer=initializer, model_type='deep_model',
-            learning_rate=learning_rate)
+            output_dir=result_dir, model_file=model_file, model_type='deep_model',
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer, loss=loss_func,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
     elif (model_type == 'SimpleResNet'):
+        print('Create SimpleResNet')
         trainer = TrainerKerasResNet(dataset.train_x.shape[1:], output_dims,
-            output_dir=result_dir, model_file=model_file,
-            model_type='custom', 
-            optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate,
-            learning_rate=learning_rate)
+            output_dir=result_dir, model_file=model_file, model_type='custom', 
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer, loss=loss_func,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
     elif (model_type == 'DeepResNet'):
+        print('Create DeepResNet')
         trainer = TrainerKerasResNet(dataset.train_x.shape[1:], output_dims,
-            output_dir=result_dir, model_file=model_file,
-            model_type='custom_deep', 
-            optimizer=optimizer, loss=loss_func, initializer=initializer, dropout_rate=dropout_rate,
-            learning_rate=learning_rate)
+            output_dir=result_dir, model_file=model_file, model_type='custom_deep', 
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer, loss=loss_func,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
     elif (model_type == 'LightGBM'):
+        print('Create LightGBM')
         trainer = TrainerLightGBM(output_dir=result_dir, model_file=model_file,
-            learning_rate=learning_rate)
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            num_leaves=num_leaves, max_depth=max_depth,
+            learning_rate=learning_rate, feature_fraction=feature_fraction,
+            bagging_fraction=bagging_fraction, bagging_freq=bagging_freq,
+            lambda_l1=lambda_l1, lambda_l2=lambda_l2, boosting=boosting)
     else:
         print('[ERROR] Unknown model_type: {}'.format(model_type))
         quit()
@@ -232,9 +235,8 @@ def main():
     if (args.mode == 'train'):
         # --- 学習 ---
         trainer.fit(x_train, y_train,
-            x_val=x_val, y_val=y_val, x_test=x_test, y_test=y_test,
-            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
-            batch_size=batch_size, da_params=image_data_augmentation, epochs=epochs)
+                    x_val=x_val, y_val=y_val,
+                    x_test=x_test, y_test=y_test)
         trainer.save_model()
         
         # --- save feature importance as json ---
@@ -255,20 +257,21 @@ def main():
         ]
         
         for (name, x_, y_) in predict_data_list:
+            print(f'[INFO] Prediction: {name}')
             if (x_ is not None):
                 if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
                     predictions = _predict_and_calc_accuracy(trainer, x_, y_)
                     
                     json_data = []
                     if (y_ is not None):
-                        for i, (prediction, target) in enumerate(zip(np.argmax(predictions, axis=1), np.argmax(y_, axis=1))):
+                        for i, (prediction, target) in enumerate(tqdm(zip(np.argmax(predictions, axis=1), np.argmax(y_, axis=1)))):
                             json_data.append({
                                 'id': int(i),
                                 'prediction': int(prediction),
                                 'target': int(target),
                             })
                     else:
-                        for i, prediction in enumerate(np.argmax(predictions, axis=1)):
+                        for i, prediction in enumerate(tqdm(np.argmax(predictions, axis=1))):
                             json_data.append({
                                 'id': int(i),
                                 'prediction': int(prediction),
@@ -279,7 +282,7 @@ def main():
                     
                     json_data = []
                     if (y_ is not None):
-                        for i, (prediction, target) in enumerate(zip(predictions, y_.values.reshape(-1))):
+                        for i, (prediction, target) in enumerate(tqdm(zip(predictions, y_.values.reshape(-1)))):
                             if ('id' in x_.columns):
                                 sample_id = x_['id'].iloc[i]
                             else:
@@ -292,7 +295,7 @@ def main():
                             })
                         
                     else:
-                        for i, prediction in enumerate(predictions):
+                        for i, prediction in enumerate(tqdm(predictions)):
                             if ('id' in x_.columns):
                                 sample_id = x_['id'].iloc[i]
                             else:

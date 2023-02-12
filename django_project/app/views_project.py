@@ -217,8 +217,8 @@ def model_new(request, project_id):
             model.project = project
             
             # --- get dataset object ---
-            selected_model = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
-            model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_model))
+            selected_dataset = request.POST.getlist('model_new_dataset_dropdown_submit')[0]
+            model.dataset = get_object_or_404(Dataset.objects.filter(project=project, name=selected_dataset))
             
             # --- dummy save ---
             model.save()       # commit=True: id確定のため
@@ -262,6 +262,9 @@ def model_new(request, project_id):
             dict_config['dataset']['dataset_dir']['value'] = str(model.model_dir)	# directory that contains 'dataset.pkl'
             with open(Path(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(dict_config, f, ensure_ascii=False, indent=4)
+                
+            selected_model = request.POST.getlist('model_new_model_dropdown_submit')[0]
+            dict_config['model']['model_type']['value'] = selected_model
             
             # logging.info('-------------------------------------')
             # logging.info(dict_config)
@@ -290,12 +293,16 @@ def model_new(request, project_id):
     else:
         form = MlModelForm()
     
-    model_new_dropdown_selected = None
+    model_new_dataset_selected = None
     dataset = Dataset.objects.all().filter(project=project).order_by('-id').reverse()
     
+    model_new_model_selected = None
+    
     context = {
-        'model_new_dropdown_selected': model_new_dropdown_selected,
+        'model_new_model_selected': model_new_model_selected,
+        'model_new_dataset_selected': model_new_dataset_selected,
         'dataset': dataset,
+        'model': MlModel.PRESET_MODELS,
         'form': form,
         'text': get_version(),
         'jupyter_nb_url': get_jupyter_nb_url(),

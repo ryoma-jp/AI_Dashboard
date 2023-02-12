@@ -54,6 +54,10 @@ def training(request):
     
     def _stop_trainer():
         selected_project, selected_model = _get_selected_object()
+        logging.debug('-------------------------------')
+        logging.debug(selected_project)
+        logging.debug(selected_model)
+        logging.debug('-------------------------------')
         if (selected_model):
             logging.debug(selected_model)
             
@@ -295,8 +299,11 @@ def model_parameter_edit(request, model_id):
             _set_config_parameters(config_data['model'], save_config_list)
             
             # --- save training parameters ---
-            save_config_list = [key for key in config_data['training_parameter'].keys() if config_data['training_parameter'][key]['configurable']]
-            _set_config_parameters(config_data['training_parameter'], save_config_list)
+            save_config_list = [key for key in config_data['dnn_training_parameter'].keys() if config_data['dnn_training_parameter'][key]['configurable']]
+            _set_config_parameters(config_data['dnn_training_parameter'], save_config_list)
+            
+            save_config_list = [key for key in config_data['lgb_training_parameter'].keys() if config_data['lgb_training_parameter'][key]['configurable']]
+            _set_config_parameters(config_data['lgb_training_parameter'], save_config_list)
             
             with open(Path(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(config_data, f, ensure_ascii=False, indent=4)

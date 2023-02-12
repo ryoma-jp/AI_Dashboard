@@ -44,12 +44,21 @@ class TrainerLightGBM():
     
     """
     
-    def __init__(self, output_dir=None, model_file=None, learning_rate=0.001):
+    def __init__(self, output_dir=None, model_file=None, 
+            web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
+            num_leaves=32, max_depth=4,
+            learning_rate=0.001, feature_fraction=0.5,
+            bagging_fraction=0.8, bagging_freq=0,
+            lambda_l1=1.0, lambda_l2=5.0, boosting='gbdt'):
         """Constructor
         
         This function is constructor.
         
         """
+        
+        # --- Load parameters ---
+        self.web_app_ctrl_fifo = web_app_ctrl_fifo
+        self.trainer_ctrl_fifo = trainer_ctrl_fifo
         
         # --- create output directory ---
         self.output_dir = output_dir
@@ -67,30 +76,30 @@ class TrainerLightGBM():
         self.params = {
             'objective': 'regression',
             'metric': 'l1,l2,rmse',
-            'num_leaves': 32,
-            'max_depth': 4,
-            'feature_fraction': 0.5,
-            'subsample_freq': 1,
-            'bagging_fraction': 0.8,
+            'num_leaves': num_leaves,
+            'max_depth': max_depth,
+            'feature_fraction': feature_fraction,
+            'bagging_fraction': bagging_fraction,
+            'bagging_freq': bagging_freq,
             'min_data_in_leaf': 5,
             'learning_rate': learning_rate,
             'boosting': 'gbdt',
-            'lambda_l1': 1,
-            'lambda_l2': 5,
+            'lambda_l1': lambda_l1,
+            'lambda_l2': lambda_l2,
             'verbosity': -1,
             'random_state': 42,
             'early_stopping_rounds': 100,
         }
+        print('[INFO]')
+        for key in self.params.keys():
+            print(f'  * {key}: {self.params[key]}')
         
         # --- summary writer ---
         self.writer = SummaryWriter(log_dir=Path(output_dir, 'logs'))
 
     def fit(self, x_train, y_train,
-            x_val=None, y_val=None, x_test=None, y_test=None,
-            web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
-            da_params=None,
-            batch_size=32, epochs=200,
-            verbose=0):
+            x_val=None, y_val=None,
+            x_test=None, y_test=None):
         """ Training
         
         This function runs the training model.
@@ -100,6 +109,8 @@ class TrainerLightGBM():
             y_train (numpy.ndarray): training data (label)
             x_val (numpy.ndarray): validation data (input)
             y_val (numpy.ndarray): validation data (label)
+            x_test (numpy.ndarray): test data (input)
+            y_test (numpy.ndarray): test data (label)
         """
         
         # --- Create dataset ---
@@ -125,8 +136,8 @@ class TrainerLightGBM():
         )
         
         # --- send finish status to web app ---
-        if (web_app_ctrl_fifo is not None):
-            with open(web_app_ctrl_fifo, 'w') as f:
+        if (self.web_app_ctrl_fifo is not None):
+            with open(self.web_app_ctrl_fifo, 'w') as f:
                 f.write('trainer_done\n')
         
         # --- close writer ---
