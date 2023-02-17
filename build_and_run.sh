@@ -54,5 +54,17 @@ else
 	fi
 fi
 
+echo "[Running containers]"
+echo "---------------------------------------------"
 docker-compose ps
+echo "---------------------------------------------"
 
+echo "[Used storages]"
+echo "  if necessary, remove comment out below."
+#echo "  * How to remove images -> docker image prune"
+#echo "  * How to remove containers -> docker image prune"
+#echo "  * How to remove images, containers and networks -> docker system prune"
+#echo "  * How to remove build cache -> docker builder prune"
+#echo "---------------------------------------------"
+#docker system df
+#echo "---------------------------------------------"
