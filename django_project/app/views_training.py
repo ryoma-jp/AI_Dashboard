@@ -4,6 +4,7 @@ import psutil
 import signal
 import subprocess
 import json
+import shutil
 
 from pathlib import Path
 
@@ -32,6 +33,12 @@ def training(request):
         selected_project, selected_model = _get_selected_object()
         if (selected_model):
             logging.debug(selected_model)
+            
+            # --- Delete model and logs directory ---
+            if (Path(selected_model.model_dir, 'models').exists()):
+                shutil.rmtree(Path(selected_model.model_dir, 'models'))
+            if (Path(selected_model.model_dir, 'logs').exists()):
+                shutil.rmtree(Path(selected_model.model_dir, 'logs'))
             
             # --- Load config ---
             config_path = Path(selected_model.model_dir, 'config.json')
@@ -91,19 +98,24 @@ def training(request):
         # --- Close all Tensorboard ---
         for model_ in MlModel.objects.all():
             if (model_.tensorboard_pid is not None):
-                p = psutil.Process(model_.tensorboard_pid)
-                c = p.children(recursive=True)
-                c.append(p)
-                for p in c:
-                    try:
-                        p.send_signal(signal.SIGTERM)
-                    except psutil.NoSuchProcess:
-                        pass
-                gone, alive = psutil.wait_procs(c, timeout=3)
-                
+                if (model_.tensorboard_pid in psutil.pids()):
+                    p = psutil.Process(model_.tensorboard_pid)
+                    c = p.children(recursive=True)
+                    c.append(p)
+                    for p in c:
+                        try:
+                            p.send_signal(signal.SIGTERM)
+                        except psutil.NoSuchProcess:
+                            pass
+                    gone, alive = psutil.wait_procs(c, timeout=3)
+                    subprocess.Popen(['fuser', '6006/tcp', '-k'])
+                    
                 model_.tensorboard_pid = None
                 model_.save()
+                    
+                break
         
+        # --- Launch new Tensorboard ---
         config_path = Path(model.model_dir, 'config.json')
         with open(config_path, 'r') as f:
             config_data = json.load(f)

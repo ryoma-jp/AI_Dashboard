@@ -41,7 +41,7 @@ RUN mkdir -p ${ENV_HOME}
 WORKDIR ${APP_HOME}
 
 RUN apt update ; \
-    apt -y install libpq-dev netcat graphviz libgl1-mesa-dev
+    apt -y install libpq-dev netcat graphviz libgl1-mesa-dev psmisc
 COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --no-cache /wheels/*
