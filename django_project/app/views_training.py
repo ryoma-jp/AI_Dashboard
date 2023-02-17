@@ -88,6 +88,22 @@ def training(request):
         logging.info(model.model_dir)
         logging.info('-------------------------------------')
         
+        # --- Close all Tensorboard ---
+        for model_ in MlModel.objects.all():
+            if (model_.tensorboard_pid is not None):
+                p = psutil.Process(model_.tensorboard_pid)
+                c = p.children(recursive=True)
+                c.append(p)
+                for p in c:
+                    try:
+                        p.send_signal(signal.SIGTERM)
+                    except psutil.NoSuchProcess:
+                        pass
+                gone, alive = psutil.wait_procs(c, timeout=3)
+                
+                model_.tensorboard_pid = None
+                model_.save()
+        
         config_path = Path(model.model_dir, 'config.json')
         with open(config_path, 'r') as f:
             config_data = json.load(f)
@@ -122,43 +138,8 @@ def training(request):
             logging.info('**************************************')
             curr_project = Project.objects.get(name=request.session['training_view_selected_project'])
             
-            if 'training_view_selected_model' in request.session.keys():
-                prev_model = MlModel.objects.get(name=request.session['training_view_selected_model'], project=curr_project)
-            else:
-                prev_model = None
-            
             request.session['training_view_selected_model'] = request.POST.getlist('training_view_model_dropdown')[0]
             curr_model = MlModel.objects.get(name=request.session['training_view_selected_model'], project=curr_project)
-            
-            logging.info('-------------------------------------')
-            logging.info(psutil.pids())
-            if (prev_model is not None):
-                logging.info(prev_model.tensorboard_pid)
-            else:
-                logging.info("prev_model is None")
-            if (curr_model is not None):
-                logging.info(curr_model.tensorboard_pid)
-            else:
-                logging.info("curr_model is None")
-            logging.info('-------------------------------------')
-            # --- Close previous Tensorboard ---
-            #  * https://psutil.readthedocs.io/en/latest/#kill-process-tree
-            if ((prev_model is not None) and
-                ((prev_model.project.hash+prev_model.hash) != (curr_model.project.hash+curr_model.hash)) and
-                (prev_model.tensorboard_pid is not None) and
-                (prev_model.tensorboard_pid in psutil.pids())):
-                p = psutil.Process(prev_model.tensorboard_pid)
-                c = p.children(recursive=True)
-                c.append(p)
-                for p in c:
-                    try:
-                        p.send_signal(signal.SIGTERM)
-                    except psutil.NoSuchProcess:
-                        pass
-                gone, alive = psutil.wait_procs(c, timeout=3)
-                
-                prev_model.tensorboard_pid = None
-                prev_model.save()
             
             # --- Launch new Tensorboard ---
             _launch_tensorboard(curr_model)
