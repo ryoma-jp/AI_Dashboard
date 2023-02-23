@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from django import template
 register = template.Library()
 
@@ -47,3 +50,23 @@ def importance_lookup(value, arg):
     else:
         return None
     
+@register.filter
+def get_metrics(value):
+    """ Get metrics
+    
+    Get metrics as dictionary object.
+    ``key`` is metrics name and ``value`` is metrics value.
+    
+    Args:
+        value: object of MlModel
+    """
+    
+    metrics_file = Path(value.model_dir, 'metrics', 'metrics.json')
+    
+    if (metrics_file.exists()):
+        with open(metrics_file, 'r') as f:
+            dict_metrics = json.load(f)
+    else:
+        dict_metrics = {}
+        
+    return dict_metrics

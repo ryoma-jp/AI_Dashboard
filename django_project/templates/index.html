@@ -30,6 +30,7 @@
                       <th scope="col">Description</th>
                       <th scope="col">Dataset</th>
                       <th scope="col">Training Status</th>
+                      <th scope="col">Metrics</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -39,6 +40,15 @@
                       <td>{{ model.description | linebreaksbr }}</td>
                       <td>{{ model.dataset }}</td>
                       <td>{{ model.status }}</td>
+                      <td>
+                        <ul>
+                          {% with model|get_metrics as dict_metrics %}
+                            {% for key, value in dict_metrics.items %}
+                              <li>{{ key }} : {{ value }}</li>
+                            {% endfor %}
+                          {% endwith %}
+                        </ul>
+                      </td>
                     </tr>
                   {% endfor %}
                   </tbody>

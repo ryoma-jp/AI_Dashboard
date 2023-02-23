@@ -8,11 +8,14 @@ This file describes the training and the prediction process of LightGBM.
 
 import os
 import pickle
+import json
+import math
 import lightgbm as lgb
 import pandas as pd
 
 from torch.utils.tensorboard import SummaryWriter
 from pathlib import Path
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 class LogSummaryWriterCallback:
     """ Writing log callable class
@@ -135,6 +138,26 @@ class TrainerLightGBM():
             ]
         )
         
+        # --- get and save metrics ---
+        train_pred = self.predict(x_train)
+        train_mae = mean_absolute_error(y_train, train_pred)
+        train_mse = mean_squared_error(y_train, train_pred)
+        metrics = {
+            'Train MAE': f'{train_mae:.03}',
+            'Train MSE': f'{train_mse:.03}',
+            'Train RMSE': f'{math.sqrt(train_mse):.03}',
+        }
+        if ((x_val is not None) and (y_val is not None)):
+            val_pred = self.predict(x_val)
+            val_mae = mean_absolute_error(y_val, val_pred)
+            val_mse = mean_squared_error(y_val, val_pred)
+            metrics['Validation MAE'] = f'{val_mae:.03}'
+            metrics['Validation MSE'] = f'{val_mse:.03}'
+            metrics['Validation RMSE'] = f'{math.sqrt(val_mse):.03}'
+        os.makedirs(Path(self.output_dir, 'metrics'), exist_ok=True)
+        with open(Path(self.output_dir, 'metrics', 'metrics.json'), 'w') as f:
+            json.dump(metrics, f, ensure_ascii=False, indent=4)
+
         # --- send finish status to web app ---
         if (self.web_app_ctrl_fifo is not None):
             with open(self.web_app_ctrl_fifo, 'w') as f:

@@ -7,6 +7,7 @@ import os
 import fcntl
 import gc
 import logging
+import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -234,30 +235,30 @@ class Trainer():
                         verbose=verbose)
         
         # --- 学習結果を評価 ---
+        train_loss, train_acc = self.model.evaluate(x_train, y_train, verbose=2)
+        print('Train Accuracy: {}'.format(train_acc))
+        print('Train Loss: {}'.format(train_loss))
+        metrics = {
+            'Train Accuracy': f'{train_acc:.03f}',
+            'Train Loss': f'{train_loss:.03f}',
+        }
+        if ((x_val is not None) and (y_val is not None)):
+            val_loss, val_acc = self.model.evaluate(x_val, y_val, verbose=2)
+            print('Validation Accuracy: {}'.format(val_acc))
+            print('Validation Loss: {}'.format(val_loss))
+            metrics['Validation Accuracy'] = f'{val_acc:.03f}'
+            metrics['Validation Loss'] = f'{val_loss:.03f}'
         if ((x_test is not None) and (y_test is not None)):
             test_loss, test_acc = self.model.evaluate(x_test, y_test, verbose=2)
             print('Test Accuracy: {}'.format(test_acc))
             print('Test Loss: {}'.format(test_loss))
+            metrics['Test Accuracy'] = f'{test_acc:.03f}'
+            metrics['Test Loss'] = f'{test_loss:.03f}'
         
         # --- メトリクスを保存 ---
-        metrics = history.history
         os.makedirs(Path(self.output_dir, 'metrics'), exist_ok=True)
-        df_metrics = pd.DataFrame(metrics)
-        df_metrics.to_csv(Path(self.output_dir, 'metrics', 'metrics.csv'), index_label='epoch')
-        
-        epoch = df_metrics.index.values
-        for column in df_metrics.columns:
-            plt.figure()
-            plt.plot(epoch, df_metrics[column])
-            plt.xlabel('epoch')
-            plt.ylabel(column)
-            plt.grid(True)
-            plt.tight_layout()
-            
-            graph_name = Path(self.output_dir, 'metrics', '{}.png'.format(column))
-            plt.savefig(graph_name)
-            
-            plt.close()
+        with open(Path(self.output_dir, 'metrics', 'metrics.json'), 'w') as f:
+            json.dump(metrics, f, ensure_ascii=False, indent=4)
         
         # --- 学習完了をアプリへ通知 ---
         if (self.web_app_ctrl_fifo is not None):
