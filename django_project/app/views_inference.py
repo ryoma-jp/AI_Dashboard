@@ -52,15 +52,7 @@ def inference(request):
             request.session['inference_view_selected_project'] = request.POST.getlist('inference_view_project_dropdown')[0]
                 
         elif ('inference_view_model_dropdown' in request.POST):
-            curr_project = Project.objects.get(name=request.session['inference_view_selected_project'])
-            
-            if 'inference_view_selected_model' in request.session.keys():
-                prev_model = MlModel.objects.get(name=request.session['inference_view_selected_model'], project=curr_project)
-            else:
-                prev_model = None
-            
             request.session['inference_view_selected_model'] = request.POST.getlist('inference_view_model_dropdown')[0]
-            curr_model = MlModel.objects.get(name=request.session['inference_view_selected_model'], project=curr_project)
             
         elif ('inference_view_dataset_dropdown' in request.POST):
             pass
@@ -111,7 +103,7 @@ def inference(request):
             model = MlModel.objects.filter(project=project_dropdown_selected).order_by('-id').reverse()
             
             model_name = request.session.get('inference_view_selected_model', None)
-            if (model_name is not None):
+            if (model_name in [f.name for f in MlModel.objects.filter(project=project_dropdown_selected)]):
                 model_dropdown_selected = MlModel.objects.get(name=model_name, project=project_dropdown_selected)
             else:
                 model_dropdown_selected = None
