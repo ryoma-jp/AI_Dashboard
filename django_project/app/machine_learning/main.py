@@ -177,13 +177,17 @@ def main():
     
     if (model_type == 'MLP'):
         print('Create MLP')
+        
+        num_of_hidden_nodes = config_data['mlp_structure']['num_of_hidden_nodes']['value']
+        
         trainer = TrainerKerasMLP(dataset.train_x.shape[1:], classes=output_dims,
             output_dir=result_dir, model_file=model_file,
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
             initializer=initializer, optimizer=optimizer, loss=loss_func,
             dropout_rate=dropout_rate, learning_rate=learning_rate,
             dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
-            batch_size=batch_size, epochs=epochs)
+            batch_size=batch_size, epochs=epochs,
+            num_of_hidden_nodes=num_of_hidden_nodes)
     elif (model_type == 'SimpleCNN'):
         print('Create SimpleCNN')
         trainer = TrainerKerasCNN(dataset.train_x.shape[1:], classes=output_dims,

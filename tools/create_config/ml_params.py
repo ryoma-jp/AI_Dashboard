@@ -133,6 +133,16 @@ class MlParams():
                     'items': ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet', 'LightGBM'],
                 },
             },
+            'mlp_structure': {
+                'num_of_hidden_nodes': {
+                    'name': 'Number of Hidden Nodes',
+                    'description': 'Number of hidden nodes in each layers (specify comma separated string)',
+                    'dtype': 'str',
+                    'value': '128,64',
+                    'configurable': True,
+                    'selectable': False,
+                },
+            },
             'dnn_training_parameter': {
                 'optimizer': {
                     'name': 'Optimizer',

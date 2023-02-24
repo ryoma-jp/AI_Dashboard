@@ -3,6 +3,7 @@
 #---------------------------------
 # モジュールのインポート
 #---------------------------------
+import io
 import os
 import fcntl
 import gc
@@ -736,7 +737,8 @@ class TrainerKerasMLP(Trainer):
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
                  dropout_rate=0.0, learning_rate=0.001,
                  dataset_type='img_clf', da_params=None,
-                 batch_size=32, epochs=200):
+                 batch_size=32, epochs=200,
+                 num_of_hidden_nodes='128,64'):
         """Constructor
         
         コンストラクタ
@@ -780,10 +782,11 @@ class TrainerKerasMLP(Trainer):
             
             model = keras.models.Sequential()
             model.add(keras.layers.Flatten(input_shape=input_shape))
-            model.add(keras.layers.Dense(128,
-                                         kernel_initializer=self.initializer,
-                                         bias_initializer='zeros',
-                                         activation=hidden_activation))
+            for num in self.num_of_hidden_nodes:
+                model.add(keras.layers.Dense(num,
+                                             kernel_initializer=self.initializer,
+                                             bias_initializer='zeros',
+                                             activation=hidden_activation))
             model.add(keras.layers.Dense(classes,
                                          kernel_initializer=self.initializer,
                                          bias_initializer='zeros',
@@ -792,6 +795,9 @@ class TrainerKerasMLP(Trainer):
             model.summary()
             
             return model
+        
+        # --- MLP固有パラメータの取得 ---
+        self.num_of_hidden_nodes = pd.read_csv(io.StringIO(num_of_hidden_nodes), header=None, skipinitialspace=True).values[0].tolist()
         
         # --- 基底クラスの初期化 ---
         super().__init__(output_dir=output_dir, model_file=model_file,

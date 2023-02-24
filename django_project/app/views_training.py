@@ -290,6 +290,10 @@ def model_parameter_edit(request, model_id):
                 json.dump(config_data, f, ensure_ascii=False, indent=4)
         
         elif ('apply_parameters' in request.POST):
+            # --- save model structure parameters ---
+            save_config_list = [key for key in config_data['mlp_structure'].keys() if config_data['mlp_structure'][key]['configurable']]
+            _set_config_parameters(config_data['mlp_structure'], save_config_list)
+            
             # --- save dataset parameters ---
             save_config_list = [key for key in config_data['dataset'].keys() if ((key != 'image_data_augmentation') and (config_data['dataset'][key]['configurable']))]
             _set_config_parameters(config_data['dataset'], save_config_list)
