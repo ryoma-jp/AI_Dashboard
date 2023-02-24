@@ -182,7 +182,7 @@ def main():
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
             initializer=initializer, optimizer=optimizer, loss=loss_func,
             dropout_rate=dropout_rate, learning_rate=learning_rate,
-            da_params=image_data_augmentation,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
     elif (model_type == 'SimpleCNN'):
         print('Create SimpleCNN')
@@ -191,7 +191,7 @@ def main():
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
             initializer=initializer, optimizer=optimizer, loss=loss_func,
             dropout_rate=dropout_rate, learning_rate=learning_rate,
-            da_params=image_data_augmentation,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
     elif (model_type == 'DeepCNN'):
         print('Create DeepCNN')
@@ -200,7 +200,7 @@ def main():
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
             initializer=initializer, optimizer=optimizer, loss=loss_func,
             dropout_rate=dropout_rate, learning_rate=learning_rate,
-            da_params=image_data_augmentation,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
     elif (model_type == 'SimpleResNet'):
         print('Create SimpleResNet')
@@ -209,7 +209,7 @@ def main():
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
             initializer=initializer, optimizer=optimizer, loss=loss_func,
             dropout_rate=dropout_rate, learning_rate=learning_rate,
-            da_params=image_data_augmentation,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
     elif (model_type == 'DeepResNet'):
         print('Create DeepResNet')
@@ -218,7 +218,7 @@ def main():
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
             initializer=initializer, optimizer=optimizer, loss=loss_func,
             dropout_rate=dropout_rate, learning_rate=learning_rate,
-            da_params=image_data_augmentation,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
     elif (model_type == 'LightGBM'):
         print('Create LightGBM')
@@ -240,7 +240,7 @@ def main():
         trainer.save_model()
         
         # --- save feature importance as json ---
-        if (type(x_train) == pd.DataFrame):
+        if (model_type == 'LightGBM'):
             df_importance = trainer.get_importance(index=x_train.columns)
             dict_importance = df_importance.sort_values('importance', ascending=False).to_dict(orient='index')
             with open(Path(result_dir, 'feature_importance.json'), 'w') as f:
@@ -290,7 +290,7 @@ def main():
                             
                             json_data.append({
                                 'id': sample_id,
-                                'prediction': prediction,
+                                'prediction': float(prediction),
                                 'target': target,
                             })
                         
@@ -303,7 +303,7 @@ def main():
                             
                             json_data.append({
                                 'id': int(i),
-                                'prediction': prediction,
+                                'prediction': float(prediction),
                                 'target': "(no data)",
                             })
                 

@@ -114,6 +114,7 @@ class DataLoader():
         elif (mode == 'max-min'):
             train_min = np.min(self.train_x)
             train_diff = np.max(self.train_x) - np.min(self.train_x)
+            train_diff = np.clip(train_diff, np.finfo(float).eps, None)
             
             train_norm = (self.train_x - train_min) / train_diff
             if (self.validation_x is not None):
@@ -603,7 +604,7 @@ class DataLoaderCustom(DataLoader):
         self.test_x = None
         self.test_y = None
         self.one_hot = True
-        self.output_dims = 0
+        self.output_dims = 1
         
         return
     

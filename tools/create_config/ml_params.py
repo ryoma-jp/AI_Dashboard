@@ -183,7 +183,13 @@ class MlParams():
                     'value': 'categorical_crossentropy',
                     'configurable': True,
                     'selectable': True,
-                    'items': ['binary_crossentropy', 'categorical_crossentropy', 'sparse_categorical_crossentropy'],
+                    'items': [
+                        'mean_squared_error',
+                        'mean_absolute_error',
+                        'binary_crossentropy',
+                        'categorical_crossentropy',
+                        'sparse_categorical_crossentropy'
+                    ],
                 },
                 'epochs': {
                     'name': 'EPOCHs',

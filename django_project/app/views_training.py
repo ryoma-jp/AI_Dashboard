@@ -47,8 +47,11 @@ def training(request):
             
             # --- Training Model ---
             main_path = Path('./app/machine_learning/main.py').resolve()
-            logging.debug(f'main_path: {main_path}')
-            logging.debug(f'current working directory: {os.getcwd()}')
+            logging.info('-------------------------------------')
+            logging.info(f'main_path: {main_path}')
+            logging.info(f'current working directory: {os.getcwd()}')
+            logging.info(f'command: python {main_path} --mode train --config {config_path}')
+            logging.info('-------------------------------------')
             subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
             logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
             

@@ -8,6 +8,7 @@ import fcntl
 import gc
 import logging
 import json
+import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ import tensorflow as tf
 from tensorflow.python.client import device_lib
 from tensorflow import keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 #---------------------------------
 # 環境変数設定
@@ -81,7 +83,7 @@ class Trainer():
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
                  dropout_rate=0.0, learning_rate=0.001,
-                 da_params=None,
+                 dataset_type='img_clf', da_params=None,
                  batch_size=32, epochs=200):
         """Constructor
         
@@ -102,6 +104,11 @@ class Trainer():
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
+            dataset_type (:obj:`string`, optional): Dataset type
+                - img_clf: 画像分類
+                - img_reg: 画像回帰
+                - table_clf: テーブルデータ分類
+                - table_reg: テーブルデータ回帰
             da_params (:obj:`dict`, optional): DataAugmentationパラメータ
             batch_size (:obj:`int`, optional): ミニバッチ数
             epochs (:obj:`int`, optional): 学習EPOCH数
@@ -116,6 +123,7 @@ class Trainer():
         self.loss = loss
         self.dropout_rate = dropout_rate
         self.learning_rate = learning_rate
+        self.dataset_type = dataset_type
         self.da_params = da_params
         self.batch_size = batch_size
         self.epochs = epochs
@@ -173,10 +181,15 @@ class Trainer():
             print('[ERROR] Unknown optimizer: {}'.format(optimizer))
             quit()
         
+        if (self.dataset_type in ['img_clf', 'table_clf']):
+            metrics = ['accuracy']
+        else:
+            metrics = ['mean_absolute_error', 'mean_squared_error']
+        
         self.model.compile(
             optimizer=opt,
             loss=loss,
-            metrics=['accuracy'])
+            metrics=metrics)
         
         return
     
@@ -210,50 +223,79 @@ class Trainer():
         #callbacks = [cp_callback, es_callback]
         callbacks = [cp_callback, custom_callback, tensorboard_callback]
         
-        if (self.da_params is not None):
-            # --- no tuning ---
-            datagen = ImageDataGenerator(
-                rotation_range=self.da_params['rotation_range'],
-                width_shift_range=self.da_params['width_shift_range'],
-                height_shift_range=self.da_params['height_shift_range'],
-                zoom_range=self.da_params['zoom_range'],
-                channel_shift_range=self.da_params['channel_shift_range'],
-                horizontal_flip=self.da_params['horizontal_flip'])
+        if (self.dataset_type in ['img_clf', 'img_reg']):
+            if (self.da_params is not None):
+                # --- no tuning ---
+                datagen = ImageDataGenerator(
+                    rotation_range=self.da_params['rotation_range'],
+                    width_shift_range=self.da_params['width_shift_range'],
+                    height_shift_range=self.da_params['height_shift_range'],
+                    zoom_range=self.da_params['zoom_range'],
+                    channel_shift_range=self.da_params['channel_shift_range'],
+                    horizontal_flip=self.da_params['horizontal_flip'])
+            else:
+                datagen = ImageDataGenerator()
+            datagen.fit(x_train)
+            
+            if ((x_val is not None) and (y_val is not None)):
+                history = self.model.fit(datagen.flow(x_train, y_train, batch_size=self.batch_size),
+                            steps_per_epoch=len(x_train)/self.batch_size, validation_data=(x_val, y_val),
+                            epochs=self.epochs, callbacks=callbacks,
+                            verbose=verbose)
+            else:
+                history = self.model.fit(datagen.flow(x_train, y_train, batch_size=self.batch_size),
+                            steps_per_epoch=len(x_train)/self.batch_size, validation_split=0.2,
+                            epochs=self.epochs, callbacks=callbacks,
+                            verbose=verbose)
         else:
-            datagen = ImageDataGenerator()
-        datagen.fit(x_train)
-        
-        if ((x_val is not None) and (y_val is not None)):
-            history = self.model.fit(datagen.flow(x_train, y_train, batch_size=self.batch_size),
-                        steps_per_epoch=len(x_train)/self.batch_size, validation_data=(x_val, y_val),
-                        epochs=self.epochs, callbacks=callbacks,
-                        verbose=verbose)
-        else:
-            history = self.model.fit(datagen.flow(x_train, y_train, batch_size=self.batch_size),
-                        steps_per_epoch=len(x_train)/self.batch_size, validation_split=0.2,
-                        epochs=self.epochs, callbacks=callbacks,
-                        verbose=verbose)
+            if ((x_val is not None) and (y_val is not None)):
+                history = self.model.fit(x=x_train, y=y_train, batch_size=self.batch_size,
+                            steps_per_epoch=len(x_train)/self.batch_size, validation_data=(x_val, y_val),
+                            epochs=self.epochs, callbacks=callbacks,
+                            verbose=verbose)
+            else:
+                history = self.model.fit(x=x_train, y=y_train, batch_size=self.batch_size,
+                            steps_per_epoch=len(x_train)/self.batch_size, validation_split=0.2,
+                            epochs=self.epochs, callbacks=callbacks,
+                            verbose=verbose)
         
         # --- 学習結果を評価 ---
-        train_loss, train_acc = self.model.evaluate(x_train, y_train, verbose=2)
-        print('Train Accuracy: {}'.format(train_acc))
-        print('Train Loss: {}'.format(train_loss))
-        metrics = {
-            'Train Accuracy': f'{train_acc:.03f}',
-            'Train Loss': f'{train_loss:.03f}',
-        }
-        if ((x_val is not None) and (y_val is not None)):
-            val_loss, val_acc = self.model.evaluate(x_val, y_val, verbose=2)
-            print('Validation Accuracy: {}'.format(val_acc))
-            print('Validation Loss: {}'.format(val_loss))
-            metrics['Validation Accuracy'] = f'{val_acc:.03f}'
-            metrics['Validation Loss'] = f'{val_loss:.03f}'
-        if ((x_test is not None) and (y_test is not None)):
-            test_loss, test_acc = self.model.evaluate(x_test, y_test, verbose=2)
-            print('Test Accuracy: {}'.format(test_acc))
-            print('Test Loss: {}'.format(test_loss))
-            metrics['Test Accuracy'] = f'{test_acc:.03f}'
-            metrics['Test Loss'] = f'{test_loss:.03f}'
+        if (self.dataset_type in ['img_clf', 'table_clf']):
+            train_loss, train_acc = self.model.evaluate(x_train, y_train, verbose=2)
+            print('Train Accuracy: {}'.format(train_acc))
+            print('Train Loss: {}'.format(train_loss))
+            metrics = {
+                'Train Accuracy': f'{train_acc:.03f}',
+                'Train Loss': f'{train_loss:.03f}',
+            }
+            if ((x_val is not None) and (y_val is not None)):
+                val_loss, val_acc = self.model.evaluate(x_val, y_val, verbose=2)
+                print('Validation Accuracy: {}'.format(val_acc))
+                print('Validation Loss: {}'.format(val_loss))
+                metrics['Validation Accuracy'] = f'{val_acc:.03f}'
+                metrics['Validation Loss'] = f'{val_loss:.03f}'
+            if ((x_test is not None) and (y_test is not None)):
+                test_loss, test_acc = self.model.evaluate(x_test, y_test, verbose=2)
+                print('Test Accuracy: {}'.format(test_acc))
+                print('Test Loss: {}'.format(test_loss))
+                metrics['Test Accuracy'] = f'{test_acc:.03f}'
+                metrics['Test Loss'] = f'{test_loss:.03f}'
+        else:
+            train_pred = self.predict(x_train)
+            train_mae = mean_absolute_error(y_train, train_pred)
+            train_mse = mean_squared_error(y_train, train_pred)
+            metrics = {
+                'Train MAE': f'{train_mae:.03}',
+                'Train MSE': f'{train_mse:.03}',
+                'Train RMSE': f'{math.sqrt(train_mse):.03}',
+            }
+            if ((x_val is not None) and (y_val is not None)):
+                val_pred = self.predict(x_val)
+                val_mae = mean_absolute_error(y_val, val_pred)
+                val_mse = mean_squared_error(y_val, val_pred)
+                metrics['Validation MAE'] = f'{val_mae:.03}'
+                metrics['Validation MSE'] = f'{val_mse:.03}'
+                metrics['Validation RMSE'] = f'{math.sqrt(val_mse):.03}'
         
         # --- メトリクスを保存 ---
         os.makedirs(Path(self.output_dir, 'metrics'), exist_ok=True)
@@ -373,7 +415,7 @@ class TrainerKerasResNet(Trainer):
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
                  dropout_rate=0.0, learning_rate=0.001,
-                 da_params=None,
+                 dataset_type='img_clf', da_params=None,
                  batch_size=32, epochs=200):
         """Constructor
         
@@ -398,6 +440,11 @@ class TrainerKerasResNet(Trainer):
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
+            dataset_type (:obj:`string`, optional): Dataset type
+                - img_clf: 画像分類
+                - img_reg: 画像回帰
+                - table_clf: テーブルデータ分類
+                - table_reg: テーブルデータ回帰
             da_params (:obj:`dict`, optional): DataAugmentationパラメータ
             batch_size (:obj:`int`, optional): ミニバッチ数
             epochs (:obj:`int`, optional): 学習EPOCH数
@@ -521,7 +568,7 @@ class TrainerKerasResNet(Trainer):
                          web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
                          initializer=initializer, optimizer=optimizer, loss=loss,
                          dropout_rate=dropout_rate, learning_rate=learning_rate,
-                         da_params=da_params,
+                         dataset_type=dataset_type, da_params=da_params,
                          batch_size=batch_size, epochs=epochs)
         
         # --- モデル構築 ---
@@ -562,7 +609,7 @@ class TrainerKerasCNN(Trainer):
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
                  dropout_rate=0.0, learning_rate=0.001,
-                 da_params=None,
+                 dataset_type='img_clf', da_params=None,
                  batch_size=32, epochs=200):
         """Constructor
         
@@ -587,6 +634,11 @@ class TrainerKerasCNN(Trainer):
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
+            dataset_type (:obj:`string`, optional): Dataset type
+                - img_clf: 画像分類
+                - img_reg: 画像回帰
+                - table_clf: テーブルデータ分類
+                - table_reg: テーブルデータ回帰
             da_params (:obj:`dict`, optional): DataAugmentationパラメータ
             batch_size (:obj:`int`, optional): ミニバッチ数
             epochs (:obj:`int`, optional): 学習EPOCH数
@@ -654,7 +706,7 @@ class TrainerKerasCNN(Trainer):
                          web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
                          initializer=initializer, optimizer=optimizer, loss=loss,
                          dropout_rate=dropout_rate, learning_rate=learning_rate,
-                         da_params=da_params,
+                         dataset_type=dataset_type, da_params=da_params,
                          batch_size=batch_size, epochs=epochs)
         
         # --- モデル構築 ---
@@ -683,7 +735,7 @@ class TrainerKerasMLP(Trainer):
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
                  dropout_rate=0.0, learning_rate=0.001,
-                 da_params=None,
+                 dataset_type='img_clf', da_params=None,
                  batch_size=32, epochs=200):
         """Constructor
         
@@ -707,6 +759,11 @@ class TrainerKerasMLP(Trainer):
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
+            dataset_type (:obj:`string`, optional): Dataset type
+                - img_clf: 画像分類
+                - img_reg: 画像回帰
+                - table_clf: テーブルデータ分類
+                - table_reg: テーブルデータ回帰
             da_params (:obj:`dict`, optional): DataAugmentationパラメータ
             batch_size (:obj:`int`, optional): ミニバッチ数
             epochs (:obj:`int`, optional): 学習EPOCH数
@@ -714,10 +771,23 @@ class TrainerKerasMLP(Trainer):
         
         # --- モデル構築 ---
         def _load_model(input_shape):
+            if (self.dataset_type in ['img_clf', 'table_clf']):
+                hidden_activation = 'relu'
+                output_activation = 'softmax'
+            else:
+                hidden_activation = 'sigmoid'
+                output_activation = 'linear'
+            
             model = keras.models.Sequential()
             model.add(keras.layers.Flatten(input_shape=input_shape))
-            model.add(keras.layers.Dense(128, activation='relu'))
-            model.add(keras.layers.Dense(classes, activation='softmax'))
+            model.add(keras.layers.Dense(128,
+                                         kernel_initializer=self.initializer,
+                                         bias_initializer='zeros',
+                                         activation=hidden_activation))
+            model.add(keras.layers.Dense(classes,
+                                         kernel_initializer=self.initializer,
+                                         bias_initializer='zeros',
+                                         activation=output_activation))
             
             model.summary()
             
@@ -728,13 +798,13 @@ class TrainerKerasMLP(Trainer):
                          web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
                          initializer=initializer, optimizer=optimizer, loss=loss,
                          dropout_rate=dropout_rate, learning_rate=learning_rate,
-                         da_params=da_params,
+                         dataset_type=dataset_type, da_params=da_params,
                          batch_size=batch_size, epochs=epochs)
         
         # --- モデル構築 ---
         if (self.model is None):
             self.model = _load_model(input_shape)
-            self._compile_model(optimizer=self.optimizer, init_lr=self.learning_rate)
+            self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             if (self.output_dir is not None):
                 keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
         
