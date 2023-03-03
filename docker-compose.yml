@@ -7,6 +7,7 @@ services:
       context: ./django_project
       dockerfile: ./env/web/Dockerfile
     command: gunicorn project.wsgi:application --bind 0.0.0.0:8000 -t 86400 --workers 1
+    privileged: true
     volumes:
       - static_volume:/home/app/web/static
       - env_data:/home/app/env
@@ -16,6 +17,7 @@ services:
       - type: bind
         source: "./tools/"
         target: "/home/app/web/tools"
+      - /dev/bus/usb:/dev/bus/usb:rw
     expose:
       - 8000
     ports:
