@@ -71,6 +71,11 @@ def usb_cam(request):
     
     def gen():
         cap = cv2.VideoCapture(0)
+        if (not cap.isOpened()):
+            # --- Retry ---
+            cap.release()
+            time.sleep(3)
+            cap = cv2.VideoCapture(0)
         
         if (cap.isOpened()):
             cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
@@ -91,15 +96,14 @@ def usb_cam(request):
                 cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
                 cv2.putText(overlay, text, org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
                 
-                # --- Alpha ---
+                # --- Alpha and Concat---
                 alpha = 0.7
-                frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+                frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
                 
                 # --- Encode and Return byte frame ---
                 image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n\r\n')
-            cap.release()
         else:
             logging.info('-------------------------------------')
             logging.info('cap.isOpened() is False')

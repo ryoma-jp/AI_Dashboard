@@ -34,7 +34,7 @@
     
     
     {% if streaming_interface|stringformat:'s' == 'USB Camera' %}
-      <div "col-10">
+      <div class="col-10 mt-2">
         <img src="{% url 'view_streaming_usb_cam' %}">
       </div>
     {% elif streaming_interface|stringformat:'s' == 'Network Camera' %}
@@ -73,7 +73,7 @@
       <!-- Streaming Area -->
       <h1 class="h3">mjpg-streamer</h1>
       {% if valid_url %}
-        <div "col-10">
+        <div class="col-10">
           <img src="http://{{ ip_addr.0 }}.{{ ip_addr.1 }}.{{ ip_addr.2 }}.{{ ip_addr.3 }}:{{ port }}/?action=stream">
         </div>
       {% else %}
