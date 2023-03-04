@@ -1,6 +1,7 @@
 import os
 import logging
 import cv2
+import time
 
 from django.shortcuts import render, redirect
 from django.http.response import StreamingHttpResponse
@@ -77,7 +78,24 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
             
             while True:
+                # --- Get Frame ---
+                time_start = time.time()
                 ret, frame = cap.read()
+                overlay = frame.copy()
+                
+                # --- Put Text ---
+                time_end = time.time()
+                processing_rate = 1.0 / (time_end - time_start)
+                text = f'fps : {processing_rate:.02f}'
+                org = (5, 15)
+                cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
+                cv2.putText(overlay, text, org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+                
+                # --- Alpha ---
+                alpha = 0.7
+                frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+                
+                # --- Encode and Return byte frame ---
                 image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n\r\n')
