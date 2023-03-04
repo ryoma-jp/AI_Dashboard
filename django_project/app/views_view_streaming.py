@@ -1,7 +1,9 @@
 import os
 import logging
+import cv2
 
 from django.shortcuts import render, redirect
+from django.http.response import StreamingHttpResponse
 
 from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url
 
@@ -28,15 +30,19 @@ def view_streaming(request):
         logging.info(request.POST)
         logging.info('-------------------------------------')
         
-        ip_addr = [
-            request.POST['ip_0'],
-            request.POST['ip_1'],
-            request.POST['ip_2'],
-            request.POST['ip_3'],
-        ]
-        request.session['ip_addr'] = ip_addr
-        request.session['port'] = request.POST['port']
-        
+        if ('streaming_interface_dropdown' in request.POST):
+            request.session['streaming_interface'] = request.POST.getlist('streaming_interface_dropdown')[0]
+        elif ('view_streaming_apply' in request.POST):
+            ip_addr = [
+                request.POST['ip_0'],
+                request.POST['ip_1'],
+                request.POST['ip_2'],
+                request.POST['ip_3'],
+            ]
+            request.session['ip_addr'] = ip_addr
+            request.session['port'] = request.POST['port']
+    
+    streaming_interface = request.session.get('streaming_interface', None)
     
     ip_addr = request.session.get('ip_addr', ['0', '0', '0', '0'])
     port = request.session.get('port', '0')
@@ -49,9 +55,42 @@ def view_streaming(request):
         'sidebar_status': sidebar_status,
         'text': get_version(),
         'jupyter_nb_url': get_jupyter_nb_url(),
+        'streaming_interface': streaming_interface,
         'ip_addr': ip_addr,
         'port': port,
         'valid_url': valid_url,
     }
     return render(request, 'view_streaming.html', context)
 
+
+def usb_cam(request):
+    """ Function: usb_cam
+     * USB Camera streaming
+    """
+    
+    def gen():
+        cap = cv2.VideoCapture(0)
+        
+        if (cap.isOpened()):
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+            
+            while True:
+                ret, frame = cap.read()
+                image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + image_bytes + b'\r\n\r\n')
+            cap.release()
+        else:
+            logging.info('-------------------------------------')
+            logging.info('cap.isOpened() is False')
+            logging.info('-------------------------------------')
+
+    logging.info('-------------------------------------')
+    logging.info(request.method)
+    logging.info(request.POST)
+    logging.info('-------------------------------------')
+    
+    return StreamingHttpResponse(gen(),
+               content_type='multipart/x-mixed-replace; boundary=frame')

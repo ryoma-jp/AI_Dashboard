@@ -16,5 +16,6 @@ urlpatterns = [
     path('inference/', views_inference.inference, name='inference'),
     path('inference/download', views_inference.download_prediction, name='download_prediction'),
     path('view_streaming/', views_view_streaming.view_streaming, name='view_streaming'),
+    path('view_streaming/usb_cam', views_view_streaming.usb_cam, name='view_streaming_usb_cam'),
     path('', include('urls_api')),
 ]

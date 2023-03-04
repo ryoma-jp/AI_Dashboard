@@ -7,50 +7,78 @@
   <div class="row">
   
     <!-- View Streaming tab -->
-    <div id="inference" class="tab-pane">
+    <div id="view_streaming" class="tab-pane">
       <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h2">View Streaming</h1>
       </div>
     </div>
     
-    <!-- Set IP address and PORT -->
+    <h1 class="h3">Select Interface</h1>
+    
     <form method="post">
       {% csrf_token %}
-      <div class="row">
-        <label class="col-sm-2 col-form-label">IP Address</label>
-        <div class="col">
-          <input type="text" class="form-control mb-1" placeholder="0" name="ip_0" value="{{ ip_addr.0 }}">
-        </div>
-        .
-        <div class="col">
-          <input type="text" class="form-control mb-1" placeholder="0" name="ip_1" value="{{ ip_addr.1 }}">
-        </div>
-        .
-        <div class="col">
-          <input type="text" class="form-control mb-1" placeholder="0" name="ip_2" value="{{ ip_addr.2 }}">
-        </div>
-        .
-        <div class="col">
-          <input type="text" class="form-control mb-1" placeholder="0" name="ip_3" value="{{ ip_addr.3 }}">
-        </div>
+      <div class="btn-group">
+        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+          {% if streaming_interface %}
+            {{ streaming_interface }}
+          {% else %}
+            Select Interface
+          {% endif %}
+        </button>
+        <ul class="dropdown-menu">
+          <li><button class="dropdown-item" type="submit" name="streaming_interface_dropdown" value="USB Camera">USB Camera</button></li>
+          <li><button class="dropdown-item" type="submit" name="streaming_interface_dropdown" value="Network Camera">Network Camera</button></li>
+        </ul>
       </div>
-      
-      <div class="row">
-        <label class="col-sm-2 col-form-label">PORT</label>
-        <div class="col">
-          <input type="text" class="form-control mb-1" placeholder="0" name="port" value="{{ port }}">
-        </div>
-      </div>
-      
-      <button type="submit" class="btn btn-primary mb-2">Apply</button>
     </form>
     
-    <!-- Streaming Area -->
-    {% if valid_url %}
-      <h1 class="h3">mjpg-streamer</h1>
+    
+    {% if streaming_interface|stringformat:'s' == 'USB Camera' %}
       <div "col-10">
-        <img src="http://{{ ip_addr.0 }}.{{ ip_addr.1 }}.{{ ip_addr.2 }}.{{ ip_addr.3 }}:{{ port }}/?action=stream">
+        <img src="{% url 'view_streaming_usb_cam' %}">
       </div>
+    {% elif streaming_interface|stringformat:'s' == 'Network Camera' %}
+      <!-- Set IP address and PORT -->
+      <form method="post">
+        {% csrf_token %}
+        <div class="row">
+          <label class="col-sm-2 col-form-label">IP Address</label>
+          <div class="col">
+            <input type="text" class="form-control mb-1" placeholder="0" name="ip_0" value="{{ ip_addr.0 }}">
+          </div>
+          .
+          <div class="col">
+            <input type="text" class="form-control mb-1" placeholder="0" name="ip_1" value="{{ ip_addr.1 }}">
+          </div>
+          .
+          <div class="col">
+            <input type="text" class="form-control mb-1" placeholder="0" name="ip_2" value="{{ ip_addr.2 }}">
+          </div>
+          .
+          <div class="col">
+            <input type="text" class="form-control mb-1" placeholder="0" name="ip_3" value="{{ ip_addr.3 }}">
+          </div>
+        </div>
+        
+        <div class="row">
+          <label class="col-sm-2 col-form-label">PORT</label>
+          <div class="col">
+            <input type="text" class="form-control mb-1" placeholder="0" name="port" value="{{ port }}">
+          </div>
+        </div>
+        
+        <button type="submit" name="view_streaming_apply" class="btn btn-primary mb-2">Apply</button>
+      </form>
+      
+      <!-- Streaming Area -->
+      <h1 class="h3">mjpg-streamer</h1>
+      {% if valid_url %}
+        <div "col-10">
+          <img src="http://{{ ip_addr.0 }}.{{ ip_addr.1 }}.{{ ip_addr.2 }}.{{ ip_addr.3 }}:{{ port }}/?action=stream">
+        </div>
+      {% else %}
+        <p>Here is streaming area of mjpg-streamer. Please set IP Address and PORT, then press Apply button.</p>
+      {% endif %}
     {% endif %}
     
   </div>

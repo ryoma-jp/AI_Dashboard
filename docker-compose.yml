@@ -6,7 +6,7 @@ services:
     build:
       context: ./django_project
       dockerfile: ./env/web/Dockerfile
-    command: gunicorn project.wsgi:application --bind 0.0.0.0:8000 -t 86400 --workers 1
+    command: gunicorn project.wsgi:application --bind 0.0.0.0:8000 -t 86400 --workers 4
     privileged: true
     volumes:
       - static_volume:/home/app/web/static
