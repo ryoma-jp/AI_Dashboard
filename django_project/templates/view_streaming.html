@@ -54,7 +54,9 @@
           </button>
           <ul class="dropdown-menu">
             <li><button class="dropdown-item" type="submit" name="streaming_model_dropdown" value="None">None</button></li>
-            <li><button class="dropdown-item" type="submit" name="streaming_model_dropdown" value="Resnet V1 50">Resnet V1 50</button></li>
+            {% for model_name in pretrained_model_list %}
+              <li><button class="dropdown-item" type="submit" name="streaming_model_dropdown" value="{{ model_name }}">{{ model_name }}</button></li>
+            {% endfor %}
           </ul>
         </div>
       </form>

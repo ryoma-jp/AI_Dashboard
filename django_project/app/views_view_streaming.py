@@ -46,6 +46,10 @@ def view_streaming(request):
             request.session['port'] = request.POST['port']
     
     streaming_interface = request.session.get('streaming_interface', None)
+    streaming_model = request.session.get('streaming_model', None)
+    pretrained_model_list = [
+        'Resnet V1 50',
+    ]
     
     ip_addr = request.session.get('ip_addr', ['0', '0', '0', '0'])
     port = request.session.get('port', '0')
@@ -59,6 +63,8 @@ def view_streaming(request):
         'text': get_version(),
         'jupyter_nb_url': get_jupyter_nb_url(),
         'streaming_interface': streaming_interface,
+        'streaming_model': streaming_model,
+        'pretrained_model_list': pretrained_model_list,
         'ip_addr': ip_addr,
         'port': port,
         'valid_url': valid_url,
@@ -71,13 +77,14 @@ def usb_cam(request):
      * USB Camera streaming
     """
     
-    def gen(streaming_model):
+    def gen(streaming_model, pretrained_model_list):
         """Generator
         
         This function is generator of byte frame for StreamingHttpResponse
         
         Args:
             streaming_model (str): model name for inference
+            pretrained_model_list (dict): pretrained model list (key: model name, value: url)
         """
         cap = cv2.VideoCapture(0)
         if (not cap.isOpened()):
@@ -99,11 +106,13 @@ def usb_cam(request):
                 overlay = frame.copy()
                 
                 # --- Infrerence ---
-                if (streaming_model == 'None'):
+                org = (5, 35)
+                if (streaming_model in pretrained_model_list):
+                    text = f'Model: {streaming_model}'
+                else:
                     text = f'Model: None'
-                    org = (320-100-5, 15)
-                    cv2.rectangle(overlay, (320-100, 0), (320, 20), (0, 0, 0), -1)
-                    cv2.putText(overlay, text, org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(225,250,0))
+                cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
+                cv2.putText(overlay, text, org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
                 
                 # --- Put Text ---
                 time_end = time.time()
@@ -132,6 +141,9 @@ def usb_cam(request):
     logging.info('-------------------------------------')
     
     streaming_model = request.session.get('streaming_model', 'None')
+    pretrained_model_list = {
+        'Resnet V1 50': 'http://download.tensorflow.org/models/object_detection/classification/tf2/20200710/resnet50_v1.tar.gz'
+    }
     
-    return StreamingHttpResponse(gen(streaming_model),
+    return StreamingHttpResponse(gen(streaming_model, pretrained_model_list),
                content_type='multipart/x-mixed-replace; boundary=frame')
