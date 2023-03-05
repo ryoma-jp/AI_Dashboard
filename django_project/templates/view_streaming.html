@@ -34,6 +34,31 @@
     
     
     {% if streaming_interface|stringformat:'s' == 'USB Camera' %}
+      <h1 class="h3">Select Model</h1>
+      <p>[T.B.D] This is sample models of pre-trained</p>
+      <h1 class="h4 ms-2">Pre-trained model list</h1>
+      <h1 class="h5 ms-4">Classification</h1>
+      <ul class="ms-5">
+        <li><a href=https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_classification_zoo.md>Resnet V1 50</a></li>
+      </ul>
+      
+      <form method="post">
+        {% csrf_token %}
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            {% if streaming_model %}
+              {{ streaming_model }}
+            {% else %}
+              Select Model
+            {% endif %}
+          </button>
+          <ul class="dropdown-menu">
+            <li><button class="dropdown-item" type="submit" name="streaming_model_dropdown" value="None">None</button></li>
+            <li><button class="dropdown-item" type="submit" name="streaming_model_dropdown" value="Resnet V1 50">Resnet V1 50</button></li>
+          </ul>
+        </div>
+      </form>
+      
       <div class="col-10 mt-2">
         <img src="{% url 'view_streaming_usb_cam' %}">
       </div>
