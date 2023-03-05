@@ -7,6 +7,9 @@ import tarfile
 
 from pathlib import Path
 
+from machine_learning.lib.predictor.predictor_keras import Predictor
+from machine_learning.lib.utils.utils import download_file, safe_extract_tar
+
 from django.shortcuts import render, redirect
 from django.http.response import StreamingHttpResponse
 
@@ -106,19 +109,25 @@ def usb_cam(request):
             # --- Prepare model for inference ---
             if (streaming_model in pretrained_model_list):
                 url = pretrained_model_list[streaming_model]
-                dest = Path('/tmp', Path(url).name)
                 
-                # --- file download ---
-                if (not dest.exists()):
-                    url_data = requests.get(url).content
-                    with open(dest, 'wb') as f:
-                        f.write(url_data)
+                # --- file download and extract ---
+                if (not Path('/tmp', Path(url).name).exists()):
+                    download_file(url, save_dir='/tmp')
+                    safe_extract_tar(Path('/tmp', Path(url).name), '/tmp')
                 
-                # --- check extension and extract ---
-                if (str(dest)[-7:] == '.tar.gz'):
-                    with tarfile.open(dest, 'r:gz') as tar:
-                        tar.extractall(path='/tmp')
-            
+                # --- model path ---
+                model_path = None
+                if (streaming_model == 'Resnet V1 50'):
+                    model_path = '/tmp/resnet50_v1'
+                
+                # --- load model and save to session variable ---
+                pretrained_model = Predictor(model_type='saved_model', model_path=model_path)
+                request.session['streaming_pretrained_model'] = pretrained_model
+                logging.info('-------------------------------------')
+                logging.info(pretrained_model.pretrained_model)
+                logging.info('-------------------------------------')
+
+                
             # --- Set fixed parameters ---
             model_name_org = (5, 35)
             if (streaming_model in pretrained_model_list):
