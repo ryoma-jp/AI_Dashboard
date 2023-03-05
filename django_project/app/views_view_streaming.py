@@ -2,6 +2,10 @@ import os
 import logging
 import cv2
 import time
+import requests
+import tarfile
+
+from pathlib import Path
 
 from django.shortcuts import render, redirect
 from django.http.response import StreamingHttpResponse
@@ -99,6 +103,31 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
             cap.set(cv2.CAP_PROP_FPS, 30)
             
+            # --- Prepare model for inference ---
+            if (streaming_model in pretrained_model_list):
+                url = pretrained_model_list[streaming_model]
+                dest = Path('/tmp', Path(url).name)
+                
+                # --- file download ---
+                if (not dest.exists()):
+                    url_data = requests.get(url).content
+                    with open(dest, 'wb') as f:
+                        f.write(url_data)
+                
+                # --- check extension and extract ---
+                if (str(dest)[-7:] == '.tar.gz'):
+                    with tarfile.open(dest, 'r:gz') as tar:
+                        tar.extractall(path='/tmp')
+            
+            # --- Set fixed parameters ---
+            model_name_org = (5, 35)
+            if (streaming_model in pretrained_model_list):
+                model_name_text = f'Model: {streaming_model}'
+            else:
+                model_name_text = f'Model: None'
+            fps_org = (5, 15)
+            alpha = 0.8
+            
             while True:
                 # --- Get Frame ---
                 time_start = time.time()
@@ -106,24 +135,18 @@ def usb_cam(request):
                 overlay = frame.copy()
                 
                 # --- Infrerence ---
-                org = (5, 35)
-                if (streaming_model in pretrained_model_list):
-                    text = f'Model: {streaming_model}'
-                else:
-                    text = f'Model: None'
+                
                 cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
-                cv2.putText(overlay, text, org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
+                cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
                 
                 # --- Put Text ---
                 time_end = time.time()
                 processing_rate = 1.0 / (time_end - time_start)
-                text = f'fps : {processing_rate:.02f}'
-                org = (5, 15)
+                fps_text = f'fps : {processing_rate:.02f}'
                 cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
-                cv2.putText(overlay, text, org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+                cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
                 
                 # --- Alpha and Concat---
-                alpha = 0.8
                 frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
                 
                 # --- Encode and Return byte frame ---
