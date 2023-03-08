@@ -3,32 +3,49 @@
 This file describe about the prediction process using Keras
 """
 
+import numpy as np
+import tensorflow as tf
+
+from PIL import Image
 from tensorflow import keras
 
 class Predictor():
-   """Predictor
-   
-   This class specifies the process of loading model and predicting.
-   """
-   
-   def __init__(self, model_type, model_path):
-      """Constructor
-      
-      This function is the construction of predictor.
-      
-      Args:
-          model_type (str): specify the model type (saved_model or keras_h5)
-          model_path (str): specify the path of pre-trained model
-      """
-      
-      if (model_type == 'saved_model'):
-          self.pretrained_model = keras.models.load_model(model_path)
-          
-      elif (model_type == 'keras_h5'):
-          pass
-      else:
-          pass
-
+    """Predictor
+    
+    This class specifies the process of loading model and predicting.
+    """
+    
+    def __init__(self, model_name):
+        """Constructor
+        
+        This function is the construction of predictor.
+        
+        Args:
+            model_name(str): specify the model name
+                               - ResNet50
+        """
+        
+        if (model_name == 'ResNet50'):
+            self.pretrained_model = keras.applications.ResNet50()
+            self.input_shape = [224, 224, 3]
+        else:
+            pass
+    
+    def predict(self, x):
+        """Predict
+        
+        This function predicts ``x`` using ``self.pretrained_model``
+        
+        Args:
+            x (np.array): input data
+                            - image: shape is [[N]+``self.input_shape``], channel is [R, G, B]
+        """
+        
+        tf_x = tf.convert_to_tensor(x * (2.0 / 255.0) - 1.0, dtype=tf.float32)
+        prediction = self.pretrained_model.predict(tf_x)
+        
+        return prediction
+    
 
 '''
 #! -*- coding: utf-8 -*-
