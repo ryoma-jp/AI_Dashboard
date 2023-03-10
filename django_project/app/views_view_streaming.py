@@ -103,10 +103,14 @@ def usb_cam(request):
             cap = cv2.VideoCapture(0)
         
         if (cap.isOpened()):
+            width = 320
+            height = 240
+            fps = 30
+            
             cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-            cap.set(cv2.CAP_PROP_FPS, 30)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+            cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
             if (streaming_model == 'ResNet50'):
@@ -147,26 +151,36 @@ def usb_cam(request):
                     preds = pretrained_model.predict(overlay_for_inference)
                     pretrained_model.decode_predictions(preds)
                 
-                # --- Put Text(FPS) ---
+                # --- Put Text ---
                 time_end = time.time()
                 processing_rate = 1.0 / (time_end - time_start)
                 fps_text = f'fps : {processing_rate:.02f}'
-                cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
-                cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                
-                # --- Put Text(Model) ---
-                cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
-                cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
-                
-                # --- Put Text(Class) ---
-                if (streaming_model in pretrained_model_list):
-                    class_text = f'class name: {pretrained_model.decoded_preds["class_name"][0]}'
-                    cv2.rectangle(overlay, (0, 40), (200, 60), (0, 0, 0), -1)
-                    cv2.putText(overlay, class_text, class_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
-                
-                # --- Alpha and Concat---
-                frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
-                
+                if (pretrained_model is not None):
+                    if (pretrained_model.task == 'classification'):
+                        prediction_area = np.zeros([height, 320, 3], np.uint8)
+                        cv2.putText(prediction_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+                        cv2.putText(prediction_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,225,0))
+                        
+                        cv2.putText(prediction_area, 'class_name:', class_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
+                        for i in range(len(pretrained_model.decoded_preds["class_name"])):
+                            class_text_ = f'  * {pretrained_model.decoded_preds["class_name"][i]}'
+                            class_org_ = (class_org[0], class_org[1] + (i+1)*20)
+                            cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
+                        
+                        frame = cv2.hconcat([frame, prediction_area])
+                    else:
+                        cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
+                        cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+                        cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
+                        cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
+                        frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
+                else:
+                    cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
+                    cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+                    cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
+                    cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
+                    frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+
                 # --- Encode and Return byte frame ---
                 image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
                 yield (b'--frame\r\n'
