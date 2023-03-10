@@ -17,13 +17,24 @@ services:
       - type: bind
         source: "./tools/"
         target: "/home/app/web/tools"
+      - type: bind
+        source: "./test/"
+        target: "/home/app/web/test"
       - /dev/bus/usb:/dev/bus/usb:rw
+      # WSLg for test programs
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /mnt/wslg:/mnt/wslg
     expose:
       - 8000
     ports:
       - 6006:6006
     environment:
       ALLOWED_HOSTS: "localhost ${ALLOWED_HOSTS}"
+      # WSLg for test programs
+      DISPLAY: $DISPLAY
+      WAYLAND_DISPLAY: $WAYLAND_DISPLAY
+      XDG_RUNTIME_DIR: $XDG_RUNTIME_DIR
+      PULSE_SERVER: $PULSE_SERVER
     env_file:
       - ./.env.dev
     depends_on:
