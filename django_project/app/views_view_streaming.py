@@ -7,8 +7,9 @@ import tarfile
 import numpy as np
 
 from pathlib import Path
+from PIL import Image
 
-from machine_learning.lib.predictor.predictor_keras import Predictor
+from machine_learning.lib.predictor.predictor_keras import PredictorResNet50
 from machine_learning.lib.utils.utils import download_file, safe_extract_tar
 
 from django.shortcuts import render, redirect
@@ -108,9 +109,9 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, 30)
             
             # --- Prepare model for inference ---
-            if (streaming_model in pretrained_model_list):
+            if (streaming_model == 'ResNet50'):
                 # --- load model ---
-                pretrained_model = Predictor(model_name=streaming_model)
+                pretrained_model = PredictorResNet50()
                 logging.info('-------------------------------------')
                 logging.info(pretrained_model.pretrained_model)
                 logging.info('-------------------------------------')
@@ -138,41 +139,13 @@ def usb_cam(request):
                 
                 if (streaming_model in pretrained_model_list):
                     # --- Convert format ---
-                    dsize = pretrained_model.input_shape[0:2]
-                    overlay_for_inference = cv2.resize(overlay, dsize=dsize, interpolation=cv2.INTER_AREA)
-                    overlay_for_inference = cv2.cvtColor(overlay_for_inference, cv2.COLOR_BGR2RGB)
-                    
-                    overlay_for_inference = np.asarray(overlay_for_inference, dtype='float32')
-                    overlay_for_inference = overlay_for_inference[np.newaxis]
+                    overlay_for_inference = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+                    overlay_for_inference = overlay_for_inference.resize(pretrained_model.input_shape[0:2])
+                    overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
                     
                     # --- Infrerence ---
                     preds = pretrained_model.predict(overlay_for_inference)
-                    #print(preds)
-                    #print(preds.shape)
-                    #print(np.argmax(preds[0]))
-                    """SampleCode
-                    import tensorflow as tf
-                    import numpy as np
-                    
-                    from PIL import Image
-                    from tensorflow import keras
-                    
-                    img = Image.open('00000000.png')
-                    img = img.resize([224, 224])
-                    print(img.size)
-                    
-                    img = np.asarray(img, dtype='float32')
-                    img = img[np.newaxis]
-                    print(img.shape)
-                    tf_data = tf.image.convert_image_dtype(img, dtype=tf.float32) * (2.0 / 255.0) - 1.0
-                    pretrained_model = keras.applications.ResNet50()
-                    
-                    preds = pretrained_model.predict(tf_data)
-                    print(preds)
-                    print(preds.shape)
-                    print(np.argmax(preds[0]))
-                    
-                    """
+                    pretrained_model.decode_predictions(preds)
                 
                 # --- Put Text(FPS) ---
                 time_end = time.time()
@@ -187,7 +160,7 @@ def usb_cam(request):
                 
                 # --- Put Text(Class) ---
                 if (streaming_model in pretrained_model_list):
-                    class_text = f'id={np.argmax(preds[0])}'
+                    class_text = f'class name: {pretrained_model.decoded_preds["class_name"][0]}'
                     cv2.rectangle(overlay, (0, 40), (200, 60), (0, 0, 0), -1)
                     cv2.putText(overlay, class_text, class_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
                 
