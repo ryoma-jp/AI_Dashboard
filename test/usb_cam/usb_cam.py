@@ -120,7 +120,7 @@ def main():
                     cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0, 250, 225))
                 
                 frame = cv2.hconcat([frame, prediction_area])
-            if (pretrained_model.task == 'object_detection'):
+            elif (pretrained_model.task == 'object_detection'):
                 information_area = np.zeros([height, 320, 3], np.uint8)
                 cv2.putText(information_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250, 225, 0))
                 cv2.putText(information_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100, 225, 0))
