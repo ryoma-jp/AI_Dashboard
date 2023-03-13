@@ -2,6 +2,7 @@ import os
 import logging
 import cv2
 import time
+import json
 import requests
 import tarfile
 import numpy as np
@@ -9,8 +10,8 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 
-from machine_learning.lib.predictor.predictor_keras import PredictorResNet50
-from machine_learning.lib.utils.utils import download_file, safe_extract_tar
+from machine_learning.lib.predictor.predictor_keras import PredictorResNet50, PredictorCenterNetHourGlass104
+from machine_learning.lib.utils.utils import download_file, safe_extract_tar, zip_extract
 
 from django.shortcuts import render, redirect
 from django.http.response import StreamingHttpResponse
@@ -58,6 +59,7 @@ def view_streaming(request):
     streaming_model = request.session.get('streaming_model', None)
     pretrained_model_list = [
         'ResNet50',
+        'CenterNetHourGlass104',
     ]
     request.session['pretrained_model_list'] = pretrained_model_list
     
@@ -114,11 +116,27 @@ def usb_cam(request):
             
             # --- Prepare model for inference ---
             if (streaming_model == 'ResNet50'):
+                # --- Parameters of classification result area ---
+                class_org = (5, 55)
+                
                 # --- load model ---
                 pretrained_model = PredictorResNet50()
                 logging.info('-------------------------------------')
                 logging.info(pretrained_model.pretrained_model)
                 logging.info('-------------------------------------')
+            elif (streaming_model == 'CenterNetHourGlass104'):
+                # --- Parameters to draw detection result ---
+                to_pixel = [height, width, height, width]
+                if (not Path('/tmp/annotations/instances_val2017.json').exists()):
+                    url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
+                    download_file(url, save_dir='/tmp')
+                    zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
+                with open('/tmp/annotations/instances_val2017.json', 'r') as f:
+                    instances_val2017 = json.load(f)
+                    categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
+                
+                # --- Create object of Pre-trained model ---
+                pretrained_model = PredictorCenterNetHourGlass104()
             else:
                 pretrained_model = None
                 logging.info('-------------------------------------')
@@ -132,7 +150,6 @@ def usb_cam(request):
                 model_name_text = f'Model: {streaming_model}'
             else:
                 model_name_text = f'Model: None'
-            class_org = (5, 55)
             alpha = 0.8
             
             while True:
@@ -168,6 +185,22 @@ def usb_cam(request):
                             cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
                         
                         frame = cv2.hconcat([frame, prediction_area])
+                    elif (pretrained_model.task == 'object_detection'):
+                        information_area = np.zeros([height, 320, 3], np.uint8)
+                        cv2.putText(information_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250, 225, 0))
+                        cv2.putText(information_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100, 225, 0))
+                        
+                        if (len(pretrained_model.decoded_preds['detection_boxes']) > 0):
+                            boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * to_pixel, dtype=int)
+                        for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
+                            cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
+                            cv2.putText(overlay,
+                                        categories_coco2017[class_],
+                                        [box_[1], box_[0]-8],
+                                        fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
+                            
+                        frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+                        frame = cv2.hconcat([frame, information_area])
                     else:
                         cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
                         cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
