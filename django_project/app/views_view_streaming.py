@@ -13,6 +13,8 @@ from PIL import Image
 from machine_learning.lib.predictor.predictor_keras import PredictorResNet50, PredictorCenterNetHourGlass104
 from machine_learning.lib.utils.utils import download_file, safe_extract_tar, zip_extract
 
+from app.models import Project, MlModel
+
 from django.shortcuts import render, redirect
 from django.http.response import StreamingHttpResponse
 
@@ -41,10 +43,12 @@ def view_streaming(request):
         logging.info(request.POST)
         logging.info('-------------------------------------')
         
-        if ('streaming_interface_dropdown' in request.POST):
-            request.session['streaming_interface'] = request.POST.getlist('streaming_interface_dropdown')[0]
-        elif ('streaming_model_dropdown' in request.POST):
-            request.session['streaming_model'] = request.POST.getlist('streaming_model_dropdown')[0]
+        if ('streaming_view_interface_dropdown' in request.POST):
+            request.session['streaming_interface'] = request.POST.getlist('streaming_viewinterface_dropdown')[0]
+        elif ('streaming_view_project_dropdown' in request.POST):
+            request.session['streaming_selected_project'] = request.POST.getlist('streaming_view_project_dropdown')[0]
+        elif ('streaming_view_model_dropdown' in request.POST):
+            request.session['streaming_selected_model'] = request.POST.getlist('streaming_view_model_dropdown')[0]
         elif ('view_streaming_apply' in request.POST):
             ip_addr = [
                 request.POST['ip_0'],
@@ -55,13 +59,28 @@ def view_streaming(request):
             request.session['ip_addr'] = ip_addr
             request.session['port'] = request.POST['port']
     
+    project = Project.objects.all().order_by('-id').reverse()
+    model = MlModel.objects.all().order_by('-id').reverse()
+    
     streaming_interface = request.session.get('streaming_interface', None)
-    streaming_model = request.session.get('streaming_model', None)
+    streaming_selected_project = request.session.get('streaming_selected_project', 'Sample')
+    streaming_selected_model = request.session.get('streaming_selected_model', None)
+    
     pretrained_model_list = [
         'ResNet50',
         'CenterNetHourGlass104',
     ]
     request.session['pretrained_model_list'] = pretrained_model_list
+    
+    if (streaming_selected_project in [proj.name for proj in Project.objects.all()]):
+        selected_project = Project.objects.get(name=streaming_selected_project)
+    
+        if (streaming_selected_model not in [model.name for model in MlModel.objects.filter(project=selected_project)]):
+            streaming_selected_model = None
+    else:
+        selected_project = None
+        if (streaming_selected_model not in pretrained_model_list):
+            streaming_selected_model = 'None'
     
     ip_addr = request.session.get('ip_addr', ['0', '0', '0', '0'])
     port = request.session.get('port', '0')
@@ -74,8 +93,12 @@ def view_streaming(request):
         'sidebar_status': sidebar_status,
         'text': get_version(),
         'jupyter_nb_url': get_jupyter_nb_url(),
+        'project': project,
+        'model': model,
         'streaming_interface': streaming_interface,
-        'streaming_model': streaming_model,
+        'streaming_view_selected_project': streaming_selected_project,
+        'streaming_view_selected_project_obj': selected_project,
+        'streaming_view_selected_model': streaming_selected_model,
         'pretrained_model_list': pretrained_model_list,
         'ip_addr': ip_addr,
         'port': port,
@@ -94,7 +117,7 @@ def usb_cam(request):
         
         This function is generator of byte frame for StreamingHttpResponse
         """
-        streaming_model = request.session.get('streaming_model', 'None')
+        streaming_model = request.session.get('streaming_selected_model', 'None')
         pretrained_model_list = request.session.get('pretrained_model_list', [''])
         
         cap = cv2.VideoCapture(0)
