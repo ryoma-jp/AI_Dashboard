@@ -15,6 +15,8 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 from PIL import Image
 
+from machine_learning.lib.utils.preprocessor import image_preprocess
+
 #---------------------------------
 # クラス; データ取得基底クラス
 #---------------------------------
@@ -100,39 +102,26 @@ class DataLoader():
         
         # --- Normalization process ---
         if (mode == 'none'):
-            train_norm = self.train_x
-            if (self.validation_x is not None):
-                validation_norm = self.validation_x
-            if (self.test_x is not None):
-                test_norm = self.test_x
+            norm_coef = [0.0, 1.0]
         elif (mode == 'max'):
-            train_norm = self.train_x / 255.
-            if (self.validation_x is not None):
-                validation_norm = self.validation_x / 255.
-            if (self.test_x is not None):
-                test_norm = self.test_x / 255.
+            norm_coef = [0.0, 255.0]
         elif (mode == 'max-min'):
             train_min = np.min(self.train_x)
             train_diff = np.max(self.train_x) - np.min(self.train_x)
             train_diff = np.clip(train_diff, np.finfo(float).eps, None)
             
-            train_norm = (self.train_x - train_min) / train_diff
-            if (self.validation_x is not None):
-                validation_norm = (self.validation_x - train_min) / train_diff
-            if (self.test_x is not None):
-                test_norm = (self.test_x - train_min) / train_diff
+            norm_coef = [train_min, train_diff]
         elif (mode == 'z-score'):
-            train_mean = np.mean(self.train_x)
-            train_std = np.std(self.train_x)
-            
-            train_norm = (self.train_x - train_mean) / train_std
-            if (self.validation_x is not None):
-                validation_norm = (self.validation_x - train_mean) / train_std
-            if (self.test_x is not None):
-                test_norm = (self.test_x - train_mean) / train_std
+            norm_coef = [np.mean(self.train_x), np.std(self.train_x)]
         else:
             logging.debug('[ERROR] Unknown data normalization mode: {}'.format(mode))
             quit()
+        
+        train_norm = image_preprocess(self.train_x, norm_coef)
+        if (self.validation_x is not None):
+            validation_norm = image_preprocess(self.validation_x, norm_coef)
+        if (self.test_x is not None):
+            test_norm = image_preprocess(self.test_x, norm_coef)
         
         return train_norm, validation_norm, test_norm
         
