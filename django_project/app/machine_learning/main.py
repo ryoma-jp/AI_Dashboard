@@ -154,10 +154,7 @@ def main():
     print_ndarray_shape(dataset.test_x)
     print_ndarray_shape(dataset.test_y)
     
-    x_train, x_val, x_test = dataset.normalization(data_norm)
-    y_train = dataset.train_y
-    y_val = dataset.validation_y
-    y_test = dataset.test_y
+    x_train, y_train, x_val, y_val, x_test, y_test = dataset.preprocessing(norm_mode=data_norm)
     output_dims = dataset.output_dims
     
     # --- モデル取得 ---

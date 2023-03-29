@@ -74,56 +74,61 @@ class DataLoader():
         
         return save_file
     
-    # --- 標準化・正規化 ---
-    #  * mode: 正規化手法
-    #     max: データの絶対値の最大が1.0となるように正規化(最大値で除算)
-    #     max-min: データの最大が1.0最小が0.0となるように正規化(最大値と最小値を用いて算出)
-    #     z-score: 標準化(平均と標準偏差を用いて算出)
-    #
-    #  [Reference]
-    #  * 標準化と正規化: https://aiacademy.jp/texts/show/?id=555
-    def normalization(self, mode):
-        """normalization
+    def preprocessing(self, norm_mode='none'):
+        """Pre-processing
         
-        データの正規化を実行する
+        Data pre-processing.
+        Pre-processing methods are below.
+            - normalization (or standardization)
         
         Args:
-            mode (str): 正規化方法を指定する
-                - 'none': スルー
-                - 'max': データの絶対値の最大が1.0となるように正規化(最大値で除算)
-                - 'max-min': データの最大が1.0最小が0.0となるように正規化(最大値と最小値を用いて算出)
-                - 'z-score': 標準化(平均と標準偏差を用いて算出)
+            norm_mode (str): Specify the normalization method
+                - 'none': Trough
+                - 'max': Divide max value(=255)
+                - 'max-min': Normalization to value range that is from 0.0 to 1.0
+                - 'z-score': Standardization
         
+        Returns:
+            train, validation and test dataset are preprocessed.
+            return the ``y`` value is for future update, example for add scaling or cropping.
+        
+        Note:
+            - [Standardization and Normalization](https://aiacademy.jp/texts/show/?id=555)
         """
         # --- Initialize ---
-        train_norm = None
-        validation_norm = None
-        test_norm = None
+        preprocessed_train_x = None
+        preprocessed_train_y = self.train_y
+        preprocessed_validation_x = None
+        preprocessed_validation_y = self.validation_y
+        preprocessed_test_x = None
+        preprocessed_test_y = self.test_y
         
         # --- Normalization process ---
-        if (mode == 'none'):
+        if (norm_mode == 'none'):
             norm_coef = [0.0, 1.0]
-        elif (mode == 'max'):
+        elif (norm_mode == 'max'):
             norm_coef = [0.0, 255.0]
-        elif (mode == 'max-min'):
+        elif (norm_mode == 'max-min'):
             train_min = np.min(self.train_x)
             train_diff = np.max(self.train_x) - np.min(self.train_x)
             train_diff = np.clip(train_diff, np.finfo(float).eps, None)
             
             norm_coef = [train_min, train_diff]
-        elif (mode == 'z-score'):
+        elif (norm_mode == 'z-score'):
             norm_coef = [np.mean(self.train_x), np.std(self.train_x)]
         else:
-            logging.debug('[ERROR] Unknown data normalization mode: {}'.format(mode))
-            quit()
+            logging.debug('[WARNING] Unknown data normalization mode: {}'.format(mode))
+            norm_coef = [0.0, 1.0]
         
-        train_norm = image_preprocess(self.train_x, norm_coef)
+        preprocessed_train_x = image_preprocess(self.train_x, norm_coef)
         if (self.validation_x is not None):
-            validation_norm = image_preprocess(self.validation_x, norm_coef)
+            preprocessed_validation_x = image_preprocess(self.validation_x, norm_coef)
         if (self.test_x is not None):
-            test_norm = image_preprocess(self.test_x, norm_coef)
+            preprocessed_test_x = image_preprocess(self.test_x, norm_coef)
         
-        return train_norm, validation_norm, test_norm
+        return preprocessed_train_x, preprocessed_train_y, \
+               preprocessed_validation_x, preprocessed_validation_y, \
+               preprocessed_test_x, preprocessed_test_y
         
     # --- 学習データとバリデーションデータを分割 ---
     def split_train_val(self, validation_split):
