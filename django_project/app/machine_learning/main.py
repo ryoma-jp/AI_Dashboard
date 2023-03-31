@@ -234,12 +234,18 @@ def main():
         quit()
     
     if (args.mode == 'train'):
-        # --- 学習 ---
+        # --- model training and save ---
         trainer.fit(x_train, y_train,
                     x_val=x_val, y_val=y_val,
                     x_test=x_test, y_test=y_test)
         trainer.save_model()
         
+        # --- update config file ---
+        config_data['inference_parameter']['preprocessing']['norm_coef_a']['value'] = dataset.preprocessing_params['norm_coef'][0]
+        config_data['inference_parameter']['preprocessing']['norm_coef_b']['value'] = dataset.preprocessing_params['norm_coef'][1]
+        with open(args.config, 'w') as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=4)
+
         # --- save feature importance as json ---
         if (model_type == 'LightGBM'):
             df_importance = trainer.get_importance(index=x_train.columns)

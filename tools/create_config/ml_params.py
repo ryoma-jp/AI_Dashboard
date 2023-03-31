@@ -285,6 +285,26 @@ class MlParams():
                     'items': ['gbdt', 'dart', 'rf', 'goss'],
                 },
             },
+            'inference_parameter': {
+                'preprocessing': {
+                    'norm_coef_a': {
+                        'name': 'Normalization Coefficient (alpha)',
+                        'description': 'Coefficient of Normalization (alpha)',
+                        'dtype': 'float',
+                        'value': 0.0,
+                        'configurable': False,
+                        'selectable': False,
+                    },
+                    'norm_coef_b': {
+                        'name': 'Normalization Coefficient (beta)',
+                        'description': 'Coefficient of Normalization (beta)',
+                        'dtype': 'float',
+                        'value': 1.0,
+                        'configurable': False,
+                        'selectable': False,
+                    },
+                },
+            },
         }
 
 class MlParams_MNIST(MlParams):

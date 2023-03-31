@@ -42,6 +42,8 @@ class DataLoader():
             - 'table_reg': テーブルデータの回帰タスク
         input_distributions (dict): input feature分布
         target_distributions (dict): target分布
+        statistic_keys (list): 分布計算対象の特徴量リスト
+        preprocessing_params (dict): 前処理用パラメータ
     
     """
     # --- コンストラクタ ---
@@ -53,6 +55,9 @@ class DataLoader():
         self.input_distributions = None
         self.target_distributions = None
         self.statistic_keys = []
+        self.preprocessing_params = {
+            'norm_coef': [0.0, 1.0],
+        }
         
     
     # --- ファイルダウンロード ---
@@ -105,26 +110,26 @@ class DataLoader():
         
         # --- Normalization process ---
         if (norm_mode == 'none'):
-            norm_coef = [0.0, 1.0]
+            self.preprocessing_params['norm_coef'] =  [0.0, 1.0]
         elif (norm_mode == 'max'):
-            norm_coef = [0.0, 255.0]
+            self.preprocessing_params['norm_coef'] = [0.0, 255.0]
         elif (norm_mode == 'max-min'):
             train_min = np.min(self.train_x)
             train_diff = np.max(self.train_x) - np.min(self.train_x)
             train_diff = np.clip(train_diff, np.finfo(float).eps, None)
             
-            norm_coef = [train_min, train_diff]
+            self.preprocessing_params['norm_coef'] = [train_min, train_diff]
         elif (norm_mode == 'z-score'):
-            norm_coef = [np.mean(self.train_x), np.std(self.train_x)]
+            self.preprocessing_params['norm_coef'] = [np.mean(self.train_x), np.std(self.train_x)]
         else:
             logging.debug('[WARNING] Unknown data normalization mode: {}'.format(mode))
-            norm_coef = [0.0, 1.0]
+            self.preprocessing_params['norm_coef'] = [0.0, 1.0]
         
-        preprocessed_train_x = image_preprocess(self.train_x, norm_coef)
+        preprocessed_train_x = image_preprocess(self.train_x, self.preprocessing_params['norm_coef'])
         if (self.validation_x is not None):
-            preprocessed_validation_x = image_preprocess(self.validation_x, norm_coef)
+            preprocessed_validation_x = image_preprocess(self.validation_x, self.preprocessing_params['norm_coef'])
         if (self.test_x is not None):
-            preprocessed_test_x = image_preprocess(self.test_x, norm_coef)
+            preprocessed_test_x = image_preprocess(self.test_x, self.preprocessing_params['norm_coef'])
         
         return preprocessed_train_x, preprocessed_train_y, \
                preprocessed_validation_x, preprocessed_validation_y, \
