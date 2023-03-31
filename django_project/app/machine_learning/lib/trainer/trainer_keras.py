@@ -113,6 +113,13 @@ class Trainer():
             da_params (:obj:`dict`, optional): DataAugmentationパラメータ
             batch_size (:obj:`int`, optional): ミニバッチ数
             epochs (:obj:`int`, optional): 学習EPOCH数
+            decoded_preds (:obj:`dict`, optional): 予測値
+                - img_clf
+                    {
+                        'class_id': <class id>,
+                        'class_name': <class name>,
+                        'score': <score of class>
+                    }
         """
         
         # --- Load parameters ---
@@ -128,6 +135,7 @@ class Trainer():
         self.da_params = da_params
         self.batch_size = batch_size
         self.epochs = epochs
+        self.decoded_preds = {}
         
         # --- 出力ディレクトリ作成 ---
         if (self.output_dir is not None):
@@ -324,6 +332,27 @@ class Trainer():
         predictions = self.model.predict(x_test)
         return predictions
         
+    def decode_predictions(self, preds):
+        """Decode Predictions
+        
+        This function converts predictions to dict format
+        
+        Args:
+            preds (np.array): predictions
+        
+        Return:
+            
+        """
+        
+        if (self.dataset_type == 'img_clf'):
+            pass
+            #decode_predictions = keras.applications.resnet50.decode_predictions
+            #decoded_preds_ = decode_predictions(preds, top=5)[0]
+            #
+            #self.decoded_preds['class_id'] = [decoded_preds_[i][0] for i in range(len(decoded_preds_))]
+            #self.decoded_preds['class_name'] = [decoded_preds_[i][1] for i in range(len(decoded_preds_))]
+            #self.decoded_preds['score'] = [decoded_preds_[i][2] for i in range(len(decoded_preds_))]
+
     # --- モデル保存 ---
     def save_model(self):
         """save_model

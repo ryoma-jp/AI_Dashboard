@@ -117,7 +117,8 @@ def usb_cam(request):
         
         This function is generator of byte frame for StreamingHttpResponse
         """
-        streaming_model = request.session.get('streaming_selected_model', 'None')
+        streaming_project_name = request.session.get('streaming_selected_project', 'Sample')
+        streaming_model_name = request.session.get('streaming_selected_model', 'None')
         pretrained_model_list = request.session.get('pretrained_model_list', [''])
         
         cap = cv2.VideoCapture(0)
@@ -138,34 +139,44 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
-            if (streaming_model == 'ResNet50'):
-                # --- Parameters of classification result area ---
-                class_org = (5, 55)
-                
-                # --- load model ---
-                pretrained_model = PredictorResNet50()
-                logging.info('-------------------------------------')
-                logging.info(pretrained_model.pretrained_model)
-                logging.info('-------------------------------------')
-            elif (streaming_model == 'CenterNetHourGlass104'):
-                # --- Parameters to draw detection result ---
-                to_pixel = [height, width, height, width]
-                if (not Path('/tmp/annotations/instances_val2017.json').exists()):
-                    url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
-                    download_file(url, save_dir='/tmp')
-                    zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
-                with open('/tmp/annotations/instances_val2017.json', 'r') as f:
-                    instances_val2017 = json.load(f)
-                    categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
-                
-                # --- Create object of Pre-trained model ---
-                pretrained_model = PredictorCenterNetHourGlass104()
+            if (streaming_project == 'Sample'):
+                if (streaming_model == 'ResNet50'):
+                    # --- Parameters of classification result area ---
+                    class_org = (5, 55)
+                    
+                    # --- load model ---
+                    pretrained_model = PredictorResNet50()
+                    logging.info('-------------------------------------')
+                    logging.info(pretrained_model.pretrained_model)
+                    logging.info('-------------------------------------')
+                elif (streaming_model == 'CenterNetHourGlass104'):
+                    # --- Parameters to draw detection result ---
+                    to_pixel = [height, width, height, width]
+                    if (not Path('/tmp/annotations/instances_val2017.json').exists()):
+                        url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
+                        download_file(url, save_dir='/tmp')
+                        zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
+                    with open('/tmp/annotations/instances_val2017.json', 'r') as f:
+                        instances_val2017 = json.load(f)
+                        categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
+                    
+                    # --- Create object of Pre-trained model ---
+                    pretrained_model = PredictorCenterNetHourGlass104()
+                else:
+                    pretrained_model = None
+                    logging.info('-------------------------------------')
+                    logging.info(f'Unknown streaming model: streaming_model={streaming_model}')
+                    logging.info('-------------------------------------')
             else:
-                pretrained_model = None
-                logging.info('-------------------------------------')
-                logging.info(f'Unknown streaming model: streaming_model={streaming_model}')
-                logging.info('-------------------------------------')
-                
+                streaming_project = Project.objects.get(name=streaming_project_name)
+                if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
+                    streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
+                    with open(Path(streaming_model.model_dir, 'config.json'), 'r') as f:
+                        config_data = json.load(f)
+                        preprocessing_params = config_data['inference_parameter']['preprocessing']
+                else:
+                    pretrained_model = None
+            
             # --- Set fixed parameters ---
             fps_org = (5, 15)
             model_name_org = (5, 35)

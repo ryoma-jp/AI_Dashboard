@@ -243,6 +243,7 @@ def main():
         # --- update config file ---
         config_data['inference_parameter']['preprocessing']['norm_coef_a']['value'] = dataset.preprocessing_params['norm_coef'][0]
         config_data['inference_parameter']['preprocessing']['norm_coef_b']['value'] = dataset.preprocessing_params['norm_coef'][1]
+        config_data['inference_parameter']['preprocessing']['input_shape']['value'] = dataset.train_x.shape[1:]
         with open(args.config, 'w') as f:
             json.dump(config_data, f, ensure_ascii=False, indent=4)
 

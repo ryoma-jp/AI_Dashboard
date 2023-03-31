@@ -303,6 +303,14 @@ class MlParams():
                         'configurable': False,
                         'selectable': False,
                     },
+                    'input_shape': {
+                        'name': 'Input Shape',
+                        'description': 'Shape of input data  ex) Image:[H, W, C](Color: C=3, Grayscale: C=1)',
+                        'dtype': 'list',
+                        'value': [32, 32, 3],
+                        'configurable': False,
+                        'selectable': False,
+                    },
                 },
             },
         }
