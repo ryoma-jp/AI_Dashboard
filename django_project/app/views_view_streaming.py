@@ -233,12 +233,12 @@ def usb_cam(request):
                         
                         if (len(pretrained_model.decoded_preds['detection_boxes']) > 0):
                             boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * to_pixel, dtype=int)
-                        for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
-                            cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                            cv2.putText(overlay,
-                                        categories_coco2017[class_],
-                                        [box_[1], box_[0]-8],
-                                        fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
+                            for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
+                                cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
+                                cv2.putText(overlay,
+                                            categories_coco2017[class_],
+                                            [box_[1], box_[0]-8],
+                                            fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
                             
                         frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
                         frame = cv2.hconcat([frame, information_area])
