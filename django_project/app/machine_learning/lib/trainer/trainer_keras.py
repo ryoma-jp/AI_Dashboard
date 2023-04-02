@@ -332,27 +332,6 @@ class Trainer():
         predictions = self.model.predict(x_test)
         return predictions
         
-    def decode_predictions(self, preds):
-        """Decode Predictions
-        
-        This function converts predictions to dict format
-        
-        Args:
-            preds (np.array): predictions
-        
-        Return:
-            
-        """
-        
-        if (self.dataset_type == 'img_clf'):
-            pass
-            #decode_predictions = keras.applications.resnet50.decode_predictions
-            #decoded_preds_ = decode_predictions(preds, top=5)[0]
-            #
-            #self.decoded_preds['class_id'] = [decoded_preds_[i][0] for i in range(len(decoded_preds_))]
-            #self.decoded_preds['class_name'] = [decoded_preds_[i][1] for i in range(len(decoded_preds_))]
-            #self.decoded_preds['score'] = [decoded_preds_[i][2] for i in range(len(decoded_preds_))]
-
     # --- モデル保存 ---
     def save_model(self):
         """save_model

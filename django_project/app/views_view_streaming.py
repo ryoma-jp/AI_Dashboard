@@ -10,7 +10,7 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 
-from machine_learning.lib.predictor.predictor_keras import PredictorResNet50, PredictorCenterNetHourGlass104
+from machine_learning.lib.predictor.predictor_keras import PredictorMlModel, PredictorResNet50, PredictorCenterNetHourGlass104
 from machine_learning.lib.utils.utils import download_file, safe_extract_tar, zip_extract
 
 from app.models import Project, MlModel
@@ -44,7 +44,7 @@ def view_streaming(request):
         logging.info('-------------------------------------')
         
         if ('streaming_view_interface_dropdown' in request.POST):
-            request.session['streaming_interface'] = request.POST.getlist('streaming_viewinterface_dropdown')[0]
+            request.session['streaming_interface'] = request.POST.getlist('streaming_view_interface_dropdown')[0]
         elif ('streaming_view_project_dropdown' in request.POST):
             request.session['streaming_selected_project'] = request.POST.getlist('streaming_view_project_dropdown')[0]
         elif ('streaming_view_model_dropdown' in request.POST):
@@ -139,8 +139,8 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
-            if (streaming_project == 'Sample'):
-                if (streaming_model == 'ResNet50'):
+            if (streaming_project_name == 'Sample'):
+                if (streaming_model_name == 'ResNet50'):
                     # --- Parameters of classification result area ---
                     class_org = (5, 55)
                     
@@ -149,7 +149,7 @@ def usb_cam(request):
                     logging.info('-------------------------------------')
                     logging.info(pretrained_model.pretrained_model)
                     logging.info('-------------------------------------')
-                elif (streaming_model == 'CenterNetHourGlass104'):
+                elif (streaming_model_name == 'CenterNetHourGlass104'):
                     # --- Parameters to draw detection result ---
                     to_pixel = [height, width, height, width]
                     if (not Path('/tmp/annotations/instances_val2017.json').exists()):
@@ -165,25 +165,32 @@ def usb_cam(request):
                 else:
                     pretrained_model = None
                     logging.info('-------------------------------------')
-                    logging.info(f'Unknown streaming model: streaming_model={streaming_model}')
+                    logging.info(f'Unknown streaming model: streaming_model_name={streaming_model_name}')
                     logging.info('-------------------------------------')
             else:
                 streaming_project = Project.objects.get(name=streaming_project_name)
                 if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
                     streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
-                    with open(Path(streaming_model.model_dir, 'config.json'), 'r') as f:
-                        config_data = json.load(f)
-                        preprocessing_params = config_data['inference_parameter']['preprocessing']
+                        
+                    # --- Create object of Pre-trained model ---
+                    pretrained_model = PredictorMlModel(streaming_model)
+                    logging.info('-------------------------------------')
+                    logging.info(f'model_summary')
+                    pretrained_model.pretrained_model.summary(print_fn=logging.info)
+                    logging.info(f'input_shape: {pretrained_model.input_shape}')
+                    logging.info('-------------------------------------')
+                    
+                    # --- T.B.D ---
+                    streaming_model_name = 'None'
+                    pretrained_model = None
                 else:
+                    streaming_model_name = 'None'
                     pretrained_model = None
             
             # --- Set fixed parameters ---
             fps_org = (5, 15)
             model_name_org = (5, 35)
-            if (streaming_model in pretrained_model_list):
-                model_name_text = f'Model: {streaming_model}'
-            else:
-                model_name_text = f'Model: None'
+            model_name_text = f'Model: {streaming_model_name}'
             alpha = 0.8
             
             while True:
@@ -192,7 +199,7 @@ def usb_cam(request):
                 ret, frame = cap.read()
                 overlay = frame.copy()
                 
-                if (streaming_model in pretrained_model_list):
+                if (streaming_model_name in pretrained_model_list):
                     # --- Convert format ---
                     overlay_for_inference = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
                     overlay_for_inference = overlay_for_inference.resize(pretrained_model.input_shape[0:2])

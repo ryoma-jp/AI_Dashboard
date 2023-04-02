@@ -3,10 +3,12 @@
 This file describe about the prediction process using Keras
 """
 
+import json
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
+from pathlib import Path
 from PIL import Image
 from tensorflow import keras
 
@@ -60,6 +62,92 @@ class Predictor():
         
         return prediction
     
+class PredictorMlModel(Predictor):
+    """Predictor
+    
+    This class specifies the process of loading model and predicting.
+    The pre-trainded model is trained by AI Dashboard.
+    
+    """
+    
+    def __init__(self, mlmodel):
+        """Constructor
+        
+        This function is the construction of predictor.
+        
+        Args:
+            mlmodel (object): MlModel class
+        """
+        
+        # --- initialize ---
+        dataset = mlmodel.dataset
+        if (dataset.dataset_type in ['img_clf', 'reg_clf']):
+            self.task = 'classification'
+        else:
+            self.task = 'object_detection'
+        super().__init__(self.task)
+        
+        # --- load model ---
+        trained_model_path = Path(mlmodel.model_dir, 'models', 'hdf5', 'model.h5')
+        self.pretrained_model = keras.models.load_model(trained_model_path)
+        
+        # --- load config and set parameters ---
+        config_path = Path(mlmodel.model_dir, 'config.json')
+        with open(config_path, 'r') as f:
+            config_data = json.load(f)
+            self.input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
+    
+    def preprocess_input(self, x):
+        """Preprocess input data
+        
+        This function pre-processes(cropping, scaling, etc) the input data ``x``.
+        
+        Args:
+            x (np.array): input data
+        
+        Returns:
+            pre-processed data as np.array
+        """
+        
+        y = x
+        
+        return y
+    
+    def predict(self, x):
+        """Predict
+        
+        This function predicts ``x`` using ``self.pretrained_model``
+        
+        Args:
+            x (np.array): input data
+                            - image: shape is [[N]+``self.input_shape``], channel is [R, G, B]
+        
+        Returns:
+            prediction as np.array
+        """
+        
+        prediction = self.pretrained_model.predict(self.preprocess_input(x))
+        
+        return prediction
+    
+    def decode_predictions(self, preds):
+        """Decode Predictions
+        
+        This function converts predictions to dict format
+        
+        Args:
+            preds (np.array): predictions
+        
+        Return:
+            
+        """
+        decode_predictions = keras.applications.resnet50.decode_predictions
+        decoded_preds_ = decode_predictions(preds, top=5)[0]
+        
+        self.decoded_preds['class_id'] = [decoded_preds_[i][0] for i in range(len(decoded_preds_))]
+        self.decoded_preds['class_name'] = [decoded_preds_[i][1] for i in range(len(decoded_preds_))]
+        self.decoded_preds['score'] = [decoded_preds_[i][2] for i in range(len(decoded_preds_))]
+
 class PredictorResNet50(Predictor):
     """Predictor
     
