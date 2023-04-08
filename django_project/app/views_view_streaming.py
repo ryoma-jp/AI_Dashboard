@@ -66,10 +66,15 @@ def view_streaming(request):
     streaming_selected_project = request.session.get('streaming_selected_project', 'Sample')
     streaming_selected_model = request.session.get('streaming_selected_model', None)
     
-    pretrained_model_list = [
-        'ResNet50',
-        'CenterNetHourGlass104',
-    ]
+    if (streaming_selected_project == 'Sample'):
+        pretrained_model_list = [
+            'ResNet50',
+            'CenterNetHourGlass104',
+        ]
+    else:
+        selected_project = Project.objects.get(name=streaming_selected_project)
+        pretrained_model_list = [model.name for model in MlModel.objects.filter(project=selected_project)]
+    
     request.session['pretrained_model_list'] = pretrained_model_list
     
     if (streaming_selected_project in [proj.name for proj in Project.objects.all()]):
@@ -141,9 +146,6 @@ def usb_cam(request):
             # --- Prepare model for inference ---
             if (streaming_project_name == 'Sample'):
                 if (streaming_model_name == 'ResNet50'):
-                    # --- Parameters of classification result area ---
-                    class_org = (5, 55)
-                    
                     # --- load model ---
                     pretrained_model = PredictorResNet50()
                     logging.info('-------------------------------------')
@@ -171,18 +173,27 @@ def usb_cam(request):
                 streaming_project = Project.objects.get(name=streaming_project_name)
                 if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
                     streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
-                        
+                    
+                    # --- Load config.json ---
+                    config_path = Path(streaming_model.model_dir, 'config.json')
+                    with open(config_path, 'r') as f:
+                        config_data = json.load(f)
+                    
+                    # --- Get input shape ---
+                    input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
+                    
+                    # --- Get task ---
+                    task = config_data['inference_parameter']['model']['task']['value']
+                    
                     # --- Create object of Pre-trained model ---
-                    pretrained_model = PredictorMlModel(streaming_model)
+                    pretrained_model = PredictorMlModel(streaming_model, input_shape, task)
                     logging.info('-------------------------------------')
                     logging.info(f'model_summary')
                     pretrained_model.pretrained_model.summary(print_fn=logging.info)
+                    logging.info(f'streaming_model.dataset.dataset_type: {streaming_model.dataset.dataset_type}')
                     logging.info(f'input_shape: {pretrained_model.input_shape}')
                     logging.info('-------------------------------------')
                     
-                    # --- T.B.D ---
-                    streaming_model_name = 'None'
-                    pretrained_model = None
                 else:
                     streaming_model_name = 'None'
                     pretrained_model = None
@@ -192,6 +203,10 @@ def usb_cam(request):
             model_name_org = (5, 35)
             model_name_text = f'Model: {streaming_model_name}'
             alpha = 0.8
+            
+            if ((pretrained_model is not None) and (pretrained_model.task == 'classification')):
+                # --- result area to draw the predicted class---
+                class_org = (5, 55)
             
             while True:
                 # --- Get Frame ---
@@ -208,7 +223,7 @@ def usb_cam(request):
                     # --- Infrerence ---
                     preds = pretrained_model.predict(overlay_for_inference)
                     pretrained_model.decode_predictions(preds)
-                
+                    
                 # --- Put Text ---
                 time_end = time.time()
                 processing_rate = 1.0 / (time_end - time_start)

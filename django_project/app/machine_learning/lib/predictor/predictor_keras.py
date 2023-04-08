@@ -70,22 +70,23 @@ class PredictorMlModel(Predictor):
     
     """
     
-    def __init__(self, mlmodel):
+    def __init__(self, mlmodel, input_shape, task):
         """Constructor
         
         This function is the construction of predictor.
         
         Args:
             mlmodel (object): MlModel class
+            input_shape (list): shape of input tensor
         """
         
         # --- initialize ---
-        dataset = mlmodel.dataset
-        if (dataset.dataset_type in ['img_clf', 'reg_clf']):
+        if (task in ['img_clf', 'reg_clf']):
             self.task = 'classification'
         else:
             self.task = 'object_detection'
         super().__init__(self.task)
+        self.input_shape = input_shape
         
         # --- load model ---
         trained_model_path = Path(mlmodel.model_dir, 'models', 'hdf5', 'model.h5')
@@ -98,7 +99,7 @@ class PredictorMlModel(Predictor):
             self.input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
     
     def preprocess_input(self, x):
-        """Preprocess input data
+        """Preprocess input data (T.B.D)
         
         This function pre-processes(cropping, scaling, etc) the input data ``x``.
         
@@ -141,12 +142,13 @@ class PredictorMlModel(Predictor):
         Return:
             
         """
-        decode_predictions = keras.applications.resnet50.decode_predictions
-        decoded_preds_ = decode_predictions(preds, top=5)[0]
         
-        self.decoded_preds['class_id'] = [decoded_preds_[i][0] for i in range(len(decoded_preds_))]
-        self.decoded_preds['class_name'] = [decoded_preds_[i][1] for i in range(len(decoded_preds_))]
-        self.decoded_preds['score'] = [decoded_preds_[i][2] for i in range(len(decoded_preds_))]
+        top5_score = np.sort(preds[0])[::-1][0:5]
+        top5_class_id = np.argsort(preds[0])[::-1][0:5]
+        
+        self.decoded_preds['class_id'] = top5_class_id
+        self.decoded_preds['class_name'] = [f'class{i}' for i in top5_class_id]
+        self.decoded_preds['score'] = top5_score
 
 class PredictorResNet50(Predictor):
     """Predictor

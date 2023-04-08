@@ -312,6 +312,16 @@ class MlParams():
                         'selectable': False,
                     },
                 },
+                'model': {
+                    'task': {
+                        'name': 'Task',
+                        'description': 'Task',
+                        'dtype': 'str',
+                        'value': 'img_clf',
+                        'configurable': False,
+                        'selectable': False,
+                    },
+                },
             },
         }
 
