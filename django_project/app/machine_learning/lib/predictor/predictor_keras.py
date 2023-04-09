@@ -97,9 +97,11 @@ class PredictorMlModel(Predictor):
         with open(config_path, 'r') as f:
             config_data = json.load(f)
             self.input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
+            self.norm_coef_a = config_data['inference_parameter']['preprocessing']['norm_coef_a']['value']
+            self.norm_coef_b = config_data['inference_parameter']['preprocessing']['norm_coef_b']['value']
     
     def preprocess_input(self, x):
-        """Preprocess input data (T.B.D)
+        """Preprocess input data
         
         This function pre-processes(cropping, scaling, etc) the input data ``x``.
         
@@ -110,7 +112,7 @@ class PredictorMlModel(Predictor):
             pre-processed data as np.array
         """
         
-        y = x
+        y = (x.astype(float) - self.norm_coef_a) / self.norm_coef_b
         
         return y
     
@@ -168,6 +170,22 @@ class PredictorResNet50(Predictor):
         self.pretrained_model = keras.applications.ResNet50()
         self.input_shape = [224, 224, 3]
     
+    def preprocess_input(self, x):
+        """Preprocess input data
+        
+        This function pre-processes(cropping, scaling, etc) the input data ``x``.
+        
+        Args:
+            x (np.array): input data
+        
+        Returns:
+            pre-processed data as np.array
+        """
+        
+        y = x
+        
+        return y
+        
     def predict(self, x):
         """Predict
         
@@ -223,6 +241,22 @@ class PredictorCenterNetHourGlass104(Predictor):
         url = 'https://tfhub.dev/tensorflow/centernet/hourglass_512x512/1'
         self.pretrained_model = hub.load(url)
         self.input_shape = [512, 512, 3]
+        
+    def preprocess_input(self, x):
+        """Preprocess input data
+        
+        This function pre-processes(cropping, scaling, etc) the input data ``x``.
+        
+        Args:
+            x (np.array): input data
+        
+        Returns:
+            pre-processed data as np.array
+        """
+        
+        y = x
+        
+        return y
         
     def predict(self, x):
         """Predict
