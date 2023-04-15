@@ -27,6 +27,7 @@
         </button>
         <ul class="dropdown-menu">
           <li><button class="dropdown-item" type="submit" name="streaming_view_interface_dropdown" value="USB Camera">USB Camera</button></li>
+          <li><button class="dropdown-item" type="submit" name="streaming_view_interface_dropdown" value="YouTube">YouTube</button></li>
           <li><button class="dropdown-item" type="submit" name="streaming_view_interface_dropdown" value="Network Camera">Network Camera</button></li>
         </ul>
       </div>
@@ -108,6 +109,82 @@
       
       <div class="col-10 mt-2">
         <img src="{% url 'view_streaming_usb_cam' %}">
+      </div>
+    {% elif streaming_interface|stringformat:'s' == 'YouTube' %}
+      <h1 class="h3">Select Project</h1>
+      <form method="post">
+        {% csrf_token %}
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if streaming_view_selected_project %}
+                {{ streaming_view_selected_project }}
+              {% else %}
+                Select Project
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu">
+            <li><button class="dropdown-item" type="submit" name="streaming_view_project_dropdown" value="Sample">Sample</button></li>
+            {% for project_ in project %}
+              <li><button class="dropdown-item" type="submit" name="streaming_view_project_dropdown" value="{{ project_.name }}">{{ project_.name }}</button></li>
+            {% endfor %}
+            </ul>
+          </div>
+      </form>
+      
+      <h1 class="h3">Select Model</h1>
+      {% if model|in_project:streaming_view_selected_project_obj %}
+        <form method="post">
+          {% csrf_token %}
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if streaming_view_selected_model %}
+                  {{ streaming_view_selected_model }}
+                {% else %}
+                  Select Model
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for model_ in model %}
+                <li><button class="dropdown-item" type="submit" name="streaming_view_model_dropdown" value="{{ model_ }}">{{ model_ }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+        </form>
+        
+      {% else %}
+        <p>[T.B.D] This is sample models of pre-trained</p>
+        <h1 class="h4 ms-2">Pre-trained model list</h1>
+        <h1 class="h5 ms-4">Classification</h1>
+        <ul class="ms-5">
+          <li>Resnet50</li>
+        </ul>
+        <h1 class="h5 ms-4">Object Detection</h1>
+        <ul class="ms-5">
+          <li>CenterNetHourGlass104</li>
+        </ul>
+        
+        <form method="post">
+          {% csrf_token %}
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if streaming_view_selected_model %}
+                {{ streaming_view_selected_model }}
+              {% else %}
+                Select Model
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu">
+              <li><button class="dropdown-item" type="submit" name="streaming_view_model_dropdown" value="None">None</button></li>
+              {% for model_name in pretrained_model_list %}
+                <li><button class="dropdown-item" type="submit" name="streaming_view_model_dropdown" value="{{ model_name }}">{{ model_name }}</button></li>
+              {% endfor %}
+            </ul>
+          </div>
+        </form>
+      {% endif %}
+      
+      <div class="col-10 mt-2">
+        <img src="{% url 'view_streaming_youtube' %}">
       </div>
     {% elif streaming_interface|stringformat:'s' == 'Network Camera' %}
       <!-- Set IP address and PORT -->
