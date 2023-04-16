@@ -304,13 +304,15 @@ def youtube(request):
         
         #resolution = '720p60'
         resolution = '240p'
-        url = 'https://www.youtube.com/watch?v=LXb3EKWsInQ'
-        #url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
+        #url = 'https://www.youtube.com/watch?v=LXb3EKWsInQ'
+        url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
+        
         cap = cap_from_youtube(url, resolution)
         
-        width = 320
+        width = 427
         height = 240
         fps = 30
+        frame_duration = 1 / fps
         
         # --- Prepare model for inference ---
         if (streaming_project_name == 'Sample'):
@@ -401,6 +403,11 @@ def youtube(request):
             time_end = time.time()
             processing_rate = 1.0 / (time_end - time_start)
             fps_text = f'fps : {processing_rate:.02f}'
+            
+            sleep_time = frame_duration - (time_end - time_start)
+            if (sleep_time > 0):
+                time.sleep(sleep_time)
+            
             if (pretrained_model is not None):
                 if (pretrained_model.task == 'classification'):
                     prediction_area = np.zeros([height, 320, 3], np.uint8)
