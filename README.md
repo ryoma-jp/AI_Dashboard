@@ -72,6 +72,11 @@ ToDoのメモ．思いついたら順次追加する．
   * [ ] Netron導入検討
 * AutoML
   * [ ] MLFlow連携検討
+* Explainable AI
+  * [ ] LIME : [Why Should I Trust You?": Explaining the Predictions of Any Classifier](https://arxiv.org/abs/1602.04938)
+  * [ ] SHAP : [A Unified Approach to Interpreting Model Predictions](https://arxiv.org/abs/1705.07874)
+  * [ ] Grad-CAM : [Visual Explanations from Deep Networks via Gradient-based Localization](https://arxiv.org/abs/1610.02391)
+  * [ ] Parameter Space Saliency : [Where do Models go Wrong? Parameter-Space Saliency Maps for Explainability](https://arxiv.org/abs/2108.01335)
 
 # 使用方法
 
@@ -1239,6 +1244,9 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
 * [【Django】モデルフィールド：オプションnullとblankの違いについて](https://office54.net/python/django/null-blank-difference)
 * [DjangoのSECRET_KEYをバージョン管理対象外にする](https://qiita.com/haessal/items/abaef7ee4fdbd3b218f5)
 * [Django プロジェクトの settings.py に定義された変数を利用する](https://qiita.com/mizoe@github/items/da10fa3312545356c099)
+* [[Python][Django] StreamingHttpResponseでカメラストリーミング](https://deecode.net/?p=382)
+  * DjangoでWebページ上にストリーミング再生をする場合は，``StreamingHttpResponse``を使う
+  * ``templates``では``img``タグで画像を表示するように実装し，Djangoバックエンドでフレーム画像のバイナリデータを送信する
 
 ## HTML
 
@@ -1270,6 +1278,7 @@ Bootstrap5の機能を使用してサイドメニューの作成と画面遷移�
 ## Tensorflow / Keras
 
 * [Keras: release memory after finish training process](https://stackoverflow.com/questions/51005147/keras-release-memory-after-finish-training-process/52354943)
+* [Vertex Explainable AI で TensorFlow を使用する](https://cloud.google.com/vertex-ai/docs/explainable-ai/tensorflow?hl=ja)
 
 ## Jupyter Notebook
 
@@ -1332,3 +1341,7 @@ $ sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
   * [docker-composeで環境変数を設定する](https://qiita.com/reflet/items/a96752b4cd3838ea6932)
   * [Docker Compose v2 以降環境変数にインラインコマンドが使えないっぽい](https://ema-hiro.hatenablog.com/entry/2021/10/11/131455)
 
+### YouTube動画をPythonで取り込む方法（2023.4版）
+
+* [cap_from_youtube](https://github.com/ibaiGorordo/cap_from_youtube)を使う
+  * [youtube-dl](https://github.com/ytdl-org/youtube-dl)や[yt-dlp](https://github.com/yt-dlp/yt-dlp)の方法も見つかったが，スマートに実装できず，``cap_from_youtube``を採用した
