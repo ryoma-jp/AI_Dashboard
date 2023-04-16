@@ -24,6 +24,134 @@ from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url
 
 # Create your views here.
 
+def _get_model_for_inference(streaming_project_name, streaming_model_name, height, width):
+    """Get Model for Inference
+    
+    This function is internal in the streaming view, gets the model for inference.
+    
+    Args:
+        streaming_project_name (string): project name in Streaming view
+        streaming_model_name (string): model name in Streaming view
+        height (int): image height to view
+        width (int): image width to view
+        
+    Returns:
+        model name and model object
+            - streaming_model_name
+            - pretrained_model
+    """
+    
+    categories_coco2017 = None
+    if (streaming_project_name == 'Sample'):
+        if (streaming_model_name == 'ResNet50'):
+            # --- load model ---
+            pretrained_model = PredictorResNet50()
+            logging.info('-------------------------------------')
+            logging.info(pretrained_model.pretrained_model)
+            logging.info('-------------------------------------')
+        elif (streaming_model_name == 'CenterNetHourGlass104'):
+            # --- Parameters to draw detection result ---
+            if (not Path('/tmp/annotations/instances_val2017.json').exists()):
+                url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
+                download_file(url, save_dir='/tmp')
+                zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
+            with open('/tmp/annotations/instances_val2017.json', 'r') as f:
+                instances_val2017 = json.load(f)
+                categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
+            
+            # --- Create object of Pre-trained model ---
+            pretrained_model = PredictorCenterNetHourGlass104()
+        else:
+            pretrained_model = None
+            logging.info('-------------------------------------')
+            logging.info(f'Unknown streaming model: streaming_model_name={streaming_model_name}')
+            logging.info('-------------------------------------')
+    else:
+        streaming_project = Project.objects.get(name=streaming_project_name)
+        if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
+            streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
+            
+            # --- Load config.json ---
+            config_path = Path(streaming_model.model_dir, 'config.json')
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+            
+            # --- Get input shape ---
+            input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
+            
+            # --- Get task ---
+            task = config_data['inference_parameter']['model']['task']['value']
+            
+            # --- Create object of Pre-trained model ---
+            pretrained_model = PredictorMlModel(streaming_model, input_shape, task)
+            logging.info('-------------------------------------')
+            logging.info(f'model_summary')
+            pretrained_model.pretrained_model.summary(print_fn=logging.info)
+            logging.info(f'streaming_model.dataset.dataset_type: {streaming_model.dataset.dataset_type}')
+            logging.info(f'input_shape: {pretrained_model.input_shape}')
+            logging.info('-------------------------------------')
+            
+        else:
+            streaming_model_name = 'None'
+            pretrained_model = None
+
+    return streaming_model_name, pretrained_model, categories_coco2017
+
+def _create_frame(frame, overlay, 
+                  pretrained_model, 
+                  fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
+                  height, width, 
+                  categories_coco2017):
+    """Create Frame
+    
+    This function is internal in the streaming view, creates the frame to draw in the streaming view.
+    
+    Args:
+    """
+    if (pretrained_model is not None):
+        if (pretrained_model.task == 'classification'):
+            prediction_area = np.zeros([height, 320, 3], np.uint8)
+            cv2.putText(prediction_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+            cv2.putText(prediction_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,225,0))
+            
+            cv2.putText(prediction_area, 'class_name:', class_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
+            for i in range(len(pretrained_model.decoded_preds["class_name"])):
+                class_text_ = f'  * {pretrained_model.decoded_preds["class_name"][i]}'
+                class_org_ = (class_org[0], class_org[1] + (i+1)*20)
+                cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
+            
+            frame = cv2.hconcat([frame, prediction_area])
+        elif (pretrained_model.task == 'object_detection'):
+            information_area = np.zeros([height, 320, 3], np.uint8)
+            cv2.putText(information_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250, 225, 0))
+            cv2.putText(information_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100, 225, 0))
+            
+            if (len(pretrained_model.decoded_preds['detection_boxes']) > 0):
+                boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * [height, width, height, width], dtype=int)
+                for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
+                    cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
+                    cv2.putText(overlay,
+                                categories_coco2017[class_],
+                                [box_[1], box_[0]-8],
+                                fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
+                
+            frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+            frame = cv2.hconcat([frame, information_area])
+        else:
+            cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
+            cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+            cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
+            cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
+            frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
+    else:
+        cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
+        cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
+        cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
+        cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
+        frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+    
+    return frame
+    
 def view_streaming(request):
     """ Function: view_streaming
      * view_streaming top
@@ -162,59 +290,7 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
-            if (streaming_project_name == 'Sample'):
-                if (streaming_model_name == 'ResNet50'):
-                    # --- load model ---
-                    pretrained_model = PredictorResNet50()
-                    logging.info('-------------------------------------')
-                    logging.info(pretrained_model.pretrained_model)
-                    logging.info('-------------------------------------')
-                elif (streaming_model_name == 'CenterNetHourGlass104'):
-                    # --- Parameters to draw detection result ---
-                    to_pixel = [height, width, height, width]
-                    if (not Path('/tmp/annotations/instances_val2017.json').exists()):
-                        url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
-                        download_file(url, save_dir='/tmp')
-                        zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
-                    with open('/tmp/annotations/instances_val2017.json', 'r') as f:
-                        instances_val2017 = json.load(f)
-                        categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
-                    
-                    # --- Create object of Pre-trained model ---
-                    pretrained_model = PredictorCenterNetHourGlass104()
-                else:
-                    pretrained_model = None
-                    logging.info('-------------------------------------')
-                    logging.info(f'Unknown streaming model: streaming_model_name={streaming_model_name}')
-                    logging.info('-------------------------------------')
-            else:
-                streaming_project = Project.objects.get(name=streaming_project_name)
-                if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
-                    streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
-                    
-                    # --- Load config.json ---
-                    config_path = Path(streaming_model.model_dir, 'config.json')
-                    with open(config_path, 'r') as f:
-                        config_data = json.load(f)
-                    
-                    # --- Get input shape ---
-                    input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
-                    
-                    # --- Get task ---
-                    task = config_data['inference_parameter']['model']['task']['value']
-                    
-                    # --- Create object of Pre-trained model ---
-                    pretrained_model = PredictorMlModel(streaming_model, input_shape, task)
-                    logging.info('-------------------------------------')
-                    logging.info(f'model_summary')
-                    pretrained_model.pretrained_model.summary(print_fn=logging.info)
-                    logging.info(f'streaming_model.dataset.dataset_type: {streaming_model.dataset.dataset_type}')
-                    logging.info(f'input_shape: {pretrained_model.input_shape}')
-                    logging.info('-------------------------------------')
-                    
-                else:
-                    streaming_model_name = 'None'
-                    pretrained_model = None
+            streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(streaming_project_name, streaming_model_name, height, width)
             
             # --- Set fixed parameters ---
             fps_org = (5, 15)
@@ -222,6 +298,7 @@ def usb_cam(request):
             model_name_text = f'Model: {streaming_model_name}'
             alpha = 0.8
             
+            class_org = None
             if ((pretrained_model is not None) and (pretrained_model.task == 'classification')):
                 # --- result area to draw the predicted class---
                 class_org = (5, 55)
@@ -246,48 +323,13 @@ def usb_cam(request):
                 time_end = time.time()
                 processing_rate = 1.0 / (time_end - time_start)
                 fps_text = f'fps : {processing_rate:.02f}'
-                if (pretrained_model is not None):
-                    if (pretrained_model.task == 'classification'):
-                        prediction_area = np.zeros([height, 320, 3], np.uint8)
-                        cv2.putText(prediction_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                        cv2.putText(prediction_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,225,0))
-                        
-                        cv2.putText(prediction_area, 'class_name:', class_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
-                        for i in range(len(pretrained_model.decoded_preds["class_name"])):
-                            class_text_ = f'  * {pretrained_model.decoded_preds["class_name"][i]}'
-                            class_org_ = (class_org[0], class_org[1] + (i+1)*20)
-                            cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
-                        
-                        frame = cv2.hconcat([frame, prediction_area])
-                    elif (pretrained_model.task == 'object_detection'):
-                        information_area = np.zeros([height, 320, 3], np.uint8)
-                        cv2.putText(information_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250, 225, 0))
-                        cv2.putText(information_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100, 225, 0))
-                        
-                        if (len(pretrained_model.decoded_preds['detection_boxes']) > 0):
-                            boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * to_pixel, dtype=int)
-                            for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
-                                cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                                cv2.putText(overlay,
-                                            categories_coco2017[class_],
-                                            [box_[1], box_[0]-8],
-                                            fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
-                            
-                        frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
-                        frame = cv2.hconcat([frame, information_area])
-                    else:
-                        cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
-                        cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                        cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
-                        cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
-                        frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
-                else:
-                    cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
-                    cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                    cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
-                    cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
-                    frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
-
+                
+                frame = _create_frame(frame, overlay, 
+                      pretrained_model, 
+                      fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
+                      height, width, 
+                      categories_coco2017)
+                
                 # --- Encode and Return byte frame ---
                 image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
                 yield (b'--frame\r\n'
@@ -331,59 +373,7 @@ def youtube(request):
         frame_duration = 1 / fps
         
         # --- Prepare model for inference ---
-        if (streaming_project_name == 'Sample'):
-            if (streaming_model_name == 'ResNet50'):
-                # --- load model ---
-                pretrained_model = PredictorResNet50()
-                logging.info('-------------------------------------')
-                logging.info(pretrained_model.pretrained_model)
-                logging.info('-------------------------------------')
-            elif (streaming_model_name == 'CenterNetHourGlass104'):
-                # --- Parameters to draw detection result ---
-                to_pixel = [height, width, height, width]
-                if (not Path('/tmp/annotations/instances_val2017.json').exists()):
-                    url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
-                    download_file(url, save_dir='/tmp')
-                    zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
-                with open('/tmp/annotations/instances_val2017.json', 'r') as f:
-                    instances_val2017 = json.load(f)
-                    categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
-                
-                # --- Create object of Pre-trained model ---
-                pretrained_model = PredictorCenterNetHourGlass104()
-            else:
-                pretrained_model = None
-                logging.info('-------------------------------------')
-                logging.info(f'Unknown streaming model: streaming_model_name={streaming_model_name}')
-                logging.info('-------------------------------------')
-        else:
-            streaming_project = Project.objects.get(name=streaming_project_name)
-            if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
-                streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
-                
-                # --- Load config.json ---
-                config_path = Path(streaming_model.model_dir, 'config.json')
-                with open(config_path, 'r') as f:
-                    config_data = json.load(f)
-                
-                # --- Get input shape ---
-                input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
-                
-                # --- Get task ---
-                task = config_data['inference_parameter']['model']['task']['value']
-                
-                # --- Create object of Pre-trained model ---
-                pretrained_model = PredictorMlModel(streaming_model, input_shape, task)
-                logging.info('-------------------------------------')
-                logging.info(f'model_summary')
-                pretrained_model.pretrained_model.summary(print_fn=logging.info)
-                logging.info(f'streaming_model.dataset.dataset_type: {streaming_model.dataset.dataset_type}')
-                logging.info(f'input_shape: {pretrained_model.input_shape}')
-                logging.info('-------------------------------------')
-                
-            else:
-                streaming_model_name = 'None'
-                pretrained_model = None
+        streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(streaming_project_name, streaming_model_name, height, width)
         
         # --- Set fixed parameters ---
         fps_org = (5, 15)
@@ -391,6 +381,7 @@ def youtube(request):
         model_name_text = f'Model: {streaming_model_name}'
         alpha = 0.8
         
+        class_org = None
         if ((pretrained_model is not None) and (pretrained_model.task == 'classification')):
             # --- result area to draw the predicted class---
             class_org = (5, 55)
@@ -424,47 +415,11 @@ def youtube(request):
             if (sleep_time > 0):
                 time.sleep(sleep_time)
             
-            if (pretrained_model is not None):
-                if (pretrained_model.task == 'classification'):
-                    prediction_area = np.zeros([height, 320, 3], np.uint8)
-                    cv2.putText(prediction_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                    cv2.putText(prediction_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,225,0))
-                    
-                    cv2.putText(prediction_area, 'class_name:', class_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
-                    for i in range(len(pretrained_model.decoded_preds["class_name"])):
-                        class_text_ = f'  * {pretrained_model.decoded_preds["class_name"][i]}'
-                        class_org_ = (class_org[0], class_org[1] + (i+1)*20)
-                        cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
-                    
-                    frame = cv2.hconcat([frame, prediction_area])
-                elif (pretrained_model.task == 'object_detection'):
-                    information_area = np.zeros([height, 320, 3], np.uint8)
-                    cv2.putText(information_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250, 225, 0))
-                    cv2.putText(information_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100, 225, 0))
-                    
-                    if (len(pretrained_model.decoded_preds['detection_boxes']) > 0):
-                        boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * to_pixel, dtype=int)
-                        for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
-                            cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                            cv2.putText(overlay,
-                                        categories_coco2017[class_],
-                                        [box_[1], box_[0]-8],
-                                        fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
-                        
-                    frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
-                    frame = cv2.hconcat([frame, information_area])
-                else:
-                    cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
-                    cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                    cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
-                    cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
-                    frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
-            else:
-                cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
-                cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
-                cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
-                cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
-                frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
+            frame = _create_frame(frame, overlay, 
+                                  pretrained_model, 
+                                  fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
+                                  height, width, 
+                                  categories_coco2017)
 
             # --- Encode and Return byte frame ---
             image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
