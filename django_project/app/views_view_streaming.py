@@ -6,6 +6,7 @@ import json
 import requests
 import tarfile
 import numpy as np
+import validators
 
 from pathlib import Path
 from PIL import Image
@@ -50,7 +51,9 @@ def view_streaming(request):
             request.session['streaming_selected_project'] = request.POST.getlist('streaming_view_project_dropdown')[0]
         elif ('streaming_view_model_dropdown' in request.POST):
             request.session['streaming_selected_model'] = request.POST.getlist('streaming_view_model_dropdown')[0]
-        elif ('view_streaming_apply' in request.POST):
+        elif ('view_streaming_youtube_url_apply' in request.POST):
+            request.session['streaming_youtube_url'] = request.POST.getlist('view_streaming_youtube_url')[0]
+        elif ('view_streaming_ipaddr_apply' in request.POST):
             ip_addr = [
                 request.POST['ip_0'],
                 request.POST['ip_1'],
@@ -92,6 +95,19 @@ def view_streaming(request):
     port = request.session.get('port', '0')
     valid_url = _check_url(ip_addr, port)
     
+    default_url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
+    youtube_url = request.session.get('streaming_youtube_url', default_url)
+    if (not validators.url(youtube_url)):
+        # --- if got the invalid url, set default_url ---
+        request.session['streaming_youtube_url'] = default_url
+        youtube_url = default_url
+    else:
+        try:
+            cap_from_youtube(url, resolution)
+        except:
+            request.session['streaming_youtube_url'] = default_url
+            youtube_url = default_url
+    
     sidebar_status = SidebarActiveStatus()
     sidebar_status.view_streaming = 'active'
         
@@ -109,6 +125,7 @@ def view_streaming(request):
         'ip_addr': ip_addr,
         'port': port,
         'valid_url': valid_url,
+        'youtube_url': youtube_url,
     }
     return render(request, 'view_streaming.html', context)
 
@@ -302,10 +319,9 @@ def youtube(request):
         streaming_model_name = request.session.get('streaming_selected_model', 'None')
         pretrained_model_list = request.session.get('pretrained_model_list', [''])
         
-        #resolution = '720p60'
-        resolution = '240p'
-        #url = 'https://www.youtube.com/watch?v=LXb3EKWsInQ'
-        url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
+        resolution = '240p'    # T.B.D
+        default_url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
+        url = request.session.get('streaming_youtube_url', default_url)
         
         cap = cap_from_youtube(url, resolution)
         

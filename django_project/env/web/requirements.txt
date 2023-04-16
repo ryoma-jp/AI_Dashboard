@@ -20,3 +20,4 @@ torchvision==0.13.1+cu113
 torchaudio==0.12.1
 
 cap-from-youtube==0.0.9
+validators==0.20.0

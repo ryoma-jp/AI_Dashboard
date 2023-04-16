@@ -183,6 +183,19 @@
         </form>
       {% endif %}
       
+      <!-- Set YouTube URL -->
+      <form method="post">
+        {% csrf_token %}
+        <div class="row">
+          <label class="col-sm-2 col-form-label">URL</label>
+          <div class="col">
+            <input type="text" class="form-control mb-1" placeholder="0" name="view_streaming_youtube_url" value="{{ youtube_url }}">
+          </div>
+        </div>
+        
+        <button type="submit" name="view_streaming_youtube_url_apply" class="btn btn-primary mb-2">Apply</button>
+      </form>
+      
       <div class="col-10 mt-2">
         <img src="{% url 'view_streaming_youtube' %}">
       </div>
@@ -216,7 +229,7 @@
           </div>
         </div>
         
-        <button type="submit" name="view_streaming_apply" class="btn btn-primary mb-2">Apply</button>
+        <button type="submit" name="view_streaming_ipaddr_apply" class="btn btn-primary mb-2">Apply</button>
       </form>
       
       <!-- Streaming Area -->
