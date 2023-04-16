@@ -132,6 +132,22 @@ class MlParams():
                     'selectable': True,
                     'items': ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet', 'LightGBM'],
                 },
+                'input_tensor_name': {
+                    'name': 'Input Tensor Name',
+                    'description': 'Input Tensor Name',
+                    'dtype': 'str',
+                    'value': '',
+                    'configurable': False,
+                    'selectable': False,
+                },
+                'output_tensor_name': {
+                    'name': 'Output Tensor Name',
+                    'description': 'Output Tensor Name',
+                    'dtype': 'str',
+                    'value': '',
+                    'configurable': False,
+                    'selectable': False,
+                },
             },
             'mlp_structure': {
                 'num_of_hidden_nodes': {

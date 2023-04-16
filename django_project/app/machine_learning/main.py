@@ -241,6 +241,8 @@ def main():
         trainer.save_model()
         
         # --- update config file ---
+        config_data['model']['input_tensor_name']['value'] = trainer.input_tensor_name
+        config_data['model']['output_tensor_name']['value'] = trainer.output_tensor_name
         config_data['inference_parameter']['preprocessing']['norm_coef_a']['value'] = dataset.preprocessing_params['norm_coef'][0]
         config_data['inference_parameter']['preprocessing']['norm_coef_b']['value'] = dataset.preprocessing_params['norm_coef'][1]
         config_data['inference_parameter']['preprocessing']['input_shape']['value'] = dataset.train_x.shape[1:]

@@ -144,11 +144,11 @@ class Trainer():
         # --- モデル構築 ---
         def _load_model(model_file):
             if (model_file is not None):
-                return keras.models.load_model(model_file)
+                return keras.models.load_model(model_file), '', ''
             else:
-                return None
+                return None, '', ''
         
-        self.model = _load_model(model_file)
+        self.model, self.input_tensor_name, self.output_tensor_name = _load_model(model_file)
         if (self.model is not None):
             self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
         
@@ -519,12 +519,12 @@ class TrainerKerasResNet(Trainer):
 
             x = keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
             x = keras.layers.Dropout(dropout_rate)(x)
-            x = keras.layers.Dense(classes, activation='softmax', name='predictions')(x)
+            y = keras.layers.Dense(classes, activation='softmax', name='predictions')(x)
             
-            model = keras.models.Model(input, x)
+            model = keras.models.Model(input, y)
             model.summary()
             
-            return model
+            return model, input.name, y.name
             
         # --- モデル構築 ---
         #  * stack_fn()の関数ポインタを引数に設定してカスタマイズ
@@ -546,12 +546,12 @@ class TrainerKerasResNet(Trainer):
 
             x = keras.layers.GlobalAveragePooling2D(name='avg_pool')(x)
             x = keras.layers.Dropout(dropout_rate)(x)
-            x = keras.layers.Dense(classes, activation='softmax', name='predictions')(x)
+            y = keras.layers.Dense(classes, activation='softmax', name='predictions')(x)
             
-            model = keras.models.Model(input, x)
+            model = keras.models.Model(input, y)
             model.summary()
             
-            return model
+            return model, input.name, y.name
             
         def _load_model_resnet50(input_shape, classes, initializer='glorot_uniform', dropout_rate=0.0, pretrained=True):
             # --- TensorFlowのResNet50のモデル ---
@@ -587,7 +587,7 @@ class TrainerKerasResNet(Trainer):
                     x = stack1(x, 32, 3, stride1=1, dropout_rate=dropout_rate, name='conv2')
                     return stack1(x, 64, 4, dropout_rate=dropout_rate, name='conv3')
                 
-                self.model = _load_model(input_shape, classes, stack_fn, initializer=self.initializer, dropout_rate=self.dropout_rate)
+                self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape, classes, stack_fn, initializer=self.initializer, dropout_rate=self.dropout_rate)
                 self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             elif (model_type == 'custom_deep'):
                 def stack_fn(x, dropout_rate=0.0):
@@ -595,10 +595,10 @@ class TrainerKerasResNet(Trainer):
                     x = stack1(x, 32, 18, dropout_rate=dropout_rate, name='conv3')
                     return stack1(x, 64, 18, dropout_rate=dropout_rate, name='conv4')
                 
-                self.model = _load_model_deep(input_shape, classes, stack_fn, initializer=self.initializer, dropout_rate=self.dropout_rate)
+                self.model, self.input_tensor_name, self.output_tensor_name = _load_model_deep(input_shape, classes, stack_fn, initializer=self.initializer, dropout_rate=self.dropout_rate)
                 self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             elif (model_type == 'resnet50'):
-                self.model = _load_model_resnet50(input_shape, classes, initializer=self.initializer, dropout_rate=self.dropout_rate, pretrained=False)
+                self.model, self.input_tensor_name, self.output_tensor_name = _load_model_resnet50(input_shape, classes, initializer=self.initializer, dropout_rate=self.dropout_rate, pretrained=False)
                 self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             else:
                 print('[ERROR] Unknown model_type: {}'.format(model_type))
@@ -655,20 +655,22 @@ class TrainerKerasCNN(Trainer):
         
         # --- モデル構築(baseline) ---
         def _load_model(input_shape, initializer='glorot_uniform'):
-            model = keras.models.Sequential()
-            model.add(keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape, kernel_initializer=initializer))
-            model.add(keras.layers.MaxPooling2D((2, 2)))
-            model.add(keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer=initializer))
-            model.add(keras.layers.MaxPooling2D((2, 2)))
-            model.add(keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer=initializer))
-            model.add(keras.layers.MaxPooling2D((2, 2)))
-            model.add(keras.layers.Flatten(input_shape=input_shape))
-            model.add(keras.layers.Dense(64, activation='relu'))
-            model.add(keras.layers.Dense(classes, activation='softmax'))
+            input = keras.layers.Input(shape=input_shape)
             
+            x = keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape, kernel_initializer=initializer)(input)
+            x = keras.layers.MaxPooling2D((2, 2))(x)
+            x = keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer=initializer)(x)
+            x = keras.layers.MaxPooling2D((2, 2))(x)
+            x = keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer=initializer)(x)
+            x = keras.layers.MaxPooling2D((2, 2))(x)
+            x = keras.layers.Flatten()(x)
+            x = keras.layers.Dense(64, activation='relu')(x)
+            y = keras.layers.Dense(classes, activation='softmax')(x)
+            
+            model = keras.models.Model(input, y)
             model.summary()
             
-            return model
+            return model, input.name, y.name
         
         # --- モデル構築(deep_model) ---
         def _load_model_deep(input_shape, initializer='glorot_uniform'):
@@ -703,12 +705,12 @@ class TrainerKerasCNN(Trainer):
             x = keras.layers.Dropout(0.5)(x)
             x = keras.layers.Dense(1024, activation="relu")(x)
             x = keras.layers.Dropout(0.5)(x)
-            x = keras.layers.Dense(classes, activation="softmax")(x)
+            y = keras.layers.Dense(classes, activation="softmax")(x)
             
-            model = keras.models.Model(input, x)
+            model = keras.models.Model(input, y)
             model.summary()
             
-            return model
+            return model, input.name, y.name
         
         # --- 基底クラスの初期化 ---
         super().__init__(output_dir=output_dir, model_file=model_file,
@@ -721,9 +723,9 @@ class TrainerKerasCNN(Trainer):
         # --- モデル構築 ---
         if (self.model is None):
             if (model_type == 'baseline'):
-                self.model = _load_model(input_shape, initializer=self.initializer)
+                self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape, initializer=self.initializer)
             elif (model_type == 'deep_model'):
-                self.model = _load_model_deep(input_shape, initializer=self.initializer)
+                self.model, self.input_tensor_name, self.output_tensor_name = _load_model_deep(input_shape, initializer=self.initializer)
             else:
                 print('[ERROR] Unknown model_type: {}'.format(model_type))
                 quit()
@@ -788,21 +790,23 @@ class TrainerKerasMLP(Trainer):
                 hidden_activation = 'sigmoid'
                 output_activation = 'linear'
             
-            model = keras.models.Sequential()
-            model.add(keras.layers.Flatten(input_shape=input_shape))
-            for num in self.num_of_hidden_nodes:
-                model.add(keras.layers.Dense(num,
-                                             kernel_initializer=self.initializer,
-                                             bias_initializer='zeros',
-                                             activation=hidden_activation))
-            model.add(keras.layers.Dense(classes,
-                                         kernel_initializer=self.initializer,
-                                         bias_initializer='zeros',
-                                         activation=output_activation))
+            input = keras.layers.Input(shape=input_shape)
+            x = keras.layers.Flatten()(input)
+            for i, num in enumerate(self.num_of_hidden_nodes):
+                x = keras.layers.Dense(num,
+                                       kernel_initializer=self.initializer,
+                                       bias_initializer='zeros',
+                                       activation=hidden_activation,
+                                       name=f'dense_{i}')(x)
+            y = keras.layers.Dense(classes, 
+                                   kernel_initializer=self.initializer,
+                                   bias_initializer='zeros',
+                                   activation=output_activation)(x)
             
+            model = keras.models.Model(input, y)
             model.summary()
             
-            return model
+            return model, input.name, y.name
         
         # --- MLP固有パラメータの取得 ---
         self.num_of_hidden_nodes = pd.read_csv(io.StringIO(num_of_hidden_nodes), header=None, skipinitialspace=True).values[0].tolist()
@@ -817,7 +821,7 @@ class TrainerKerasMLP(Trainer):
         
         # --- モデル構築 ---
         if (self.model is None):
-            self.model = _load_model(input_shape)
+            self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape)
             self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             if (self.output_dir is not None):
                 keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)

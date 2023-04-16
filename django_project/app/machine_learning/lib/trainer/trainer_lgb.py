@@ -59,6 +59,10 @@ class TrainerLightGBM():
         
         """
         
+        # --- Initialize ---
+        self.input_tensor_name = ''
+        self.output_tensor_name = ''
+        
         # --- Load parameters ---
         self.web_app_ctrl_fifo = web_app_ctrl_fifo
         self.trainer_ctrl_fifo = trainer_ctrl_fifo
