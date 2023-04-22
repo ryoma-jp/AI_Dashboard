@@ -1,0 +1,360 @@
+{
+    "env": {
+        "web_app_ctrl_fifo": {
+            "name": "Web Application Control FIFO",
+            "description": "Web application control FIFO(Trainer → Web App)",
+            "dtype": "str",
+            "value": null,
+            "configurable": false
+        },
+        "trainer_ctrl_fifo": {
+            "name": "Trainer Control FIFO",
+            "description": "Trainer control FIFO(Web App → Trainer)",
+            "dtype": "str",
+            "value": null,
+            "configurable": false
+        },
+        "result_dir": {
+            "name": "Result Directory",
+            "description": "Directory into training result files(model, log, and etc)",
+            "dtype": "str",
+            "value": "/home/app/web/app/machine_learning/test/simple_cnn/result",
+            "configurable": false
+        },
+        "tensorboard_port": {
+            "name": "Tensorboard PORT",
+            "description": "PORT using Tensorboard",
+            "dtype": "int",
+            "value": 6006,
+            "configurable": false
+        }
+    },
+    "dataset": {
+        "dataset_name": {
+            "name": "Dataset Name",
+            "description": "Dataset name",
+            "dtype": "str",
+            "value": "CIFAR-10",
+            "configurable": false
+        },
+        "dataset_dir": {
+            "name": "Dataset Directory",
+            "description": "Dataset directory",
+            "dtype": "str",
+            "value": "/home/app/web/app/machine_learning/test/simple_cnn/dataset/",
+            "configurable": false
+        },
+        "norm": {
+            "name": "Normalization",
+            "description": "Normalization method",
+            "dtype": "str",
+            "value": "z-score",
+            "configurable": true,
+            "selectable": true,
+            "items": [
+                "none",
+                "max",
+                "max-min",
+                "z-score"
+            ]
+        },
+        "image_data_augmentation": {
+            "rotation_range": {
+                "name": "Rotation Range",
+                "description": "Rotation range",
+                "dtype": "int",
+                "value": 3,
+                "configurable": true,
+                "selectable": false
+            },
+            "width_shift_range": {
+                "name": "Width Shift Range",
+                "description": "Width range for horizontal shift",
+                "dtype": "float",
+                "value": 0.2,
+                "configurable": true,
+                "selectable": false
+            },
+            "height_shift_range": {
+                "name": "Height Shift Range",
+                "description": "Height range for vertical shift",
+                "dtype": "float",
+                "value": 0.2,
+                "configurable": true,
+                "selectable": false
+            },
+            "zoom_range": {
+                "name": "Zoom Range",
+                "description": "Zoom range",
+                "dtype": "float",
+                "value": 0.2,
+                "configurable": true,
+                "selectable": false
+            },
+            "channel_shift_range": {
+                "name": "Channel Shift Range",
+                "description": "Channel shift range",
+                "dtype": "float",
+                "value": 0.2,
+                "configurable": true,
+                "selectable": false
+            },
+            "horizontal_flip": {
+                "name": "Horizontal Flip",
+                "description": "Enable horizontal flip",
+                "dtype": "bool",
+                "value": true,
+                "configurable": true,
+                "selectable": true,
+                "items": [
+                    true,
+                    false
+                ]
+            }
+        }
+    },
+    "model": {
+        "model_type": {
+            "name": "Model Type",
+            "description": "Model Structure",
+            "dtype": "str",
+            "value": "SimpleCNN",
+            "configurable": true,
+            "selectable": true,
+            "items": [
+                "MLP",
+                "SimpleCNN",
+                "DeepCNN",
+                "SimpleResNet",
+                "DeepResNet",
+                "LightGBM"
+            ]
+        },
+        "input_tensor_name": {
+            "name": "Input Tensor Name",
+            "description": "Input Tensor Name",
+            "dtype": "str",
+            "value": "input_1",
+            "configurable": false,
+            "selectable": false
+        },
+        "output_tensor_name": {
+            "name": "Output Tensor Name",
+            "description": "Output Tensor Name",
+            "dtype": "str",
+            "value": "dense_1/Softmax:0",
+            "configurable": false,
+            "selectable": false
+        }
+    },
+    "mlp_structure": {
+        "num_of_hidden_nodes": {
+            "name": "Number of Hidden Nodes",
+            "description": "Number of hidden nodes in each layers (specify comma separated string)",
+            "dtype": "str",
+            "value": "128,64",
+            "configurable": true,
+            "selectable": false
+        }
+    },
+    "dnn_training_parameter": {
+        "optimizer": {
+            "name": "Optimizer",
+            "description": "Optimizer",
+            "dtype": "str",
+            "value": "momentum",
+            "configurable": true,
+            "selectable": true,
+            "items": [
+                "momentum",
+                "adam",
+                "sgd",
+                "adam_lrs",
+                "sgd_lrs"
+            ]
+        },
+        "batch_size": {
+            "name": "Batch Size",
+            "description": "Batch size",
+            "dtype": "int",
+            "value": 32,
+            "configurable": true,
+            "selectable": false
+        },
+        "learning_rate": {
+            "name": "Learning Rate",
+            "description": "Learning Rate",
+            "dtype": "float",
+            "value": 0.001,
+            "configurable": true,
+            "selectable": false
+        },
+        "initializer": {
+            "name": "Initializer",
+            "description": "Weight initializer",
+            "dtype": "str",
+            "value": "he_normal",
+            "configurable": true,
+            "selectable": true,
+            "items": [
+                "glrot_uniform",
+                "glrot_normal",
+                "he_uniform",
+                "he_normal"
+            ]
+        },
+        "dropout_rate": {
+            "name": "Dropout Rate",
+            "description": "Dropout rate",
+            "dtype": "float",
+            "value": 0.25,
+            "configurable": true,
+            "selectable": false
+        },
+        "loss_func": {
+            "name": "Loss Function",
+            "description": "Loss Function",
+            "dtype": "str",
+            "value": "categorical_crossentropy",
+            "configurable": true,
+            "selectable": true,
+            "items": [
+                "mean_squared_error",
+                "mean_absolute_error",
+                "binary_crossentropy",
+                "categorical_crossentropy",
+                "sparse_categorical_crossentropy"
+            ]
+        },
+        "epochs": {
+            "name": "EPOCHs",
+            "description": "Epochs",
+            "dtype": "int",
+            "value": 64,
+            "configurable": true,
+            "selectable": false
+        }
+    },
+    "lgb_training_parameter": {
+        "num_leaves": {
+            "name": "Number of Leaves",
+            "description": "Number of Leaves",
+            "dtype": "int",
+            "value": 32,
+            "configurable": true,
+            "selectable": false
+        },
+        "max_depth": {
+            "name": "Max Depth",
+            "description": "Max Depth",
+            "dtype": "int",
+            "value": 8,
+            "configurable": true,
+            "selectable": false
+        },
+        "learning_rate": {
+            "name": "Learning Rate",
+            "description": "Learning Rate",
+            "dtype": "float",
+            "value": 0.001,
+            "configurable": true,
+            "selectable": false
+        },
+        "feature_fraction": {
+            "name": "Feature Fraction",
+            "description": "Rate of feature to create each decision tree",
+            "dtype": "float",
+            "value": 1.0,
+            "configurable": true,
+            "selectable": false
+        },
+        "bagging_fraction": {
+            "name": "Bagging Fraction",
+            "description": "Rate of number of data sample",
+            "dtype": "float",
+            "value": 1.0,
+            "configurable": true,
+            "selectable": false
+        },
+        "bagging_freq": {
+            "name": "Bagging Frequency",
+            "description": "Frequency for bagging",
+            "dtype": "int",
+            "value": 0,
+            "configurable": true,
+            "selectable": false
+        },
+        "lambda_l1": {
+            "name": "Lambda L1",
+            "description": "Coefficient of L1 regularization",
+            "dtype": "float",
+            "value": 0.0,
+            "configurable": true,
+            "selectable": false
+        },
+        "lambda_l2": {
+            "name": "Lambda L2",
+            "description": "Coefficient of L2 regularization",
+            "dtype": "float",
+            "value": 0.0,
+            "configurable": true,
+            "selectable": false
+        },
+        "boosting": {
+            "name": "Boosting",
+            "description": "Boosting type",
+            "dtype": "str",
+            "value": "gbdt",
+            "configurable": true,
+            "selectable": true,
+            "items": [
+                "gbdt",
+                "dart",
+                "rf",
+                "goss"
+            ]
+        }
+    },
+    "inference_parameter": {
+        "preprocessing": {
+            "norm_coef_a": {
+                "name": "Normalization Coefficient (alpha)",
+                "description": "Coefficient of Normalization (alpha)",
+                "dtype": "float",
+                "value": 120.6779754313151,
+                "configurable": false,
+                "selectable": false
+            },
+            "norm_coef_b": {
+                "name": "Normalization Coefficient (beta)",
+                "description": "Coefficient of Normalization (beta)",
+                "dtype": "float",
+                "value": 64.19169405614151,
+                "configurable": false,
+                "selectable": false
+            },
+            "input_shape": {
+                "name": "Input Shape",
+                "description": "Shape of input data  ex) Image:[H, W, C](Color: C=3, Grayscale: C=1)",
+                "dtype": "list",
+                "value": [
+                    32,
+                    32,
+                    3
+                ],
+                "configurable": false,
+                "selectable": false
+            }
+        },
+        "model": {
+            "task": {
+                "name": "Task",
+                "description": "Task",
+                "dtype": "str",
+                "value": "img_clf",
+                "configurable": false,
+                "selectable": false
+            }
+        }
+    }
+}
