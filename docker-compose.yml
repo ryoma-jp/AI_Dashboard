@@ -20,6 +20,17 @@ services:
       - type: bind
         source: "./test/"
         target: "/home/app/web/test"
+      # app, project, and templates bind is for DEBUG.
+      #  - in production environment, these directories should be copied. copy processing will be described in Dockerfile.
+      - type: bind
+        source: "./django_project/app/"
+        target: "/home/app/web/app"
+      - type: bind
+        source: "./django_project/project/"
+        target: "/home/app/web/project"
+      - type: bind
+        source: "./django_project/templates/"
+        target: "/home/app/web/templates"
       - /dev/bus/usb:/dev/bus/usb:rw
       # WSLg for test programs
       - /tmp/.X11-unix:/tmp/.X11-unix

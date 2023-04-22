@@ -46,14 +46,17 @@ COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
 RUN pip install --no-cache /wheels/*
 
-# --- copy data without media ---
-COPY ./app $APP_HOME/app
+# --- copy data without media (files) ---
 COPY ./entrypoint.sh $APP_HOME/entrypoint.sh
 COPY ./manage.py $APP_HOME/manage.py
-COPY ./project $APP_HOME/project
 COPY ./env/web/requirements.txt $APP_HOME/requirements.txt
 COPY ./static $APP_HOME/static
-COPY ./templates $APP_HOME/templates
+
+# --- copy data without media (directories) ---
+#  * if DEBUG, directories are NOT copied(bind in ``docker-compose.yml``).
+#COPY ./app $APP_HOME/app
+#COPY ./project $APP_HOME/project
+#COPY ./templates $APP_HOME/templates
 
 RUN chown -R app:app ${APP_HOME}
 RUN chown -R app:app ${ENV_HOME}
