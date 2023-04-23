@@ -319,7 +319,7 @@ class Trainer():
         return
     
     # --- 推論 ---
-    def predict(self, x_test):
+    def predict(self, x_test, get_feature_map=False):
         """predict
         
         推論を実行する
@@ -329,7 +329,11 @@ class Trainer():
         
         """
         
-        predictions = self.model.predict(x_test)
+        if (get_feature_map):
+            predictions = self.model.predict(np.expand_dims(x_test[0], axis=0))
+        else:
+            predictions = self.model.predict(x_test)
+        
         return predictions
         
     # --- モデル保存 ---

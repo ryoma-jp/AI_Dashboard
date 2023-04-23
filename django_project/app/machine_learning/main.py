@@ -18,6 +18,7 @@ import pickle
 
 from tqdm import tqdm
 from pathlib import Path
+from tensorflow.keras.models import Model
 
 from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet
 from machine_learning.lib.trainer.trainer_lgb import TrainerLightGBM
@@ -49,7 +50,7 @@ def ArgParser():
 
     return args
 
-def _predict_and_calc_accuracy(trainer, x, y=None):
+def _predict_and_calc_accuracy(trainer, x, y=None, get_feature_map=False):
     """_predict_and_calc_accuracy
     
     推論および精度計算を実行する
@@ -60,19 +61,28 @@ def _predict_and_calc_accuracy(trainer, x, y=None):
         trainer (Trainer): 学習済みモデル．Trainerクラスまたは派生クラスインスタンスを指定する．
         x (numpy.ndarray): 推論対象データの入力値
         y (:obj:`numpy.ndarray`, optional): 推論対象データの真値
+        get_feature_map (:obj:`bool`, optional): 特徴量を取得する場合にTrueにセット．DefaultはFalse．
     
     """
-    predictions = trainer.predict(x)
-    print('\nPredictions(shape): {}'.format(predictions.shape))
+    predictions = trainer.predict(x, get_feature_map=get_feature_map)
     
-    if (y is not None):
+    if (get_feature_map):
+        for i, pred in enumerate(predictions):
+            print(f'\nPredictions(shape) #{i}: {pred.shape}')
+        features = predictions[0:len(predictions)-1]
+        predictions = predictions[-1]
+    else:
+        print('\nPredictions(shape): {}'.format(predictions.shape))
+        features = None
+    
+    if ((y is not None) and (not get_feature_map)):
         predictions_idx = np.argmax(predictions, axis=1)
         y_idx = np.argmax(y, axis=1)
         
         print('n_data : {}'.format(len(predictions_idx)))
         print('n_correct : {}'.format(len(predictions_idx[predictions_idx==y_idx])))
         
-    return predictions
+    return predictions, features
 
 def main():
     """main
@@ -258,9 +268,28 @@ def main():
                 json.dump(dict_importance, f, ensure_ascii=False, indent=4)
         
         if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
-            predictions = _predict_and_calc_accuracy(trainer, x_test, y_test)
+            predictions, features = _predict_and_calc_accuracy(trainer, x_test, y_test)
     
     elif (args.mode == 'predict'):
+        # --- show model structure ---
+        trainer.model.summary()
+        
+        # --- re-define the models to get feature maps ---
+        #  * this code is tentative, default is off
+        GET_FEATURE_MAP = False
+        if (GET_FEATURE_MAP):
+            outputs = []
+            for layer in trainer.model.layers:
+                if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
+                    outputs.append(layer.output)
+                    print(layer.__class__.__name__)
+            
+            
+            trainer.model = Model(inputs=trainer.model.inputs, outputs=outputs)
+            print(f'<< feature layers: N={len(trainer.model.outputs)} >>')
+            for i, output in enumerate(trainer.model.outputs):
+                print(f'  #{i}: {output}')
+        
         predict_data_list = [
             ['train', x_train, y_train],
             ['validation', x_val, y_val],
@@ -271,7 +300,7 @@ def main():
             print(f'[INFO] Prediction: {name}')
             if (x_ is not None):
                 if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
-                    predictions = _predict_and_calc_accuracy(trainer, x_, y_)
+                    predictions, features = _predict_and_calc_accuracy(trainer, x_, y_, get_feature_map=GET_FEATURE_MAP)
                     
                     json_data = []
                     if (y_ is not None):
