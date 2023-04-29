@@ -24,7 +24,7 @@ from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url
 
 # Create your views here.
 
-def _get_model_for_inference(streaming_project_name, streaming_model_name, height, width):
+def _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width):
     """Get Model for Inference
     
     This function is internal in the streaming view, gets the model for inference.
@@ -78,6 +78,8 @@ def _get_model_for_inference(streaming_project_name, streaming_model_name, heigh
             
             # --- Create object of Pre-trained model ---
             get_feature_map = True
+            if (request.session.get('show_features_dropdown_selected', 'False') == 'False'):
+                get_feature_map = False
             pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map)
             logging.info('-------------------------------------')
             logging.info(f'model_summary')
@@ -136,6 +138,13 @@ def _create_frame(frame, overlay,
             cv2.rectangle(overlay, (0, 20), (200, 40), (0, 0, 0), -1)
             cv2.putText(overlay, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100,250,0))
             frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
+    
+        if (pretrained_model.get_feature_map):
+            feature_map_area_width = frame.shape[1]
+            feature_map_area = np.zeros([240, feature_map_area_width, 3], np.uint8)
+            
+            frame = cv2.vconcat([frame, feature_map_area])
+    
     else:
         cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
         cv2.putText(overlay, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250,225,0))
@@ -191,7 +200,7 @@ def view_streaming(request):
     streaming_interface = request.session.get('streaming_interface', None)
     streaming_selected_project = request.session.get('streaming_selected_project', 'Sample')
     streaming_selected_model = request.session.get('streaming_selected_model', None)
-    show_features_dropdown_selected = request.session.get('show_features_dropdown_selected', None)
+    show_features_dropdown_selected = request.session.get('show_features_dropdown_selected', 'False')
     
     if (streaming_selected_project == 'Sample'):
         pretrained_model_list = [
@@ -286,7 +295,7 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
-            streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(streaming_project_name, streaming_model_name, height, width)
+            streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
             
             # --- Set fixed parameters ---
             fps_org = (5, 15)
@@ -369,7 +378,7 @@ def youtube(request):
         frame_duration = 1 / fps
         
         # --- Prepare model for inference ---
-        streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(streaming_project_name, streaming_model_name, height, width)
+        streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
         
         # --- Set fixed parameters ---
         fps_org = (5, 15)
