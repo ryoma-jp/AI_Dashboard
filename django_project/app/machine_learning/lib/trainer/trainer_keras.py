@@ -157,7 +157,7 @@ class Trainer():
         
         Compile model
         
-        Arguments:
+        Args:
             optimizer (string): optimizer
                 - adam: Adam
                 - sgd: SGD
@@ -516,7 +516,7 @@ class TrainerKerasResNet(Trainer):
             Load model
             Customize the model structure to use ``stack_fn()``
             
-            Arguments:
+            Args:
                 input_shape (list): Shape of input data
                 classes (int): number of class
                 stack_fn: function of stacks
@@ -553,7 +553,7 @@ class TrainerKerasResNet(Trainer):
             Load model
             Customize the model structure to use ``stack_fn()``
             
-            Arguments:
+            Args:
                 - input_shape (list): Shape of input data
                 - classes (int): number of class
                 - stack_fn: function of stacks
@@ -689,7 +689,7 @@ class TrainerKerasCNN(Trainer):
             
             Load model for baseline
             
-            Arguments:
+            Args:
                 input_shape (list): Shape of input data
                 initializer (string): initializer
             """
@@ -716,7 +716,7 @@ class TrainerKerasCNN(Trainer):
             
             Load model for deep_model
             
-            Arguments:
+            Args:
                 input_shape (list): Shape of input data
                 initializer (string): initializer
             """
@@ -832,7 +832,7 @@ class TrainerKerasMLP(Trainer):
             
             Load model
             
-            Arguments:
+            Args:
                 input_shape (list): Shape of input data
             """
             if (self.dataset_type in ['img_clf', 'table_clf']):
