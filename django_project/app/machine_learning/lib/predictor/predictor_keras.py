@@ -70,36 +70,53 @@ class PredictorMlModel(Predictor):
     
     """
     
-    def __init__(self, mlmodel, input_shape, task):
+    def __init__(self, mlmodel, get_feature_map=False):
         """Constructor
         
         This function is the construction of predictor.
         
         Args:
             mlmodel (object): MlModel class
-            input_shape (list): shape of input tensor
+            get_feature_map (bool): If get feature map, set to True. Default is False.
         """
-        
-        # --- initialize ---
-        if (task in ['img_clf', 'reg_clf']):
-            self.task = 'classification'
-        else:
-            self.task = 'object_detection'
-        super().__init__(self.task)
-        self.input_shape = input_shape
-        
-        # --- load model ---
-        trained_model_path = Path(mlmodel.model_dir, 'models', 'hdf5', 'model.h5')
-        self.pretrained_model = keras.models.load_model(trained_model_path)
         
         # --- load config and set parameters ---
         config_path = Path(mlmodel.model_dir, 'config.json')
         with open(config_path, 'r') as f:
             config_data = json.load(f)
+            task = config_data['inference_parameter']['model']['task']['value']
             self.input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
             self.norm_coef_a = config_data['inference_parameter']['preprocessing']['norm_coef_a']['value']
             self.norm_coef_b = config_data['inference_parameter']['preprocessing']['norm_coef_b']['value']
     
+        # --- initialize ---
+        if (task in ['img_clf', 'table_clf']):
+            self.task = 'classification'
+        elif (task in ['img_reg', 'table_reg']):
+            self.task = 'regression'
+        else:
+            # --- T.B.D ---
+            self.task = 'object_detection'
+        super().__init__(self.task)
+        
+        # --- load model ---
+        trained_model_path = Path(mlmodel.model_dir, 'models', 'hdf5', 'model.h5')
+        self.pretrained_model = keras.models.load_model(trained_model_path)
+        self.pretrained_model.summary()
+        
+        if (get_feature_map):
+            # --- If get feature map, re-define the model ---
+            outputs = []
+            for layer in self.pretrained_model.layers:
+                if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
+                    outputs.append(layer.output)
+                    print(layer.__class__.__name__)
+            
+            self.pretrained_model = keras.models.Model(inputs=self.pretrained_model.inputs, outputs=outputs)
+            print(f'<< feature layers: N={len(self.pretrained_model.outputs)} >>')
+            for i, output in enumerate(self.pretrained_model.outputs):
+                print(f'  #{i}: {output}')
+        
     def preprocess_input(self, x):
         """Preprocess input data
         
@@ -240,6 +257,10 @@ class PredictorCenterNetHourGlass104(Predictor):
         
         url = 'https://tfhub.dev/tensorflow/centernet/hourglass_512x512/1'
         self.pretrained_model = hub.load(url)
+#        self.pretrained_model = keras.models.Sequential(hub.KerasLayer(url))
+#        self.pretrained_model.build(input_shape=[1, 512, 512, 3])
+#        self.pretrained_model = keras.models.Sequential([hub.KerasLayer(url, input_shape=[512, 512, 3], dtype=tf.uint8)])
+
         self.input_shape = [512, 512, 3]
         
     def preprocess_input(self, x):

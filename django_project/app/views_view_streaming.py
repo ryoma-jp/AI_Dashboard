@@ -61,6 +61,11 @@ def _get_model_for_inference(streaming_project_name, streaming_model_name, heigh
             
             # --- Create object of Pre-trained model ---
             pretrained_model = PredictorCenterNetHourGlass104()
+            logging.info('-------------------------------------')
+            logging.info(f'model_summary')
+            pretrained_model.pretrained_model.summary(print_fn=logging.info)
+            logging.info('-------------------------------------')
+            
         else:
             pretrained_model = None
             logging.info('-------------------------------------')
@@ -71,24 +76,11 @@ def _get_model_for_inference(streaming_project_name, streaming_model_name, heigh
         if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
             streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
             
-            # --- Load config.json ---
-            config_path = Path(streaming_model.model_dir, 'config.json')
-            with open(config_path, 'r') as f:
-                config_data = json.load(f)
-            
-            # --- Get input shape ---
-            input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
-            
-            # --- Get task ---
-            task = config_data['inference_parameter']['model']['task']['value']
-            
             # --- Create object of Pre-trained model ---
-            pretrained_model = PredictorMlModel(streaming_model, input_shape, task)
+            pretrained_model = PredictorMlModel(streaming_model)
             logging.info('-------------------------------------')
             logging.info(f'model_summary')
             pretrained_model.pretrained_model.summary(print_fn=logging.info)
-            logging.info(f'streaming_model.dataset.dataset_type: {streaming_model.dataset.dataset_type}')
-            logging.info(f'input_shape: {pretrained_model.input_shape}')
             logging.info('-------------------------------------')
             
         else:
