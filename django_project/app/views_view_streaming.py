@@ -77,7 +77,8 @@ def _get_model_for_inference(streaming_project_name, streaming_model_name, heigh
             streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
             
             # --- Create object of Pre-trained model ---
-            pretrained_model = PredictorMlModel(streaming_model)
+            get_feature_map = True
+            pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map)
             logging.info('-------------------------------------')
             logging.info(f'model_summary')
             pretrained_model.pretrained_model.summary(print_fn=logging.info)

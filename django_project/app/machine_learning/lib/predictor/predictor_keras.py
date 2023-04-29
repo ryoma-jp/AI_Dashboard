@@ -90,6 +90,7 @@ class PredictorMlModel(Predictor):
             self.norm_coef_b = config_data['inference_parameter']['preprocessing']['norm_coef_b']['value']
     
         # --- initialize ---
+        self.get_feature_map = get_feature_map
         if (task in ['img_clf', 'table_clf']):
             self.task = 'classification'
         elif (task in ['img_reg', 'table_reg']):
@@ -104,18 +105,13 @@ class PredictorMlModel(Predictor):
         self.pretrained_model = keras.models.load_model(trained_model_path)
         self.pretrained_model.summary()
         
-        if (get_feature_map):
+        if (self.get_feature_map):
             # --- If get feature map, re-define the model ---
             outputs = []
             for layer in self.pretrained_model.layers:
                 if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
                     outputs.append(layer.output)
-                    print(layer.__class__.__name__)
-            
             self.pretrained_model = keras.models.Model(inputs=self.pretrained_model.inputs, outputs=outputs)
-            print(f'<< feature layers: N={len(self.pretrained_model.outputs)} >>')
-            for i, output in enumerate(self.pretrained_model.outputs):
-                print(f'  #{i}: {output}')
         
     def preprocess_input(self, x):
         """Preprocess input data
@@ -162,8 +158,13 @@ class PredictorMlModel(Predictor):
             
         """
         
-        top5_score = np.sort(preds[0])[::-1][0:5]
-        top5_class_id = np.argsort(preds[0])[::-1][0:5]
+        if (self.get_feature_map):
+            _preds = preds[-1][0]
+        else:
+            _preds = preds[0]
+        
+        top5_score = np.sort(_preds)[::-1][0:5]
+        top5_class_id = np.argsort(_preds)[::-1][0:5]
         
         self.decoded_preds['class_id'] = top5_class_id
         self.decoded_preds['class_name'] = [f'class{i}' for i in top5_class_id]
