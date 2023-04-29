@@ -15,7 +15,7 @@ RUN pip install --upgrade pip
 RUN pip install flake8
 
 # --- copy data without media ---
-COPY ./app ./app
+#COPY ./app ./app
 COPY ./entrypoint.sh ./entrypoint.sh
 COPY ./manage.py ./manage.py
 COPY ./project ./project
