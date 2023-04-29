@@ -1,7 +1,7 @@
 #! -*- coding: utf-8 -*-
 
 #---------------------------------
-# モジュールのインポート
+# Import modules
 #---------------------------------
 import io
 import os
@@ -23,25 +23,24 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 #---------------------------------
-# 環境変数設定
+# Set environ
 #---------------------------------
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"]= "true"
 
 #---------------------------------
-# クラス; 学習モジュール基底クラス
+# Classes
 #---------------------------------
 class Trainer():
     """Trainer
     
-    学習モジュールの基底クラス
+    Base class for training
     
     Attributes:
-        trainer_ctrl_fifo (str): モデル学習制御用のFIFOのパス
-        model (keras.models.Model): 学習対象のモデル
-        output_dir (str): 学習結果やログ出力用のディレクトリのパス
+        trainer_ctrl_fifo (str): FIFO path to control the model training
+        model (keras.models.Model): model
+        output_dir (str): output directory path to save the result of training and logs
         
     """
-    # --- カスタムコールバック ---
     class CustomCallback(keras.callbacks.Callback):
         def __init__(self, trainer_ctrl_fifo):
             super().__init__()
@@ -79,7 +78,6 @@ class Trainer():
             log_str += '({} = {})'.format(keys[-1], logs[keys[-1]])
             print("End epoch {}: {}".format(epoch, log_str))
             
-    # --- コンストラクタ ---
     def __init__(self, output_dir=None, model_file=None,
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
@@ -88,32 +86,32 @@ class Trainer():
                  batch_size=32, epochs=200):
         """Constructor
         
-        コンストラクタ
+        Constructor
         
         Args:
-            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
-            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
-            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
-            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            output_dir (:obj:`string`, optional): Output directory path
+            model_file (:obj:`model_file`, optional): Trained model path
+            web_app_ctrl_fifo (str): FIFO path to control Web app(Trainer -> Web app)
+            trainer_ctrl_fifo (str): FIFO path to control Trainer(Web app -> Trainer)
             initializer (:obj:`string`, optional): Initializer
-                - glorot_uniform: Xavierの一様分布
-                - he_normal: Heの正規分布
-                - lecun_normal: LeCunの正規分布
-                - he_uniform: Heの一様分布
-                - lecun_uniform: LeCunの一様分布
+                - glorot_uniform: Xavier uniform distribution
+                - he_normal: He normal distribution
+                - lecun_normal: LeCun normal distribution
+                - he_uniform: He uniform distribution
+                - lecun_uniform: LeCun uniform distribution
             optimizer (:obj:`string`, optional): Optimizer
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
             dataset_type (:obj:`string`, optional): Dataset type
-                - img_clf: 画像分類
-                - img_reg: 画像回帰
-                - table_clf: テーブルデータ分類
-                - table_reg: テーブルデータ回帰
-            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
-            batch_size (:obj:`int`, optional): ミニバッチ数
-            epochs (:obj:`int`, optional): 学習EPOCH数
-            decoded_preds (:obj:`dict`, optional): 予測値
+                - img_clf: Image classification
+                - img_reg: Image regression
+                - table_clf: Table data classification
+                - table_reg: Table data regression
+            da_params (:obj:`dict`, optional): DataAugmentation parameters
+            batch_size (:obj:`int`, optional): mini batch size
+            epochs (:obj:`int`, optional): EPOCHs
+            decoded_preds (:obj:`dict`, optional): predictions
                 - img_clf
                     {
                         'class_id': <class id>,
@@ -137,11 +135,11 @@ class Trainer():
         self.epochs = epochs
         self.decoded_preds = {}
         
-        # --- 出力ディレクトリ作成 ---
+        # --- Create output directory ---
         if (self.output_dir is not None):
             os.makedirs(self.output_dir, exist_ok=True)
         
-        # --- モデル構築 ---
+        # --- Create model ---
         def _load_model(model_file):
             if (model_file is not None):
                 return keras.models.load_model(model_file), '', ''
@@ -154,9 +152,23 @@ class Trainer():
         
         return
     
-    # --- モデルの構成 ---
-    #   * lr_decay: 学習率減衰する(=True)，しない(=False; default)を指定
     def _compile_model(self, optimizer='adam', loss='sparse_categorical_crossentropy', init_lr=0.001):
+        """Compile model
+        
+        Compile model
+        
+        Arguments:
+            optimizer (string): optimizer
+                - adam: Adam
+                - sgd: SGD
+                - adam_lrs: Adam with learning rate scheduler
+                - sgd_lrs: SGD with learning rate scheduler
+            loss (string): loss function
+                - sparse_categorical_crossentropy
+                - categorical_crossentropy
+            init_lr (float): init learning rate
+        
+        """
         
         if (optimizer == 'adam'):
             opt = tf.keras.optimizers.Adam(learning_rate=init_lr)
@@ -202,26 +214,25 @@ class Trainer():
         
         return
     
-    # --- 学習 ---
     def fit(self, x_train, y_train,
             x_val=None, y_val=None, x_test=None, y_test=None,
             verbose=0):
         """fit
         
-        AIモデルの学習を実行する
+        Training model
         
         Args:
-            x_train (:obj:`numpy.ndarray`, optional): 学習データの入力値
-            y_train (:obj:`numpy.ndarray`, optional): 学習データの真値
-            x_val (:obj:`numpy.ndarray`, optional): Validationデータの入力値
-            y_val (:obj:`numpy.ndarray`, optional): Validationデータの真値
-            x_test (:obj:`numpy.ndarray`, optional): Testデータの入力値
-            y_test (:obj:`numpy.ndarray`, optional): Testデータの真値
-            verbose (:obj:`int`, optional): ログの出力レベル
+            x_train (:obj:`numpy.ndarray`, optional): Input values of training data
+            y_train (:obj:`numpy.ndarray`, optional): Ground truth of training data
+            x_val (:obj:`numpy.ndarray`, optional): Input values of validation data
+            y_val (:obj:`numpy.ndarray`, optional): Ground truth of validation data
+            x_test (:obj:`numpy.ndarray`, optional): Input values of test data
+            y_test (:obj:`numpy.ndarray`, optional): Ground truth of test data
+            verbose (:obj:`int`, optional): Log level
             
         
         """
-        # --- 学習 ---
+        # --- Training ---
         os.makedirs(Path(self.output_dir, 'checkpoints'), exist_ok=True)
         checkpoint_path = Path(self.output_dir, 'checkpoints', 'model.ckpt')
         cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
@@ -268,7 +279,7 @@ class Trainer():
                             epochs=self.epochs, callbacks=callbacks,
                             verbose=verbose)
         
-        # --- 学習結果を評価 ---
+        # --- Evaluate training result ---
         if (self.dataset_type in ['img_clf', 'table_clf']):
             train_loss, train_acc = self.model.evaluate(x_train, y_train, verbose=2)
             print('Train Accuracy: {}'.format(train_acc))
@@ -306,44 +317,45 @@ class Trainer():
                 metrics['Validation MSE'] = f'{val_mse:.03}'
                 metrics['Validation RMSE'] = f'{math.sqrt(val_mse):.03}'
         
-        # --- メトリクスを保存 ---
+        # --- Save metrics ---
         os.makedirs(Path(self.output_dir, 'metrics'), exist_ok=True)
         with open(Path(self.output_dir, 'metrics', 'metrics.json'), 'w') as f:
             json.dump(metrics, f, ensure_ascii=False, indent=4)
         
-        # --- 学習完了をアプリへ通知 ---
+        # --- Notice the finish training to Web app ---
         if (self.web_app_ctrl_fifo is not None):
             with open(self.web_app_ctrl_fifo, 'w') as f:
                 f.write('trainer_done\n')
         
         return
     
-    # --- 推論 ---
     def predict(self, x_test, get_feature_map=False):
         """predict
         
-        推論を実行する
+        Predict
         
         Args:
-            x_test (numpy.ndarray): 推論対象データの入力値
+            x_test (numpy.ndarray): Input values of predicting data
+                - Input shape is [N, :] when ``get_feature_map==False``
+                - Input shape is [:] when ``get_feature_map==True``
+            get_feature_map (bool): If set to True, returns the feature maps
         
         """
         
         if (get_feature_map):
-            predictions = self.model.predict(np.expand_dims(x_test[0], axis=0))
+            predictions = self.model.predict(np.expand_dims(x_test, axis=0))
         else:
             predictions = self.model.predict(x_test)
         
         return predictions
         
-    # --- モデル保存 ---
     def save_model(self):
         """save_model
         
-        モデルを保存する
+        Save model
         
         """
-        # --- 保存先ディレクトリ作成 ---
+        # --- Create the output directory ---
         model_dir = Path(self.output_dir, 'models')
         os.makedirs(Path(model_dir, 'checkpoint'), exist_ok=True)
         os.makedirs(Path(model_dir, 'saved_model'), exist_ok=True)
@@ -360,11 +372,10 @@ class Trainer():
         
         return
     
-    # --- メモリリソース解放(セッションのクリア) ---
     def release_memory(self):
         """release_memory
         
-        学習で使用したメモリリソースを解放する(CPU/GPU)
+        Release CPU and GPU memories
         
         """
         
@@ -374,15 +385,14 @@ class Trainer():
 
         return
         
-    # --- ラベルインデックス取得 ---
     def GetLabelIndex(self, label, onehot=True):
         """GetLabelIndex
         
-        真値のラベルインデックスを取得する
+        Get label index of ground truth
         
         Args:
-            label (numpy.ndarray): データセットの真値リスト
-            onehot (:obj:`numpy.ndarray`, optional): labelがonehotの場合にTrueを指定
+            label (numpy.ndarray): Grouhd truth list of dataset
+            onehot (:obj:`numpy.ndarray`, optional): If ``label`` is onehot, set to True
         
         """
         if (onehot):
@@ -391,11 +401,10 @@ class Trainer():
         
         return np.array([np.arange(len(label))[label==i] for i in range(n_category)])
     
-    # --- システム情報を取得 ---
     def GetSystemInfo():
         """GetSystemInfo
         
-        システム情報を取得する
+        Get system information
         
         """
         _system_info = device_lib.list_local_devices()
@@ -419,11 +428,11 @@ class Trainer():
         return None
     
     
-#---------------------------------
-# クラス; ResNet学習モジュール
-#---------------------------------
 class TrainerKerasResNet(Trainer):
-    # --- コンストラクタ ---
+    """Trainer for Keras ResNet
+    
+    ResNet class
+    """
     def __init__(self, input_shape, classes, output_dir=None, model_file=None, model_type='custom',
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
@@ -432,40 +441,39 @@ class TrainerKerasResNet(Trainer):
                  batch_size=32, epochs=200):
         """Constructor
         
-        コンストラクタ
+        Constructor
         
         Args:
             input_shape (:obj:`list`, mandatory): Input shape
             classes (:obj:`int`, mandatory): Number of classes
-            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
-            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
-            model_type (:obj:`string`, optional): モデルの種類('custom' or 'custom_deep')
-            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
-            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            output_dir (:obj:`string`, optional): Output directory path
+            model_file (:obj:`model_file`, optional): Trained model path
+            model_type (:obj:`string`, optional): Type of model('custom' or 'custom_deep')
+            web_app_ctrl_fifo (str): FIFO path to control Web app(Trainer -> Web app)
+            trainer_ctrl_fifo (str): FIFO path to control Trainer(Web app -> Trainer)
             initializer (:obj:`string`, optional): Initializer
-                - glorot_uniform: Xavierの一様分布
-                - he_normal: Heの正規分布
-                - lecun_normal: LeCunの正規分布
-                - he_uniform: Heの一様分布
-                - lecun_uniform: LeCunの一様分布
+                - glorot_uniform: Xavier uniform distribution
+                - he_normal: He normal distribution
+                - lecun_normal: LeCun normal distribution
+                - he_uniform: He uniform distribution
+                - lecun_uniform: LeCun uniform distribution
             initializer (:obj:`string`, optional): Initializer
             optimizer (:obj:`string`, optional): Optimizer
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
             dataset_type (:obj:`string`, optional): Dataset type
-                - img_clf: 画像分類
-                - img_reg: 画像回帰
-                - table_clf: テーブルデータ分類
-                - table_reg: テーブルデータ回帰
-            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
-            batch_size (:obj:`int`, optional): ミニバッチ数
-            epochs (:obj:`int`, optional): 学習EPOCH数
+                - img_clf: Image classification
+                - img_reg: Image regression
+                - table_clf: Table data classification
+                - table_reg: Table data regression
+            da_params (:obj:`dict`, optional): DataAugmentation parameters
+            batch_size (:obj:`int`, optional): mini batch size
+            epochs (:obj:`int`, optional): EPOCHs
         """
         
         # --- Residual Block ---
-        #  * アプリケーションからkeras.applications.resnet.ResNetにアクセスできない為，
-        #    必要なモジュールをTensorFlow公式からコピー
+        #  * Copy of TensorFlow offitial, because applicaiton cannot acces keras.applications.resnet.ResNet
         #      https://github.com/tensorflow/tensorflow/blob/v2.5.0/tensorflow/python/keras/applications/resnet.py#L212
         def block1(x, filters, kernel_size=3, stride=1, initializer='glorot_uniform', conv_shortcut=True, name=None):
             bn_axis = 3
@@ -492,8 +500,7 @@ class TrainerKerasResNet(Trainer):
             return x
         
         # --- Residual Block stack ---
-        #  * アプリケーションからkeras.applications.resnet.ResNetにアクセスできない為，
-        #    必要なモジュールをTensorFlow公式からコピー
+        #  * Copy of TensorFlow offitial, because applicaiton cannot acces keras.applications.resnet.ResNet
         #      https://github.com/tensorflow/tensorflow/blob/v2.5.0/tensorflow/python/keras/applications/resnet.py#L257
         def stack1(x, filters, blocks, stride1=2, dropout_rate=0.0, name=None):
             x = block1(x, filters, stride=stride1, name=name + '_block1')
@@ -503,9 +510,19 @@ class TrainerKerasResNet(Trainer):
                 x = keras.layers.Dropout(dropout_rate)(x)
             return x
         
-        # --- モデル構築 ---
-        #  * stack_fn()の関数ポインタを引数に設定してカスタマイズ
         def _load_model(input_shape, classes, stack_fn, initializer='glorot_uniform', dropout_rate=0.0):
+            """Load model
+            
+            Load model
+            Customize the model structure to use ``stack_fn()``
+            
+            Arguments:
+                input_shape (list): Shape of input data
+                classes (int): number of class
+                stack_fn: function of stacks
+                initializer (string): initializer
+                dropout_rate (float): Dropout rate
+            """
             input = keras.layers.Input(shape=input_shape)
             bn_axis = 3
             
@@ -530,9 +547,19 @@ class TrainerKerasResNet(Trainer):
             
             return model, input.name, y.name
             
-        # --- モデル構築 ---
-        #  * stack_fn()の関数ポインタを引数に設定してカスタマイズ
         def _load_model_deep(input_shape, classes, stack_fn, initializer='glorot_uniform', dropout_rate=0.0):
+            """Load model
+            
+            Load model
+            Customize the model structure to use ``stack_fn()``
+            
+            Arguments:
+                - input_shape (list): Shape of input data
+                - classes (int): number of class
+                - stack_fn: function of stacks
+                - initializer (string): initializer
+                - dropout_rate (float): Dropout rate
+            """
             input = keras.layers.Input(shape=input_shape)
             bn_axis = 3
             
@@ -558,7 +585,7 @@ class TrainerKerasResNet(Trainer):
             return model, input.name, y.name
             
         def _load_model_resnet50(input_shape, classes, initializer='glorot_uniform', dropout_rate=0.0, pretrained=True):
-            # --- TensorFlowのResNet50のモデル ---
+            # --- ResNet50 model of from TensorFlow ---
             #  https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet50/ResNet50
             #    dbg_mode=0: original ResNet50, dbg_mode=11: custom ResNet50
             if (pretrained):
@@ -576,7 +603,7 @@ class TrainerKerasResNet(Trainer):
                 
             return model
         
-        # --- 基底クラスの初期化 ---
+        # --- Initialize base class ---
         super().__init__(output_dir=output_dir, model_file=model_file,
                          web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
                          initializer=initializer, optimizer=optimizer, loss=loss,
@@ -584,7 +611,7 @@ class TrainerKerasResNet(Trainer):
                          dataset_type=dataset_type, da_params=da_params,
                          batch_size=batch_size, epochs=epochs)
         
-        # --- モデル構築 ---
+        # --- Create model ---
         if (self.model is None):
             if (model_type == 'custom'):
                 def stack_fn(x, dropout_rate=0.0):
@@ -613,11 +640,11 @@ class TrainerKerasResNet(Trainer):
         
         return
     
-#---------------------------------
-# クラス; CNN学習モジュール
-#---------------------------------
 class TrainerKerasCNN(Trainer):
-    # --- コンストラクタ ---
+    """Trainer for Keras CNN model
+    
+    CNN model class
+    """
     def __init__(self, input_shape, classes=10, output_dir=None, model_file=None, model_type='baseline',
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
@@ -626,39 +653,46 @@ class TrainerKerasCNN(Trainer):
                  batch_size=32, epochs=200):
         """Constructor
         
-        コンストラクタ
+        Constructor
         
         Args:
             input_shape (:obj:`list`, mandatory): Input shape
             classes (:obj:`int`, mandatory): Number of classes
-            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
-            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
-            model_type (:obj:`string`, optional): モデルの種類('baseline' or 'deep_model')
-            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
-            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            output_dir (:obj:`string`, optional): Output directory path
+            model_file (:obj:`model_file`, optional): Trained model path
+            model_type (:obj:`string`, optional): Type of model('baseline' or 'deep_model')
+            web_app_ctrl_fifo (str): FIFO path to control Web app(Trainer -> Web app)
+            trainer_ctrl_fifo (str): FIFO path to control Trainer(Web app -> Trainer)
             initializer (:obj:`string`, optional): Initializer
-                - glorot_uniform: Xavierの一様分布
-                - he_normal: Heの正規分布
-                - lecun_normal: LeCunの正規分布
-                - he_uniform: Heの一様分布
-                - lecun_uniform: LeCunの一様分布
+                - glorot_uniform: Xavier uniform distribution
+                - he_normal: He normal distribution
+                - lecun_normal: LeCun normal distribution
+                - he_uniform: He uniform distribution
+                - lecun_uniform: LeCun uniform distribution
             initializer (:obj:`string`, optional): Initializer
             optimizer (:obj:`string`, optional): Optimizer
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
             dataset_type (:obj:`string`, optional): Dataset type
-                - img_clf: 画像分類
-                - img_reg: 画像回帰
-                - table_clf: テーブルデータ分類
-                - table_reg: テーブルデータ回帰
-            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
-            batch_size (:obj:`int`, optional): ミニバッチ数
-            epochs (:obj:`int`, optional): 学習EPOCH数
+                - img_clf: Image classification
+                - img_reg: Image regression
+                - table_clf: Table data classification
+                - table_reg: Table data regression
+            da_params (:obj:`dict`, optional): DataAugmentation parameters
+            batch_size (:obj:`int`, optional): mini batch size
+            epochs (:obj:`int`, optional): EPOCHs
         """
         
-        # --- モデル構築(baseline) ---
         def _load_model(input_shape, initializer='glorot_uniform'):
+            """Load model for baseline
+            
+            Load model for baseline
+            
+            Arguments:
+                input_shape (list): Shape of input data
+                initializer (string): initializer
+            """
             input = keras.layers.Input(shape=input_shape)
             
             x = keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=input_shape, kernel_initializer=initializer)(input)
@@ -678,6 +712,14 @@ class TrainerKerasCNN(Trainer):
         
         # --- モデル構築(deep_model) ---
         def _load_model_deep(input_shape, initializer='glorot_uniform'):
+            """Load model for deep_model
+            
+            Load model for deep_model
+            
+            Arguments:
+                input_shape (list): Shape of input data
+                initializer (string): initializer
+            """
             input = keras.layers.Input(shape=input_shape)
 
             x = keras.layers.Conv2D(64, (3,3), padding="SAME", activation="relu")(input)
@@ -716,7 +758,7 @@ class TrainerKerasCNN(Trainer):
             
             return model, input.name, y.name
         
-        # --- 基底クラスの初期化 ---
+        # --- Initialize base class ---
         super().__init__(output_dir=output_dir, model_file=model_file,
                          web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
                          initializer=initializer, optimizer=optimizer, loss=loss,
@@ -724,7 +766,7 @@ class TrainerKerasCNN(Trainer):
                          dataset_type=dataset_type, da_params=da_params,
                          batch_size=batch_size, epochs=epochs)
         
-        # --- モデル構築 ---
+        # --- Create model ---
         if (self.model is None):
             if (model_type == 'baseline'):
                 self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape, initializer=self.initializer)
@@ -741,11 +783,11 @@ class TrainerKerasCNN(Trainer):
         return
     
 
-#---------------------------------
-# クラス; MLP学習モジュール
-#---------------------------------
 class TrainerKerasMLP(Trainer):
-    # --- コンストラクタ ---
+    """Trainer for MLP model
+    
+    MLP model class
+    """
     def __init__(self, input_shape, classes=10, output_dir=None, model_file=None,
                  web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
                  initializer='glorot_uniform', optimizer='adam', loss='sparse_categorical_crossentropy',
@@ -755,38 +797,44 @@ class TrainerKerasMLP(Trainer):
                  num_of_hidden_nodes='128,64'):
         """Constructor
         
-        コンストラクタ
+        Constructor
         
         Args:
             input_shape (:obj:`list`, mandatory): Input shape
             classes (:obj:`int`, mandatory): Number of classes
-            output_dir (:obj:`string`, optional): 出力ディレクトリのパス
-            model_file (:obj:`model_file`, optional): 学習済みモデルのパス
-            web_app_ctrl_fifo (str): Webアプリ制御用FIFOのパス(TrainerがWebアプリを制御)
-            trainer_ctrl_fifo (str): Trainer制御用FIFOのパス(WebアプリがTrainerを制御)
+            output_dir (:obj:`string`, optional): Output directory path
+            model_file (:obj:`model_file`, optional): Trained model path
+            web_app_ctrl_fifo (str): FIFO path to control Web app(Trainer -> Web app)
+            trainer_ctrl_fifo (str): FIFO path to control Trainer(Web app -> Trainer)
             initializer (:obj:`string`, optional): Initializer
-                - glorot_uniform: Xavierの一様分布
-                - he_normal: Heの正規分布
-                - lecun_normal: LeCunの正規分布
-                - he_uniform: Heの一様分布
-                - lecun_uniform: LeCunの一様分布
+                - glorot_uniform: Xavier uniform distribution
+                - he_normal: He normal distribution
+                - lecun_normal: LeCun normal distribution
+                - he_uniform: He uniform distribution
+                - lecun_uniform: LeCun uniform distribution
             initializer (:obj:`string`, optional): Initializer
             optimizer (:obj:`string`, optional): Optimizer
             loss (:obj:`string`, optional): Loss function
             dropout_rate (:obj:`string`, optional): Dropout rate
             learning_rate (:obj:`float`, optional): Learning rate
             dataset_type (:obj:`string`, optional): Dataset type
-                - img_clf: 画像分類
-                - img_reg: 画像回帰
-                - table_clf: テーブルデータ分類
-                - table_reg: テーブルデータ回帰
-            da_params (:obj:`dict`, optional): DataAugmentationパラメータ
-            batch_size (:obj:`int`, optional): ミニバッチ数
-            epochs (:obj:`int`, optional): 学習EPOCH数
+                - img_clf: Image classification
+                - img_reg: Image regression
+                - table_clf: Table data classification
+                - table_reg: Table data regression
+            da_params (:obj:`dict`, optional): DataAugmentation parameters
+            batch_size (:obj:`int`, optional): mini batch size
+            epochs (:obj:`int`, optional): EPOCHs
         """
         
-        # --- モデル構築 ---
         def _load_model(input_shape):
+            """Load model
+            
+            Load model
+            
+            Arguments:
+                input_shape (list): Shape of input data
+            """
             if (self.dataset_type in ['img_clf', 'table_clf']):
                 hidden_activation = 'relu'
                 output_activation = 'softmax'
@@ -812,10 +860,10 @@ class TrainerKerasMLP(Trainer):
             
             return model, input.name, y.name
         
-        # --- MLP固有パラメータの取得 ---
+        # --- Get MLP parameter ---
         self.num_of_hidden_nodes = pd.read_csv(io.StringIO(num_of_hidden_nodes), header=None, skipinitialspace=True).values[0].tolist()
         
-        # --- 基底クラスの初期化 ---
+        # --- Initialize base class ---
         super().__init__(output_dir=output_dir, model_file=model_file,
                          web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
                          initializer=initializer, optimizer=optimizer, loss=loss,
@@ -823,7 +871,7 @@ class TrainerKerasMLP(Trainer):
                          dataset_type=dataset_type, da_params=da_params,
                          batch_size=batch_size, epochs=epochs)
         
-        # --- モデル構築 ---
+        # --- Create model ---
         if (self.model is None):
             self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape)
             self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
@@ -834,28 +882,28 @@ class TrainerKerasMLP(Trainer):
     
 
 
-#---------------------------------
-# メイン処理; Trainerモジュールテスト
-#---------------------------------
 def main():
+    """Main module
+    
+    Main module for Unit test of Keras Trainer.
+    
+    """
     import argparse
     def _argparse():
-        parser = argparse.ArgumentParser(description='Trainerモジュールテスト\n'
-                    '  * test_mode=\'ResNet\': ResNetのモデル構造確認(ResNet50の構造をTensorFlow公開モデルと比較)',
+        parser = argparse.ArgumentParser(description='Unit test of Keras Trainer',
                     formatter_class=argparse.RawTextHelpFormatter)
 
-        # --- 引数を追加 ---
         parser.add_argument('--test_mode', dest='test_mode', type=str, default='ResNet', required=False, \
                 help='テストモード(ResNet)')
 
         args = parser.parse_args()
         return args
 
-    # --- 引数処理 ---
+    # --- Arguments processing ---
     args = _argparse()
     print(args.test_mode)
     
-    # --- モジュールテスト ---
+    # --- Unit test ---
     if (args.test_mode == 'ResNet'):
         trainer = TrainerResNet([224, 224, 3], 1000, output_dir=None, model_type='resnet50')
     else:

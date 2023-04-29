@@ -1,13 +1,12 @@
 #! -*- coding: utf-8 -*-
 
-"""機械学習学習処理
+"""Main routine of Machine Learning
 
-引数に指定する設定ファイルで指定されたパラメータに従い，モデルの学習を実行する
-
+Training and Testing models according to the config file that is specified by the argument.
 """
 
 #---------------------------------
-# モジュールのインポート
+# Import modules
 #---------------------------------
 import os
 import json
@@ -24,27 +23,25 @@ from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerK
 from machine_learning.lib.trainer.trainer_lgb import TrainerLightGBM
 
 #---------------------------------
-# 定数定義
-#---------------------------------
-
-#---------------------------------
-# 関数
+# Functions
 #---------------------------------
 def ArgParser():
     """ArgParser
     
-    引数を読み込む
+    Load arguments
     
     """
     
-    parser = argparse.ArgumentParser(description='TensorFlowの学習実装サンプル',
+    parser = argparse.ArgumentParser(description='Training and Testing program of TensorFlow v2.x',
                 formatter_class=argparse.RawTextHelpFormatter)
 
-    # --- 引数を追加 ---
     parser.add_argument('--mode', dest='mode', type=str, default=None, required=True, \
-            help='機械学習の動作モードを選択("train", "predict")')
+            help='Select mode("train", "predict", "predict_with_features") \n'
+                 '  - train: training \n'
+                 '  - predict: testing \n'
+                 '  - predict_with_features: predict and get the features')
     parser.add_argument('--config', dest='config', type=str, default=None, required=True, \
-            help='設定ファイル(*.json)')
+            help='Config file(*.json)')
 
     args = parser.parse_args()
 
@@ -53,26 +50,22 @@ def ArgParser():
 def _predict_and_calc_accuracy(trainer, x, y=None, get_feature_map=False):
     """_predict_and_calc_accuracy
     
-    推論および精度計算を実行する
-    
-    精度計算は真値(y)が指定された場合のみ実行する
+    This function predicts and calculates accuracy.
+    Accuracy calculating is run only ``y`` is enabled.
     
     Args:
-        trainer (Trainer): 学習済みモデル．Trainerクラスまたは派生クラスインスタンスを指定する．
-        x (numpy.ndarray): 推論対象データの入力値
-        y (:obj:`numpy.ndarray`, optional): 推論対象データの真値
-        get_feature_map (:obj:`bool`, optional): 特徴量を取得する場合にTrueにセット．DefaultはFalse．
+        trainer (Trainer): Trained model that is Trainer class.
+        x (numpy.ndarray): Input data of Test data
+        y (:obj:`numpy.ndarray`, optional): Ground truth of Test data
+        get_feature_map (:obj:`bool`, optional): If set to true, to get features. Default is False.
     
     """
     predictions = trainer.predict(x, get_feature_map=get_feature_map)
     
     if (get_feature_map):
-        for i, pred in enumerate(predictions):
-            print(f'\nPredictions(shape) #{i}: {pred.shape}')
         features = predictions[0:len(predictions)-1]
         predictions = predictions[-1]
     else:
-        print('\nPredictions(shape): {}'.format(predictions.shape))
         features = None
     
     if ((y is not None) and (not get_feature_map)):
@@ -87,34 +80,36 @@ def _predict_and_calc_accuracy(trainer, x, y=None, get_feature_map=False):
 def main():
     """main
     
-    メイン関数
+    Main function
     
     """
-    # --- NumPy配列形状表示 ---
     def print_ndarray_shape(ndarr):
+        """Print the Shape of ndarray
+        show shape of ndarray
+        """
         if (ndarr is not None):
             print(ndarr.shape)
         else:
             pass
         return
         
-    # --- 引数処理 ---
+    # --- argument proecessing ---
     args = ArgParser()
     print('[INFO] Arguments')
     print('  * args.mode = {}'.format(args.mode))
     print('  * args.config = {}'.format(args.config))
     
-    # --- configファイルをロード ---
+    # --- load config file ---
     with open(args.config, 'r') as f:
         config_data = json.load(f)
     
     print('[INFO] Config data')
     print(json.dumps(config_data, indent=2))
     
-    # --- 固定パラメータ ---
+    # --- defiene fiexed parameter ---
     DNN_MODEL_LIST = ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet']
     
-    # --- 設定パラメータを取得 ---
+    # --- get parameters fron config data ---
     web_app_ctrl_fifo = config_data['env']['web_app_ctrl_fifo']['value']
     trainer_ctrl_fifo = config_data['env']['trainer_ctrl_fifo']['value']
     result_dir = config_data['env']['result_dir']['value']
@@ -150,7 +145,7 @@ def main():
         lambda_l2 = config_data['lgb_training_parameter']['lambda_l2']['value']
         boosting = config_data['lgb_training_parameter']['boosting']['value']
     
-    # --- データセット読み込み ---
+    # --- load dataset ---
     with open(Path(dataset_dir, 'dataset.pkl'), 'rb') as f:
         dataset = pickle.load(f)
     
@@ -167,7 +162,7 @@ def main():
     x_train, y_train, x_val, y_val, x_test, y_test = dataset.preprocessing(norm_mode=data_norm)
     output_dims = dataset.output_dims
     
-    # --- モデル取得 ---
+    # --- get model ---
     if (args.mode == 'predict'):
         if (model_type in DNN_MODEL_LIST):
             model_file = Path(result_dir, 'models', 'hdf5', 'model.h5')
@@ -274,22 +269,6 @@ def main():
         # --- show model structure ---
         trainer.model.summary()
         
-        # --- re-define the models to get feature maps ---
-        #  * this code is tentative, default is off
-        GET_FEATURE_MAP = False
-        if (GET_FEATURE_MAP):
-            outputs = []
-            for layer in trainer.model.layers:
-                if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
-                    outputs.append(layer.output)
-                    print(layer.__class__.__name__)
-            
-            
-            trainer.model = Model(inputs=trainer.model.inputs, outputs=outputs)
-            print(f'<< feature layers: N={len(trainer.model.outputs)} >>')
-            for i, output in enumerate(trainer.model.outputs):
-                print(f'  #{i}: {output}')
-        
         predict_data_list = [
             ['train', x_train, y_train],
             ['validation', x_val, y_val],
@@ -300,7 +279,7 @@ def main():
             print(f'[INFO] Prediction: {name}')
             if (x_ is not None):
                 if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
-                    predictions, features = _predict_and_calc_accuracy(trainer, x_, y_, get_feature_map=GET_FEATURE_MAP)
+                    predictions, features = _predict_and_calc_accuracy(trainer, x_, y_, get_feature_map=False)
                     
                     json_data = []
                     if (y_ is not None):
@@ -351,13 +330,46 @@ def main():
                     json.dump(json_data, f, ensure_ascii=False, indent=4)
                 pd.DataFrame(json_data).to_csv(Path(result_dir, f'{name}_prediction.csv'), index=False)
         
+    elif (args.mode == 'predict_with_features'):
+        # --- re-define the models to get feature maps ---
+        outputs = []
+        for layer in trainer.model.layers:
+            if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
+                outputs.append(layer.output)
+                print(layer.__class__.__name__)
+        
+        
+        trainer.model = Model(inputs=trainer.model.inputs, outputs=outputs)
+        print(f'<< feature layers: N={len(trainer.model.outputs)} >>')
+        for i, output in enumerate(trainer.model.outputs):
+            print(f'  #{i}: {output}')
+        
+        # --- get and save features and predictions ---
+        predict_data_list = [
+            ['test', x_test, y_test],
+        ]
+        for (name, x_, y_) in predict_data_list:
+            print(f'[INFO] Prediction: {name}')
+            if (x_ is not None):
+                if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
+                    for i, sample in enumerate(x_):
+                        predictions, features = _predict_and_calc_accuracy(trainer, sample, None, get_feature_map=True)
+                        print(f'<< sample #{i} >>')
+                        print(f'  * predictions.shape: {predictions.shape}')
+                        for ii, feature in enumerate(features):
+                            print(f'  * feature #{ii} shape: {feature.shape}')
+                        break
+                else:
+                    # --- T.B.D ---
+                    pass
+        
     else:
         print('[ERROR] Unknown mode: {}'.format(args.mode))
 
     return
 
 #---------------------------------
-# メイン処理
+# main routine
 #---------------------------------
 if __name__ == '__main__':
     main()
