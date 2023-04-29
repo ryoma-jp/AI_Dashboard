@@ -17,6 +17,7 @@ import pickle
 
 from tqdm import tqdm
 from pathlib import Path
+from collections import OrderedDict
 from tensorflow.keras.models import Model
 
 from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet
@@ -338,13 +339,15 @@ def main():
                 outputs.append(layer.output)
                 print(layer.__class__.__name__)
         
-        
         trainer.model = Model(inputs=trainer.model.inputs, outputs=outputs)
         print(f'<< feature layers: N={len(trainer.model.outputs)} >>')
         for i, output in enumerate(trainer.model.outputs):
             print(f'  #{i}: {output}')
         
         # --- get and save features and predictions ---
+        feature_pickle_dir = Path(result_dir, 'features')
+        os.makedirs(feature_pickle_dir, exist_ok=True)
+        
         predict_data_list = [
             ['test', x_test, y_test],
         ]
@@ -354,11 +357,16 @@ def main():
                 if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
                     for i, sample in enumerate(x_):
                         predictions, features = _predict_and_calc_accuracy(trainer, sample, None, get_feature_map=True)
-                        print(f'<< sample #{i} >>')
-                        print(f'  * predictions.shape: {predictions.shape}')
-                        for ii, feature in enumerate(features):
-                            print(f'  * feature #{ii} shape: {feature.shape}')
-                        break
+                        
+                        od_features = OrderedDict()
+                        for output, value in zip(trainer.model.outputs, features):
+                            od_features[output.name] = value[0]
+                        
+                        od_features[trainer.model.outputs[-1].name] = predictions[0]
+                        
+                        with open(Path(feature_pickle_dir, f'sample{i:08d}.pickle'), 'wb') as f:
+                            pickle.dump(od_features, f)
+                        
                 else:
                     # --- T.B.D ---
                     pass
