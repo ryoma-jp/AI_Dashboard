@@ -193,6 +193,41 @@
           </div>
         </div>
         
+        <div class="row">
+          <label class="col-sm-2 col-form-label">Show Features</label>
+          
+          <div class="dropdown my-3">
+            <button type="button" class="btn btn-primary dropdown-toggle" id="streaming_show_features_dropdown_selected" data-bs-toggle="dropdown" aria-expanded="false">
+              {% if show_features_dropdown_selected %}
+                {{ show_features_dropdown_selected }}
+              {% else %}
+                False
+              {% endif %}
+            </button>
+            <ul class="dropdown-menu" area-labelledby="streaming_show_features_dropdown_selected" id="streaming_show_features_dropdown_selected_list">
+              <li><button type="button" class="dropdown-item" value="True">True</button></li>
+              <li><button type="button" class="dropdown-item" value="False">False</button></li>
+            </ul>
+              <script>
+                // id=streaming_show_features_dropdown_selected_listのdropdown-menu内のliタグに対してリスナにクリックイベントを追加する
+                dropdown_list = document.querySelector('#streaming_show_features_dropdown_selected_list')
+                dropdown_list.querySelectorAll('li').forEach( function(el) {
+                  el.addEventListener('click', function() {
+                    // console.log('Click dropdown item');
+                    // console.log(el.textContent);
+                    
+                    display = document.getElementById('streaming_show_features_dropdown_selected');
+                    display.innerText = el.textContent;
+                    
+                    ele = document.getElementById('streaming_show_features_dropdown_selected_submit')
+                    ele.value = el.textContent;
+                  });
+                });
+              </script>
+              <input type="hidden" name="streaming_show_features_dropdown_selected_submit" id="streaming_show_features_dropdown_selected_submit" value="{{ streaming_show_features_dropdown_selected.name }}">
+          </div>
+        </div>
+          
         <button type="submit" name="view_streaming_youtube_url_apply" class="btn btn-primary mb-2">Apply</button>
       </form>
       

@@ -174,6 +174,7 @@ def view_streaming(request):
             request.session['streaming_selected_model'] = request.POST.getlist('streaming_view_model_dropdown')[0]
         elif ('view_streaming_youtube_url_apply' in request.POST):
             request.session['streaming_youtube_url'] = request.POST.getlist('view_streaming_youtube_url')[0]
+            request.session['show_features_dropdown_selected'] = request.POST.getlist('streaming_show_features_dropdown_selected_submit')[0]
         elif ('view_streaming_ipaddr_apply' in request.POST):
             ip_addr = [
                 request.POST['ip_0'],
@@ -190,6 +191,7 @@ def view_streaming(request):
     streaming_interface = request.session.get('streaming_interface', None)
     streaming_selected_project = request.session.get('streaming_selected_project', 'Sample')
     streaming_selected_model = request.session.get('streaming_selected_model', None)
+    show_features_dropdown_selected = request.session.get('show_features_dropdown_selected', None)
     
     if (streaming_selected_project == 'Sample'):
         pretrained_model_list = [
@@ -247,6 +249,7 @@ def view_streaming(request):
         'port': port,
         'valid_url': valid_url,
         'youtube_url': youtube_url,
+        'show_features_dropdown_selected': show_features_dropdown_selected,
     }
     return render(request, 'view_streaming.html', context)
 
