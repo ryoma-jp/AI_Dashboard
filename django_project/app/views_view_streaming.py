@@ -78,9 +78,10 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
             
             # --- Create object of Pre-trained model ---
             get_feature_map = True
-            if (request.session.get('show_features_dropdown_selected', 'False') == 'False'):
+            if (request.session.get('show_features_enable_selected', 'False') == 'False'):
                 get_feature_map = False
-            pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map)
+            feature_map_calc_range = request.session.get('show_features_calc_range_selected', 'Model-wise')
+            pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map, feature_map_calc_range=feature_map_calc_range)
             logging.info('-------------------------------------')
             logging.info(f'model_summary')
             pretrained_model.pretrained_model.summary(print_fn=logging.info)
@@ -102,6 +103,18 @@ def _create_frame(frame, overlay,
     This function is internal in the streaming view, creates the frame to draw in the streaming view.
     
     Args:
+        frame (numpy.ndarray): original camera frame
+        overlay (numpy.ndarray): copy of camera frame
+        pretrained_model (MlModel): pre-trained model object
+        fps_text (string): framerate
+        fps_org (list): position of ``fps_text``
+        model_name_text (string): model name
+        model_name_org (list): position of ``model_name_text``
+        class_org (list): position of class text
+        alpha (float): blend alpha for drawing the prediction result
+        height (int): image height
+        width (int): image width
+        categories_coco2017 (list): categories of COCO2017 dataset
     """
     if (pretrained_model is not None):
         if (pretrained_model.task == 'classification'):
@@ -188,7 +201,15 @@ def view_streaming(request):
             request.session['streaming_selected_model'] = request.POST.getlist('streaming_view_model_dropdown')[0]
         elif ('view_streaming_youtube_url_apply' in request.POST):
             request.session['streaming_youtube_url'] = request.POST.getlist('view_streaming_youtube_url')[0]
-            request.session['show_features_dropdown_selected'] = request.POST.getlist('streaming_show_features_dropdown_selected_submit')[0]
+            
+            tmp_val = request.POST.getlist('streaming_show_features_enable_selected_submit')[0]
+            if (tmp_val != ''):
+                request.session['show_features_enable_selected'] = tmp_val
+            
+            tmp_val = request.POST.getlist('streaming_show_features_calc_range_selected_submit')[0]
+            if (tmp_val != ''):
+                request.session['show_features_calc_range_selected'] = tmp_val
+            
         elif ('view_streaming_ipaddr_apply' in request.POST):
             ip_addr = [
                 request.POST['ip_0'],
@@ -205,7 +226,8 @@ def view_streaming(request):
     streaming_interface = request.session.get('streaming_interface', None)
     streaming_selected_project = request.session.get('streaming_selected_project', 'Sample')
     streaming_selected_model = request.session.get('streaming_selected_model', None)
-    show_features_dropdown_selected = request.session.get('show_features_dropdown_selected', 'False')
+    show_features_enable_selected = request.session.get('show_features_enable_selected', 'False')
+    show_features_calc_range_selected = request.session.get('show_features_calc_range_selected', 'Model-wise')
     
     if (streaming_selected_project == 'Sample'):
         pretrained_model_list = [
@@ -263,7 +285,8 @@ def view_streaming(request):
         'port': port,
         'valid_url': valid_url,
         'youtube_url': youtube_url,
-        'show_features_dropdown_selected': show_features_dropdown_selected,
+        'show_features_enable_selected': show_features_enable_selected,
+        'show_features_calc_range_selected': show_features_calc_range_selected,
     }
     return render(request, 'view_streaming.html', context)
 

@@ -75,7 +75,7 @@ class PredictorMlModel(Predictor):
     
     """
     
-    def __init__(self, mlmodel, get_feature_map=False):
+    def __init__(self, mlmodel, get_feature_map=False, feature_map_calc_range='Model-wise'):
         """Constructor
         
         This function is the construction of predictor.
@@ -83,6 +83,9 @@ class PredictorMlModel(Predictor):
         Args:
             mlmodel (object): MlModel class
             get_feature_map (bool): If get feature map, set to True. Default is False.
+            feature_map_calc_range (string): calculation range of feature map
+                - Model-wise
+                - Layer-wise
         """
         
         # --- load config and set parameters ---
@@ -96,6 +99,7 @@ class PredictorMlModel(Predictor):
     
         # --- initialize ---
         self.get_feature_map = get_feature_map
+        self.feature_map_calc_range = feature_map_calc_range
         if (task in ['img_clf', 'table_clf']):
             self.task = 'classification'
         elif (task in ['img_reg', 'table_reg']):
@@ -174,14 +178,27 @@ class PredictorMlModel(Predictor):
         border = (2, 5)  # [H, W]
         
         # --- calculate min/max for normalization ---
-        feature_min = self.prediction[0].min()
-        feature_max = self.prediction[0].max()
-        feature_ch_max = self.prediction[0].shape[-1]
-        for feature in self.prediction[1:]:
-            feature_min = min(feature_min, feature.min())
-            feature_max = max(feature_max, feature.max())
-            feature_ch_max = max(feature_ch_max, feature.shape[-1])
-        layer_num = len(self.prediction)
+        if (self.feature_map_calc_range == 'Model-wise'):
+            feature_min = self.prediction[0].min()
+            feature_max = self.prediction[0].max()
+            feature_ch_max = self.prediction[0].shape[-1]
+            for feature in self.prediction[1:]:
+                feature_min = min(feature_min, feature.min())
+                feature_max = max(feature_max, feature.max())
+                feature_ch_max = max(feature_ch_max, feature.shape[-1])
+            layer_num = len(self.prediction)
+            
+            feature_min = [feature_min for _ in range(layer_num)]
+            feature_max = [feature_max for _ in range(layer_num)]
+        else:
+            feature_min = [self.prediction[0].min()]
+            feature_max = [self.prediction[0].max()]
+            feature_ch_max = self.prediction[0].shape[-1]
+            for feature in self.prediction[1:]:
+                feature_min.append(feature.min())
+                feature_max.append(feature.max())
+                feature_ch_max = max(feature_ch_max, feature.shape[-1])
+            layer_num = len(self.prediction)
         
         # --- calculate average and create feature map---
         feature_map_height = element_size[0] * feature_ch_max + border[0] * (feature_ch_max-1) + offset * 2
@@ -190,7 +207,7 @@ class PredictorMlModel(Predictor):
         
         for _layer_num, feature in enumerate(self.prediction):
             feature_mean = feature.mean(axis=tuple(range(len(feature.shape)-1)))
-            feature_norm = (feature_mean - feature_min) / (feature_max - feature_min)
+            feature_norm = (feature_mean - feature_min[_layer_num]) / (feature_max[_layer_num] - feature_min[_layer_num])
             feature_map_vals = (feature_norm * 255).astype(int)
             
             for _ch, feature_map_val in enumerate(feature_map_vals):
