@@ -140,10 +140,15 @@ def _create_frame(frame, overlay,
             frame = cv2.hconcat([frame, cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)])
     
         if (pretrained_model.get_feature_map):
-            feature_map_area_width = frame.shape[1]
-            feature_map_area = np.zeros([240, feature_map_area_width, 3], np.uint8)
+            feature_map = pretrained_model.create_feature_map()
             
-            frame = cv2.vconcat([frame, feature_map_area])
+            width_sub = frame.shape[1] - feature_map.shape[1]
+            if (width_sub > 0):
+                feature_map = cv2.hconcat([feature_map, np.full([feature_map.shape[0], abs(width_sub), 3], 255, dtype=np.uint8)])
+            elif (width_sub < 0):
+                frame = cv2.hconcat([frame, np.zeros([frame.shape[1], abs(width_sub), 3], np.uint8)])
+            
+            frame = cv2.vconcat([frame, feature_map])
     
     else:
         cv2.rectangle(overlay, (0, 0), (100, 20), (0, 0, 0), -1)
@@ -329,8 +334,8 @@ def usb_cam(request):
                 processing_rate = 1.0 / (time_end - time_start)
                 fps_text = f'fps : {processing_rate:.02f}'
                 
-                frame = _create_frame(frame, overlay, 
-                      pretrained_model, 
+                frame = _create_frame(frame, overlay,
+                      pretrained_model,
                       fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
                       height, width, 
                       categories_coco2017)
@@ -408,8 +413,7 @@ def youtube(request):
                 overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
                 
                 # --- Infrerence ---
-                preds = pretrained_model.predict(overlay_for_inference)
-                pretrained_model.decode_predictions(preds)
+                pretrained_model.predict(overlay_for_inference)
                 
             # --- Put Text ---
             time_end = time.time()
@@ -420,8 +424,8 @@ def youtube(request):
             if (sleep_time > 0):
                 time.sleep(sleep_time)
             
-            frame = _create_frame(frame, overlay, 
-                                  pretrained_model, 
+            frame = _create_frame(frame, overlay,
+                                  pretrained_model,
                                   fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
                                   height, width, 
                                   categories_coco2017)

@@ -3,6 +3,7 @@
 This file describe about the prediction process using Keras
 """
 
+import cv2
 import json
 import numpy as np
 import tensorflow as tf
@@ -29,6 +30,8 @@ class Predictor():
             task (string): task of model
                 - 'classification'
         """
+        self.prediction = None
+        
         if (task == 'classification'):
             self.decoded_preds = {
                 'class_id': None,
@@ -132,7 +135,7 @@ class PredictorMlModel(Predictor):
     def predict(self, x):
         """Predict
         
-        This function predicts ``x`` using ``self.pretrained_model``
+        This function predicts ``x`` using ``self.pretrained_model``, converts predictions to dict format
         
         Args:
             x (np.array): input data
@@ -142,26 +145,12 @@ class PredictorMlModel(Predictor):
             prediction as np.array
         """
         
-        prediction = self.pretrained_model.predict(self.preprocess_input(x))
-        
-        return prediction
-    
-    def decode_predictions(self, preds):
-        """Decode Predictions
-        
-        This function converts predictions to dict format
-        
-        Args:
-            preds (np.array): predictions
-        
-        Return:
-            
-        """
+        self.prediction = self.pretrained_model.predict(self.preprocess_input(x))
         
         if (self.get_feature_map):
-            _preds = preds[-1][0]
+            _preds = self.prediction[-1][0]
         else:
-            _preds = preds[0]
+            _preds = self.prediction[0]
         
         top5_score = np.sort(_preds)[::-1][0:5]
         top5_class_id = np.argsort(_preds)[::-1][0:5]
@@ -169,6 +158,45 @@ class PredictorMlModel(Predictor):
         self.decoded_preds['class_id'] = top5_class_id
         self.decoded_preds['class_name'] = [f'class{i}' for i in top5_class_id]
         self.decoded_preds['score'] = top5_score
+
+        
+    def create_feature_map(self):
+        """Create Freature Map
+        
+        This function converts ``self.prediction`` to the heatmap.
+        
+        """
+        
+        element_size = [5, 5]   # [H, W]
+        offset = 5
+        border = (2, 5)  # [H, W]
+        
+        # --- calculate min/max for normalization ---
+        feature_min = self.prediction[0].min()
+        feature_max = self.prediction[0].max()
+        feature_ch_max = self.prediction[0].shape[-1]
+        for feature in self.prediction[1:]:
+            feature_min = min(feature_min, feature.min())
+            feature_max = max(feature_max, feature.max())
+            feature_ch_max = max(feature_ch_max, feature.shape[-1])
+        layer_num = len(self.prediction)
+        
+        # --- calculate average and create feature map---
+        feature_map_height = element_size[0] * feature_ch_max + border[0] * (feature_ch_max-1) + offset * 2
+        feature_map_width = element_size[1] * layer_num + border[1] * (layer_num-1) + offset * 2
+        feature_map = np.full([feature_map_height, feature_map_width, 3], 255, dtype=np.uint8)
+        
+        for _layer_num, feature in enumerate(self.prediction):
+            feature_mean = feature.mean(axis=tuple(range(len(feature.shape)-1)))
+            feature_norm = (feature_mean - feature_min) / (feature_max - feature_min)
+            feature_map_vals = (feature_norm * 255).astype(int)
+            
+            for _ch, feature_map_val in enumerate(feature_map_vals):
+                pos_x = offset + _layer_num*(element_size[1]+border[1])
+                pos_y = offset + _ch*(element_size[0]+border[0])
+                cv2.rectangle(feature_map, (pos_x, pos_y), (pos_x+element_size[0], pos_y+element_size[1]), (0, 0, 0), -1)
+        
+        return feature_map
 
 class PredictorResNet50(Predictor):
     """Predictor
