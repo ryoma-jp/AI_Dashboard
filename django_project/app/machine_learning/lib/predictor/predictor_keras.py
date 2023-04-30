@@ -9,6 +9,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
+import logging
+
 from pathlib import Path
 from PIL import Image
 from tensorflow import keras
@@ -194,7 +196,9 @@ class PredictorMlModel(Predictor):
             for _ch, feature_map_val in enumerate(feature_map_vals):
                 pos_x = offset + _layer_num*(element_size[1]+border[1])
                 pos_y = offset + _ch*(element_size[0]+border[0])
-                cv2.rectangle(feature_map, (pos_x, pos_y), (pos_x+element_size[0], pos_y+element_size[1]), (0, 0, 0), -1)
+                
+                color = np.array([feature_map_val, feature_map_val, 0]).tolist()
+                cv2.rectangle(feature_map, (pos_x, pos_y), (pos_x+element_size[0], pos_y+element_size[1]), color, -1)
         
         return feature_map
 
