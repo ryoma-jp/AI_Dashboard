@@ -130,7 +130,7 @@ class MlParams():
                     'value': 'SimpleCNN',
                     'configurable': True,
                     'selectable': True,
-                    'items': ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet', 'LightGBM'],
+                    'items': ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet', 'SimpleCNN_Detector', 'LightGBM'],
                 },
                 'input_tensor_name': {
                     'name': 'Input Tensor Name',
@@ -374,4 +374,16 @@ class MlParams_CaliforniaHousing(MlParams):
         super().__init__()
         self.params['model']['model_type']['value'] = 'LightGBM'
         self.params['dataset']['dataset_name']['value'] = 'CaliforniaHousing'
+
+class MlParams_COCO2017(MlParams):
+    """Class MlParams_CIFAR10
+    
+    * COCO2017データセットによる物体検知モデル学習時のパラメータ
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self.params['model']['model_type']['value'] = 'SimpleCNN_Detector'
+        self.params['dataset']['dataset_name']['value'] = 'COCO2017'
+        self.params['dataset']['norm']['value'] = 'z-score'
 

@@ -6,7 +6,7 @@
 import os
 import argparse
 import json
-from ml_params import MlParams, MlParams_MNIST, MlParams_CIFAR10, MlParams_CaliforniaHousing
+from ml_params import MlParams, MlParams_MNIST, MlParams_CIFAR10, MlParams_COCO2017, MlParams_CaliforniaHousing
 
 #---------------------------------
 # 定数定義
@@ -59,6 +59,11 @@ def main():
     california_housing_params = MlParams_CaliforniaHousing()
     with open(os.path.join(args.output_dir, 'config_california_housing.json'), 'w') as f:
         json.dump(california_housing_params.params, f, ensure_ascii=False, indent=4)
+
+    # --- デフォルトパラメータ生成(COCO 2017) ---
+    coco2017_params = MlParams_COCO2017()
+    with open(os.path.join(args.output_dir, 'config_coco2017.json'), 'w') as f:
+        json.dump(coco2017_params.params, f, ensure_ascii=False, indent=4)
 
     return
 
