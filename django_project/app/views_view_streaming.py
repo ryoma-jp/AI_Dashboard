@@ -61,10 +61,14 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
             
             # --- Create object of Pre-trained model ---
             pretrained_model = PredictorCenterNetHourGlass104()
-            logging.info('-------------------------------------')
-            logging.info(f'model_summary')
-            pretrained_model.pretrained_model.summary(print_fn=logging.info)
-            logging.info('-------------------------------------')
+            
+            # --- T.B.D ---
+            #   * CenterNetHourGlass104 has no attribute 'summary'
+            #       - AttributeError: '_UserObject' object has no attribute 'summary'
+            #logging.info('-------------------------------------')
+            #logging.info(f'model_summary')
+            #pretrained_model.pretrained_model.summary(print_fn=logging.info)
+            #logging.info('-------------------------------------')
             
         else:
             pretrained_model = None
@@ -349,8 +353,7 @@ def usb_cam(request):
                     overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
                     
                     # --- Infrerence ---
-                    preds = pretrained_model.predict(overlay_for_inference)
-                    pretrained_model.decode_predictions(preds)
+                    pretrained_model.predict(overlay_for_inference)
                     
                 # --- Put Text ---
                 time_end = time.time()
