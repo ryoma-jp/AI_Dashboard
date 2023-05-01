@@ -1,7 +1,12 @@
 #! -*- coding: utf-8 -*-
 
+"""Data Loader
+
+This file is written about the dataset loading.
+"""
+
 #---------------------------------
-# モジュールのインポート
+# Import modules
 #---------------------------------
 import os
 import logging
@@ -18,36 +23,39 @@ from PIL import Image
 from machine_learning.lib.utils.preprocessor import image_preprocess
 
 #---------------------------------
-# クラス; データ取得基底クラス
+# Class
 #---------------------------------
 class DataLoader():
     """DataLoader
     
-    データ取得処理の基底クラス
+    Base class for dataset loading
     
     Attributes:
-        one_hot (bool): 真値がonehot表現の場合にTrueにセット
-        output_dims (int): 出力次元数
-        verified (bool): Webアプリでの解析可否の検証結果(Webアプリで解析可能な場合にTrueにセット)
-        train_x (numpy.ndarray): 学習用画像
-        train_y (numpy.ndarray): 学習用画像の真値
-        validation_x (numpy.ndarray): Validation用画像
-        validation_y (numpy.ndarray): Validation用画像の真値
-        test_x (numpy.ndarray): Test用画像
-        test_y (numpy.ndarray): Test用画像の真値
-        dataset_type (str): データセット種別
-            - 'img_clf': 画像データの分類タスク
-            - 'img_reg': 画像データの回帰タスク
-            - 'table_clf': テーブルデータの分類タスク
-            - 'table_reg': テーブルデータの回帰タスク
-        input_distributions (dict): input feature分布
-        target_distributions (dict): target分布
-        statistic_keys (list): 分布計算対象の特徴量リスト
-        preprocessing_params (dict): 前処理用パラメータ
+        one_hot (bool): If the ground truth is onehot, set to True
+        output_dims (int): Output dimensions
+        verified (bool): Verified status of Web app (True: verified, False: not verified)
+        train_x (numpy.ndarray): Input data for training
+        train_y (numpy.ndarray): Ground truth for training
+        validation_x (numpy.ndarray): Input data for validation
+        validation_y (numpy.ndarray): Ground truth for validation
+        test_x (numpy.ndarray): Input data for test
+        test_y (numpy.ndarray): Ground truth for test
+        dataset_type (str): Type of dataset
+            - 'img_clf': Image Classification
+            - 'img_reg': Image Regression
+            - 'table_clf': Table data Classification
+            - 'table_reg': Table data Regression
+        input_distributions (dict): Distributions of input features
+        target_distributions (dict): Distributions of targets
+        statistic_keys (list): Feature name list of distribution culculation
+        preprocessing_params (dict): Parameters of preprocessing
     
     """
-    # --- コンストラクタ ---
     def __init__(self):
+        """Constructor
+        
+        Constructor
+        """
         self.one_hot = True
         self.output_dims = -1
         self.verified = False
@@ -60,15 +68,14 @@ class DataLoader():
         }
         
     
-    # --- ファイルダウンロード ---
     def file_download(self, dir, url):
         """file_download
         
-        指定URLのデータをダウンロードする
+        Dataset download that is specified ``url``
         
         Args:
-            dir (str): ダウンロードデータの保存先のディレクトリ
-            url (str): ダウンロードデータのURL
+            dir (str): Destination directory
+            url (str): Download URL
         
         """
         save_file = Path(dir, Path(url).name)
@@ -135,14 +142,13 @@ class DataLoader():
                preprocessed_validation_x, preprocessed_validation_y, \
                preprocessed_test_x, preprocessed_test_y
         
-    # --- 学習データとバリデーションデータを分割 ---
     def split_train_val(self, validation_split):
         """split_train_val
         
-        学習データとValidationデータを分割する
+        Split dataset training dataset and validation dataset
         
         Args:
-            validation_split (float): Validationデータの比率
+            validation_split (float): Ratio of validation data
         
         """
         idx = np.arange(len(self.train_x))
@@ -185,10 +191,10 @@ class DataLoader():
     def convert_label_encoding(self, one_hot=True):
         """Convert Label Encoding
         
-        正解ラベルをOne Hot表現とインデックス表現を相互変換する
+        Convert the ground truth represenation onehot and index
         
         Args:
-            one_hot (bool): 変換先のインデックス表現を指定
+            one_hot (bool): True: index->onehot, False: onehot->index
         """
         
         if ((not self.one_hot) and (one_hot)):
@@ -329,22 +335,23 @@ class DataLoader():
             else:
                 self.target_distributions['test'] = None
             
-#---------------------------------
-# クラス; CIFAR-10データセット取得
-#---------------------------------
 class DataLoaderCIFAR10(DataLoader):
     """DataLoaderCIFAR10
     
-    CIFAR-10データセットのロード用クラス
+    DataLoader class for CIFAR-10 dataset
     """
     
     def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
-        """
-            [引数説明]
-                * validation_split: validation dataとして使用する学習データの比率(0.0 ～ 1.0)
-                * flatten: 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
-                * one_hot: one hot形式(=True)かラベルインデックス(=False;default)かを選択する
-                * download: データをダウンロードする場合にTrueを指定
+        """Constructor
+        
+        Constructor
+        
+        Args:
+            dataset_dir (string): dataset directory
+            validation_split (float): ratio of validation data
+            flatten (bool): [T.B.D] If input shape is vector([N, :]), set to True
+            one_hot (bool): If the ground truth is onehot, set to True
+            download (bool): If the dataset downloads from Web, set to True
         """
         
         def unpickle(file):
@@ -421,33 +428,34 @@ class DataLoaderCIFAR10(DataLoader):
             self.train_y = np.array(train_y)
             self.test_y = np.array(test_y)
         
-        # --- 学習データとバリデーションデータを分割 ---
+        # --- split dataset training data and validation data ---
         self.split_train_val(validation_split)
         
-        # --- 出力次元数を保持 ---
+        # --- save output dimension ---
         self.output_dims = 10
         
-        # --- 画像分類タスク ---
+        # --- set task to image classification ---
         self.dataset_type = 'img_clf'
         
         return
         
-#---------------------------------
-# クラス; MNISTデータセット取得
-#---------------------------------
 class DataLoaderMNIST(DataLoader):
     """DataLoaderMNIST
     
-    MNISTデータセットのロード用クラス
+    DataLoader class for MNIST dataset
     """
     
-    # --- コンストラクタ ---
     def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
-        """
-            [引数説明]
-                * validation_split: validation dataとして使用する学習データの比率(0.0 ～ 1.0)
-                * flatten: 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
-                * one_hot: one hot形式(=True)かラベルインデックス(=False;default)かを選択する
+        """Constructor
+        
+        Constructor
+        
+        Args:
+            dataset_dir (string): dataset directory
+            validation_split (float): ratio of validation data
+            flatten (bool): [T.B.D] If input shape is vector([N, :]), set to True
+            one_hot (bool): If the ground truth is onehot, set to True
+            download (bool): If the dataset downloads from Web, set to True
         """
         
         # --- initialize super class ---
@@ -528,29 +536,33 @@ class DataLoaderMNIST(DataLoader):
         if (self.one_hot):
             self.test_y = np.array([identity[i] for i in self.test_y])
         
-        # --- 学習データとバリデーションデータを分割 ---
+        # --- split dataset training data and validation data ---
         self.split_train_val(validation_split)
         
-        # --- 出力次元数を保持 ---
+        # --- save output dimension ---
         self.output_dims = 10
         
-        # --- 画像分類タスク ---
+        # --- set task to image classification ---
         self.dataset_type = 'img_clf'
         
         return
     
-
-#---------------------------------
-# クラス; California Housingデータセット取得
-#---------------------------------
 class DataLoaderCaliforniaHousing(DataLoader):
     """DataLoaderCaliforniaHousing
     
-    カリフォルニア住宅価格予測用データセットのロード用クラス
+    DataLoader class for California Housing dataset
     """
     
-    # --- コンストラクタ ---
     def __init__(self, dataset_dir, validation_size=0.2, test_size=0.3):
+        """Constructor
+        
+        Constructor
+        
+        Args:
+            dataset_dir (string): dataset directory
+            validation_split (float): ratio of validation data
+            test_size (float): ratio of test data
+        """
         from sklearn.datasets import fetch_california_housing
         
         # --- initialize super class ---
@@ -569,9 +581,6 @@ class DataLoaderCaliforniaHousing(DataLoader):
         
         return
 
-#---------------------------------
-# クラス; カスタムデータセット取得
-#---------------------------------
 class DataLoaderCustom(DataLoader):
     """DataLoaderCustom
     
@@ -591,7 +600,10 @@ class DataLoaderCustom(DataLoader):
     """
     
     def __init__(self):
-        """constructor"""
+        """Constructor
+        
+        Constructor
+        """
         
         # --- initialize super class ---
         super().__init__()
@@ -610,15 +622,15 @@ class DataLoaderCustom(DataLoader):
     def load_data(self, meta_dir, train_dir, validation_dir=None, test_dir=None, validation_split=0.0, flatten=False, one_hot=False):
         """load_data
         
-        データをロードしてクラス変数へ設定する
+        Load data and set to class variables
         
         Args:
-            train_dir (PosixPath): 学習データセットのディレクトリ
-            validation_dir (PosixPath): バリデーションデータセットのディレクトリ
-            test_dir (PosixPath): テストデータセットのディレクトリ
-            validation_split (float): validation dataとして使用する学習データの比率(0.0 ～ 1.0)．validation_dirが指定されている場合は，validation_splitは無視する
-            flatten (bool): 入力形式を[N, H, W, C](=False;default)とするか[N, H*W*C](=True)とするかを選択する(T.B.D)
-            one_hot (bool): one hot形式(=True)かラベルインデックス(=False;default)かを選択する
+            train_dir (PosixPath): training data directory
+            validation_dir (PosixPath): validation data directory
+            test_dir (PosixPath): test data direcotry
+            validation_split (float): ratio of validation data
+            flatten (bool): [T.B.D] If input shape is vector([N, :]), set to True
+            one_hot (bool): If the ground truth is onehot, set to True
         
         Returns:
             None
@@ -626,10 +638,12 @@ class DataLoaderCustom(DataLoader):
         
         def _load_image_data(data_dir, key_name='img_file'):
             """_load_image_data
-                カスタムデータセットを読み込み，画像とラベルを返す
-                
-                [引数説明]
-                  * data_dir: カスタムデータセットのディレクトリ
+            
+            Load custom dataset and returns the image and label
+            
+            Args:
+                data_dir (PosixPath): dataset directory
+                key_name (string): key name of meta
             """
             
             # --- Load json data ---
@@ -745,7 +759,7 @@ class DataLoaderCustom(DataLoader):
     def verify(self, meta_dir, train_dir, validation_dir=None, test_dir=None):
         """verify
         
-        データ形式の整合検証
+        Verify dataset
         
         Args:
             meta_dir (PosixPath): Meta data (zip extracted)
