@@ -6,6 +6,7 @@ The common modules are described in this file.
 import os
 import json
 import shutil
+import requests
 import tarfile
 import gzip
 import cv2
@@ -23,12 +24,19 @@ def download_file(url, save_dir='output'):
     Args:
         url (string): specify URL
         save_dir (string): specify the directory to save file.
+    
+    Return:
+        file path of the downloaded file
     """
-
-    data = request.urlopen(url).read()
-    with open(Path(save_dir, Path(url).name), 'wb') as f:
-        f.write(data)
-
+    
+    save_file = Path(save_dir, Path(url).name)
+    with requests.get(url, stream=True) as r:
+      with open(save_file, mode='wb') as f:
+          for chunk in r.iter_content(chunk_size=1048576):
+              f.write(chunk)
+    
+    return save_file
+    
 def safe_extract_tar(tar_file, path, members=None, *, numeric_owner=False):
     """Extract tarball (applied CVE-2007-4559 Patch)
 

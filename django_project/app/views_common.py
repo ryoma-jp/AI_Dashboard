@@ -15,6 +15,7 @@ from app.models import Project, MlModel
 from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
 from machine_learning.lib.data_loader.data_loader import DataLoaderCaliforniaHousing
+from machine_learning.lib.data_loader.data_loader import DataLoaderCOCO2017
 from machine_learning.lib.data_loader.data_loader import DataLoaderCustom
 from machine_learning.lib.utils.utils import save_meta, save_image_files, save_table_info
 
@@ -134,6 +135,18 @@ def load_dataset(dataset):
                     'type': 'image_file',
                 }]
         save_meta(meta_dir, 'True', 'classification', 'image_data', keys)
+        
+    elif (dataset.name == 'COCO2017'):
+        # --- Create dataloader object ---
+        dataloader = DataLoaderCOCO2017(download_dir, download=download)
+        
+        # --- Create meta data ---
+        meta_dir = Path(download_dir, 'meta')
+        keys = [{
+                    'name': 'img_file',
+                    'type': 'image_file',
+                }]
+        save_meta(meta_dir, 'True', 'object_detection', 'image_data', keys)
         
     elif (dataset.name == 'CaliforniaHousing'):
         # --- Create dataloader object ---

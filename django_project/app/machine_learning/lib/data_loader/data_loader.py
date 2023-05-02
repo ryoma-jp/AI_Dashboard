@@ -15,11 +15,13 @@ import pandas as pd
 import requests
 import tarfile
 import gzip
+import json
 
 from sklearn.model_selection import train_test_split
 from pathlib import Path
 from PIL import Image
 
+from machine_learning.lib.utils.utils import zip_extract, download_file
 from machine_learning.lib.utils.preprocessor import image_preprocess
 
 #---------------------------------
@@ -67,25 +69,6 @@ class DataLoader():
             'norm_coef': [0.0, 1.0],
         }
         
-    
-    def file_download(self, dir, url):
-        """file_download
-        
-        Dataset download that is specified ``url``
-        
-        Args:
-            dir (str): Destination directory
-            url (str): Download URL
-        
-        """
-        save_file = Path(dir, Path(url).name)
-        content = requests.get(url).content
-        
-        with open(save_file, mode='wb') as f:
-            f.write(content)
-        
-        return save_file
-    
     def preprocessing(self, norm_mode='none'):
         """Pre-processing
         
@@ -129,7 +112,7 @@ class DataLoader():
         elif (norm_mode == 'z-score'):
             self.preprocessing_params['norm_coef'] = [np.mean(self.train_x), np.std(self.train_x)]
         else:
-            logging.debug('[WARNING] Unknown data normalization mode: {}'.format(mode))
+            logging.info('[WARNING] Unknown data normalization mode: {}'.format(mode))
             self.preprocessing_params['norm_coef'] = [0.0, 1.0]
         
         preprocessed_train_x = image_preprocess(self.train_x, self.preprocessing_params['norm_coef'])
@@ -367,11 +350,11 @@ class DataLoaderCIFAR10(DataLoader):
         
         # --- download dataset and extract ---
         if (download):
-            logging.debug('[DataLoaderCIFAR10] {}'.format(dataset_dir))
+            logging.info('[DataLoaderCIFAR10] {}'.format(dataset_dir))
             os.makedirs(dataset_dir, exist_ok=True)
             if (not Path(dataset_dir, 'cifar-10-batches-py').exists()):
                 url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-                save_file = self.file_download(dataset_dir, url)
+                save_file = download_file(url, dataset_dir)
                 
                 with tarfile.open(save_file) as tar:
                     # --- CVE-2007-4559 start ---
@@ -396,7 +379,7 @@ class DataLoaderCIFAR10(DataLoader):
                     safe_extract(tar, path=dataset_dir)
                     # --- CVE-2007-4559 end ---
             else:
-                logging.debug('CIFAR-10 dataset is exists (Skip Download)')
+                logging.info('CIFAR-10 dataset is exists (Skip Download)')
         dataset_dir = Path(dataset_dir, 'cifar-10-batches-py')
             
         # --- load training data ---
@@ -465,7 +448,7 @@ class DataLoaderMNIST(DataLoader):
         
         # --- download dataset and extract ---
         if (download):
-            logging.debug('[DataLoaderMNIST] {}'.format(dataset_dir))
+            logging.info('[DataLoaderMNIST] {}'.format(dataset_dir))
             os.makedirs(dataset_dir, exist_ok=True)
             mnist_files = [
                 'train-images-idx3-ubyte.gz',
@@ -477,7 +460,7 @@ class DataLoaderMNIST(DataLoader):
             for mnist_file in mnist_files:
                 if (not Path(dataset_dir, mnist_file).exists()):
                     url = 'http://yann.lecun.com/exdb/mnist/' + mnist_file
-                    save_file = self.file_download(dataset_dir, url)
+                    save_file = download_file(url, dataset_dir)
                     
                     with gzip.open(save_file, 'rb') as gz:
                         gz_content = gz.read()
@@ -487,7 +470,7 @@ class DataLoaderMNIST(DataLoader):
                         f.write(gz_content)
                     
                 else:
-                    logging.debug('{} is exists (Skip Download)'.format(mnist_file))
+                    logging.info('{} is exists (Skip Download)'.format(mnist_file))
             
         # --- load training data ---
         f = open(Path(dataset_dir, 'train-images-idx3-ubyte'))
@@ -547,6 +530,129 @@ class DataLoaderMNIST(DataLoader):
         
         return
     
+class DataLoaderCOCO2017(DataLoader):
+    """DataLoaderCOCO2017
+    
+    DataLoader class for COCO2017 dataset
+    """
+    
+    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
+        """Constructor
+        
+        Constructor
+        
+        Args:
+            dataset_dir (string): dataset directory
+            validation_split (float): ratio of validation data
+            flatten (bool): [T.B.D] If input shape is vector([N, :]), set to True
+            one_hot (bool): If the ground truth is onehot, set to True
+            download (bool): If the dataset downloads from Web, set to True
+        """
+        
+        def _get_instances(instances_json):
+            def _get_licenses(x, df_licenses=None):
+                license = df_licenses[df_licenses['id']==x['license']].iloc[0]
+                
+                dict_rename = dict(zip(license.index, [f'license_{index}' for index in license.index]))
+                license.rename(dict_rename, inplace=True)
+                
+                return license
+            
+            def _get_instances_annotations(x, df_images=None, df_categories=None):
+                image = df_images[df_images['id']==x['image_id']].iloc[0]
+                image.rename({'id': 'image_id'}, inplace=True)
+                
+                x.drop(index='image_id', inplace=True)
+                x.rename({'id': 'instance_id'}, inplace=True)
+                
+                category = df_categories[df_categories['id']==x['category_id']].iloc[0]
+                category.rename({'id': 'category_id', 'name': 'category_name'}, inplace=True)
+                
+                x.drop(index='category_id', inplace=True)
+                
+                annotation = pd.concat([image, x, category])
+                
+                return annotation
+            
+            with open(instances_json, 'r') as f:
+                instance_data = json.load(f)
+            
+            df_instances = pd.DataFrame(instance_data["images"])
+            
+            logging.info(f'instance_data.keys(): {instance_data.keys()}')
+            
+            df_instances_licenses = df_instances.apply(_get_licenses, axis=1, df_licenses=pd.DataFrame(instance_data["licenses"]))
+            df_instances = pd.concat([df_instances, df_instances_licenses], axis=1)
+            df_instances.drop(columns=['license'], inplace=True)
+            
+            df_instances_annotations = pd.DataFrame(instance_data['annotations'])
+            df_instances_categories = pd.DataFrame(instance_data['categories'])
+            df_instances = df_instances_annotations.apply(
+                               _get_instances_annotations,
+                               axis=1,
+                               df_images=df_instances,
+                               df_categories=df_instances_categories)
+            
+            return df_instances
+        
+        # --- initialize super class ---
+        super().__init__()
+        self.one_hot = one_hot
+        self.verified = True
+        
+        # --- download dataset and extract ---
+        if (download):
+            logging.info('[DataLoaderCOCO2017] {}'.format(dataset_dir))
+            os.makedirs(dataset_dir, exist_ok=True)
+            
+            # --- download trainval2017 ---
+            if (not Path(dataset_dir, 'annotations_trainval2017.zip').exists()):
+                logging.info('annotations_trainval2017.zip is downloading')
+                url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
+                save_file = download_file(url, dataset_dir)
+                zip_extract(save_file, dataset_dir)
+            else:
+                logging.info('annotations_trainval2017.zip is exists (Skip Download)')
+            
+            # --- download train2017 ---
+            if (not Path(dataset_dir, 'train2017.zip').exists()):
+                logging.info('train2017.zip is downloading')
+                url = 'http://images.cocodataset.org/zips/train2017.zip'
+                save_file = download_file(url, dataset_dir)
+                zip_extract(save_file, dataset_dir)
+                
+            else:
+                logging.info('train2017.zip is exists (Skip Download)')
+
+            # --- download val2017 ---
+            if (not Path(dataset_dir, 'val2017.zip').exists()):
+                logging.info('val2017.zip is downloading')
+                url = 'http://images.cocodataset.org/zips/val2017.zip'
+                save_file = download_file(url, dataset_dir)
+                zip_extract(save_file, dataset_dir)
+                
+            else:
+                logging.info('val2017.zip is exists (Skip Download)')
+        
+        # --- load annotations(instances) ---
+        instances_json = Path(dataset_dir, 'annotations', 'instances_train2017.json')
+        df_instances_train = _get_instances(instances_json)
+        df_instances_train.to_csv(Path(dataset_dir, 'instances_train.csv'))
+        
+        instances_json = Path(dataset_dir, 'annotations', 'instances_val2017.json')
+        df_instances_val = _get_instances(instances_json)
+        df_instances_val.to_csv(Path(dataset_dir, 'instances_val.csv'))
+        
+        # --- T.B.D ---
+        self.train_x = None
+        self.train_y = None
+        self.validation_x = None
+        self.validation_y = None
+        self.test_x = None
+        self.test_y = None
+        
+        return
+        
 class DataLoaderCaliforniaHousing(DataLoader):
     """DataLoaderCaliforniaHousing
     

@@ -137,6 +137,7 @@ def project_new(request):
             # --- create default dataset ---
             Dataset.objects.create(name='MNIST', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
             Dataset.objects.create(name='CIFAR-10', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
+            Dataset.objects.create(name='COCO2017', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
             Dataset.objects.create(name='CaliforniaHousing', project=project, dataset_type=Dataset.DATASET_TYPE_TABLE)
             
             # --- create project directory ---
@@ -248,6 +249,8 @@ def model_new(request, project_id):
                 config_file = 'config_mnist.json'
             elif (model.dataset.name == 'CIFAR-10'):
                 config_file = 'config_cifar10.json'
+            elif (model.dataset.name == 'COCO2017'):
+                config_file = 'config_coco2017.json'
             elif (model.dataset.name == 'CaliforniaHousing'):
                 config_file = 'config_california_housing.json'
             else:
