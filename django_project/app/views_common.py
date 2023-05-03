@@ -129,15 +129,15 @@ def load_dataset(dataset):
         if (dataloader.train_x is not None):
             ids = np.arange(len(dataloader.train_x))
             save_image_files(dataloader.train_x, dataloader.train_y, ids,
-                             Path(download_dir, 'train'), name='images', key_name=keys['name'])
+                             Path(download_dir, 'train'), name='images', key_name=keys[0]['name'])
         if (dataloader.validation_x is not None):
             ids = np.arange(len(dataloader.validation_x))
             save_image_files(dataloader.validation_x, dataloader.validation_y, ids,
-                             Path(download_dir, 'validation'), name='images', key_name=keys['name'])
+                             Path(download_dir, 'validation'), name='images', key_name=keys[0]['name'])
         if (dataloader.test_x is not None):
             ids = np.arange(len(dataloader.test_x))
             save_image_files(dataloader.test_x, dataloader.test_y, ids,
-                             Path(download_dir, 'test'), name='images', key_name=keys['name'])
+                             Path(download_dir, 'test'), name='images', key_name=keys[0]['name'])
         
     elif (dataset.name == 'CIFAR-10'):
         # --- Create dataloader object ---
@@ -155,15 +155,15 @@ def load_dataset(dataset):
         if (dataloader.train_x is not None):
             ids = np.arange(len(dataloader.train_x))
             save_image_files(dataloader.train_x, dataloader.train_y, ids,
-                             Path(download_dir, 'train'), name='images', key_name=keys['name'])
+                             Path(download_dir, 'train'), name='images', key_name=keys[0]['name'])
         if (dataloader.validation_x is not None):
             ids = np.arange(len(dataloader.validation_x))
             save_image_files(dataloader.validation_x, dataloader.validation_y, ids,
-                             Path(download_dir, 'validation'), name='images', key_name=keys['name'])
+                             Path(download_dir, 'validation'), name='images', key_name=keys[0]['name'])
         if (dataloader.test_x is not None):
             ids = np.arange(len(dataloader.test_x))
             save_image_files(dataloader.test_x, dataloader.test_y, ids,
-                             Path(download_dir, 'test'), name='images', key_name=keys['name'])
+                             Path(download_dir, 'test'), name='images', key_name=keys[0]['name'])
         
     elif (dataset.name == 'COCO2017'):
         # --- Create dataloader object ---

@@ -226,11 +226,11 @@ def dataset_detail(request, project_id, dataset_id):
             logging.info('-------------------------------------')
             image_gallery_keys = []
             if (dataloader_obj.verified):
-                if (dataloader_obj.train_x is not None):
+                if (Path(download_dir, 'train', 'info.json').exists()):
                     image_gallery_keys.append('Train')
-                if (dataloader_obj.validation_x is not None):
+                if (Path(download_dir, 'validation', 'info.json').exists()):
                     image_gallery_keys.append('Validation')
-                if (dataloader_obj.test_x is not None):
+                if (Path(download_dir, 'test', 'info.json').exists()):
                     image_gallery_keys.append('Test')
             
             # --- set image data file ---
