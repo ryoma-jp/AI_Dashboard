@@ -126,10 +126,13 @@ def save_meta(output_dir, is_analysis, task, input_type, keys):
 
     Args:
         output_dir (string): specify the output directory
-        is_analysis (string): meta parameter (see meta data apecification)
-        task (string): meta parameter (see meta data apecification)
-        input_type (string): meta parameter (see meta data apecification)
-        keys (list): meta parameter (see meta data apecification)
+        is_analysis (string): meta parameter (see meta data specification)
+        task (string): meta parameter (see meta data specification)
+        input_type (string): meta parameter (see meta data specification)
+        keys (list): meta parameter (see meta data specification)
+    
+    Returns:
+        meta data as dict
     """
     
     os.makedirs(output_dir, exist_ok=True)
@@ -142,7 +145,16 @@ def save_meta(output_dir, is_analysis, task, input_type, keys):
     }
     with open(Path(output_dir, 'info.json'), 'w') as f:
         json.dump(dict_meta, f, ensure_ascii=False, indent=4)
+    
+    return dict_meta
+    
 
+def save_image_info(dict_image_file, output_dir):
+    # --- save image files information to json file ---
+    if (not Path(output_dir, 'info.json').exists()):
+        with open(Path(output_dir, 'info.json'), 'w') as f:
+            json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
+    
 def save_image_files(images, labels, ids, output_dir, name='images', key_name='img_file', n_data=0):
     """Save Image Files
 
@@ -179,13 +191,8 @@ def save_image_files(images, labels, ids, output_dir, name='images', key_name='i
             'target': str(label),
         })
         
-    # --- save image files information to json file ---
-    if (not Path(output_dir, 'info.json').exists()):
-        with open(Path(output_dir, 'info.json'), 'w') as f:
-            json.dump(dict_image_file, f, ensure_ascii=False, indent=4)
+    save_image_info(dict_image_file, output_dir)
     
-    return None
-
 def save_table_info(df_meta, df_x, df_y, output_dir):
     """Save Table Information (info.json)
     

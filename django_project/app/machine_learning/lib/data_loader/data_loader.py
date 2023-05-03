@@ -533,7 +533,8 @@ class DataLoaderMNIST(DataLoader):
 class DataLoaderCOCO2017(DataLoader):
     """DataLoaderCOCO2017
     
-    DataLoader class for COCO2017 dataset
+    DataLoader class for COCO2017 dataset.
+    In this sample code, the validation data is used as the test data, and the training data is split the training data and validation data.
     """
     
     def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
@@ -635,13 +636,21 @@ class DataLoaderCOCO2017(DataLoader):
                 logging.info('val2017.zip is exists (Skip Download)')
         
         # --- load annotations(instances) ---
+        #  * T.B.D: split training instances to training and validation
         instances_json = Path(dataset_dir, 'annotations', 'instances_train2017.json')
-        df_instances_train = _get_instances(instances_json)
-        df_instances_train.to_csv(Path(dataset_dir, 'instances_train.csv'))
+        self.df_instances_train = _get_instances(instances_json)
+        self.df_instances_train.to_csv(Path(dataset_dir, 'instances_train.csv'))
+        self.df_instances_validation = None
         
         instances_json = Path(dataset_dir, 'annotations', 'instances_val2017.json')
-        df_instances_val = _get_instances(instances_json)
-        df_instances_val.to_csv(Path(dataset_dir, 'instances_val.csv'))
+        self.df_instances_test = _get_instances(instances_json)
+        self.df_instances_test.to_csv(Path(dataset_dir, 'instances_test.csv'))
+        
+        # --- save output dimension ---
+        self.output_dims = self.df_instances_train['category_id'].nunique()
+        
+        # --- set task to image classification ---
+        self.dataset_type = 'img_det'
         
         # --- T.B.D ---
         self.train_x = None
