@@ -3,6 +3,7 @@ import fcntl
 import logging
 import json
 import pickle
+import shutil
 import numpy as np
 import pandas as pd
 
@@ -178,28 +179,43 @@ def load_dataset(dataset):
         dict_meta = save_meta(meta_dir, 'True', 'object_detection', 'image_data', keys)
         
         # --- save info.json (train) ---
+        os.makedirs(Path(download_dir, 'train', 'images'), exist_ok=True)
         dict_image_file = []
         image_ids = dataloader.df_instances_train['image_id']
         file_names = dataloader.df_instances_train['file_name']
         bboxes = dataloader.df_instances_train.groupby('image_id')['bbox'].apply(list).values
         for id, image_file, target in zip(image_ids, file_names, bboxes):
+            # --- copy from COCO directory(src) to AI Dashboard directory(dst)
+            if (Path(download_dir, 'train2017', image_file).exists()):
+                src_file = str(Path(download_dir, 'train2017', image_file))
+                dst_file = str(Path(download_dir, 'train', 'images', image_file))
+                shutil.move(src_file, dst_file)
+            
+            # --- set image info ---
             dict_image_file.append({
                 'id': str(id),
-                keys[0]['name']: str(Path(download_dir, 'train2017', image_file)),
+                keys[0]['name']: str(Path('images', image_file)),
                 'target': target,
             })
-        os.makedirs(Path(download_dir, 'train'), exist_ok=True)
         save_image_info(dict_image_file, Path(download_dir, 'train'))
         
         # --- save info.json (test) ---
+        os.makedirs(Path(download_dir, 'test', 'images'), exist_ok=True)
         dict_image_file = []
         image_ids = dataloader.df_instances_test['image_id']
         file_names = dataloader.df_instances_test['file_name']
         bboxes = dataloader.df_instances_test.groupby('image_id')['bbox'].apply(list).values
         for id, image_file, target in zip(image_ids, file_names, bboxes):
+            # --- copy from COCO directory(src) to AI Dashboard directory(dst)
+            if (Path(download_dir, 'val2017', image_file).exists()):
+                src_file = str(Path(download_dir, 'val2017', image_file))
+                dst_file = str(Path(download_dir, 'test', 'images', image_file))
+                shutil.move(src_file, dst_file)
+            
+            # --- set image info
             dict_image_file.append({
                 'id': str(id),
-                keys[0]['name']: str(Path(download_dir, 'val2017', image_file)),
+                keys[0]['name']: str(Path('images', image_file)),
                 'target': target,
             })
         os.makedirs(Path(download_dir, 'test'), exist_ok=True)
