@@ -183,8 +183,11 @@ def load_dataset(dataset):
         dict_image_file = []
         image_ids = dataloader.df_instances_train['image_id'].unique()
         file_names = dataloader.df_instances_train['file_name'].unique()
+        instance_ids = dataloader.df_instances_train.groupby(by=['image_id'], sort=False)['instance_id'].apply(list).values
         bboxes = dataloader.df_instances_train.groupby(by=['image_id'], sort=False)['bbox'].apply(list).values
-        for id, image_file, target in zip(image_ids, file_names, bboxes):
+        category_ids = dataloader.df_instances_train.groupby(by=['image_id'], sort=False)['category_id'].apply(list).values
+        category_names = dataloader.df_instances_train.groupby(by=['image_id'], sort=False)['category_name'].apply(list).values
+        for id, image_file, instance_id, bbox, category_id, category_name in zip(image_ids, file_names, instance_ids, bboxes, category_ids, category_names):
             # --- copy from COCO directory(src) to AI Dashboard directory(dst)
             if (Path(download_dir, 'train2017', image_file).exists()):
                 src_file = str(Path(download_dir, 'train2017', image_file))
@@ -195,7 +198,12 @@ def load_dataset(dataset):
             dict_image_file.append({
                 'id': str(id),
                 keys[0]['name']: str(Path('images', image_file)),
-                'target': target,
+                'target': {
+                    'instance_id': instance_id,
+                    'category_id': category_id,
+                    'category_name': category_name,
+                    'bbox': bbox,
+                },
             })
         save_image_info(dict_image_file, Path(download_dir, 'train'))
         
@@ -204,8 +212,11 @@ def load_dataset(dataset):
         dict_image_file = []
         image_ids = dataloader.df_instances_test['image_id'].unique()
         file_names = dataloader.df_instances_test['file_name'].unique()
+        instance_ids = dataloader.df_instances_test.groupby(by=['image_id'], sort=False)['instance_id'].apply(list).values
         bboxes = dataloader.df_instances_test.groupby(by=['image_id'], sort=False)['bbox'].apply(list).values
-        for id, image_file, target in zip(image_ids, file_names, bboxes):
+        category_ids = dataloader.df_instances_test.groupby(by=['image_id'], sort=False)['category_id'].apply(list).values
+        category_names = dataloader.df_instances_test.groupby(by=['image_id'], sort=False)['category_name'].apply(list).values
+        for id, image_file, instance_id, bbox, category_id, category_name in zip(image_ids, file_names, instance_ids, bboxes, category_ids, category_names):
             # --- copy from COCO directory(src) to AI Dashboard directory(dst)
             if (Path(download_dir, 'val2017', image_file).exists()):
                 src_file = str(Path(download_dir, 'val2017', image_file))
@@ -216,7 +227,12 @@ def load_dataset(dataset):
             dict_image_file.append({
                 'id': str(id),
                 keys[0]['name']: str(Path('images', image_file)),
-                'target': target,
+                'target': {
+                    'instance_id': instance_id,
+                    'category_id': category_id,
+                    'category_name': category_name,
+                    'bbox': bbox,
+                },
             })
         os.makedirs(Path(download_dir, 'test'), exist_ok=True)
         save_image_info(dict_image_file, Path(download_dir, 'test'))

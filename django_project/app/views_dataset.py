@@ -228,10 +228,16 @@ def dataset_detail(request, project_id, dataset_id):
             if (dataloader_obj.verified):
                 if (Path(download_dir, 'train', 'info.json').exists()):
                     image_gallery_keys.append('Train')
+                    if (dataloader_obj.dataset_type == 'img_det'):
+                        image_gallery_keys.append('Train with BBox')
                 if (Path(download_dir, 'validation', 'info.json').exists()):
                     image_gallery_keys.append('Validation')
+                    if (dataloader_obj.dataset_type == 'img_det'):
+                        image_gallery_keys.append('Validationn with BBox')
                 if (Path(download_dir, 'test', 'info.json').exists()):
                     image_gallery_keys.append('Test')
+                    if (dataloader_obj.dataset_type == 'img_det'):
+                        image_gallery_keys.append('Test with BBox')
             
             # --- set image data file ---
             image_gallery_data = []
@@ -239,7 +245,21 @@ def dataset_detail(request, project_id, dataset_id):
                 images_page_now = request.session.get('image_gallery_page_now', 1)
                 images_per_page = 50
                 
-                json_data = pd.read_json(Path(download_dir, selected_dataset_type.lower(), 'info.json'))
+                if (' with BBox' in selected_dataset_type):
+                    selected_dataset_type_base_dir = selected_dataset_type[0:selected_dataset_type.find(' with BBox')].lower()
+                    selected_dataset_dir = selected_dataset_type.lower().replace(' ', '_')
+                    
+                    info_json_dir = Path(download_dir, selected_dataset_dir)
+                    os.makedirs(Path(info_json_dir, 'images'), exist_ok=True)
+                    
+                    src = Path(download_dir, selected_dataset_type_base_dir, 'info.json')
+                    dst = Path(info_json_dir, 'info.json')
+                    shutil.copy(src, dst)
+                    
+                    json_data = pd.read_json(dst)
+                else:
+                    selected_dataset_dir = selected_dataset_type.lower()
+                    json_data = pd.read_json(Path(download_dir, selected_dataset_dir, 'info.json'))
                 
                 images_page_max = len(json_data) // images_per_page
                 images_page_list = [x for x in range(1, images_page_max+1)]
@@ -250,17 +270,34 @@ def dataset_detail(request, project_id, dataset_id):
                     if (key['type'] == 'image_file'):
                         key_name = key['name']
                         break
-                json_data[key_name] = json_data[key_name].map(lambda x: Path(settings.MEDIA_URL,
+                json_data[f'{key_name}_for_url'] = json_data[key_name].map(lambda x: Path(settings.MEDIA_URL,
                                                                          settings.DATASET_DIR,
                                                                          dataset.project.hash,
                                                                          f'dataset_{dataset.id}',
-                                                                         selected_dataset_type.lower(),
+                                                                         selected_dataset_dir,
                                                                          x))
                 logging.info('----------------------------------------')
                 logging.info(f'[DEBUG] {(images_page_now-1)*images_per_page}')
                 logging.info(f'[DEBUG] {((images_page_now-1)*images_per_page)+images_per_page}')
                 logging.info('----------------------------------------')
-                image_gallery_data = json_data.iloc[(images_page_now-1)*images_per_page:((images_page_now-1)*images_per_page)+images_per_page].to_dict('r')
+                df_image_gallery_data = json_data.iloc[(images_page_now-1)*images_per_page:((images_page_now-1)*images_per_page)+images_per_page]
+                image_gallery_data = df_image_gallery_data.to_dict('r')
+                
+                if (' with BBox' in selected_dataset_type):
+                    df_image_gallery_data_src = df_image_gallery_data.copy()
+                    df_image_gallery_data_src[key_name] = df_image_gallery_data_src[key_name].map(lambda x: Path(download_dir,
+                                                                             selected_dataset_type_base_dir,
+                                                                             x))
+                    
+                    df_image_gallery_data_dst = df_image_gallery_data.copy()
+                    df_image_gallery_data_dst[key_name] = df_image_gallery_data_dst[key_name].map(lambda x: Path(download_dir,
+                                                                             selected_dataset_dir,
+                                                                             x))
+                    
+                    for src, dst in zip(df_image_gallery_data_src.to_dict('r'), df_image_gallery_data_dst.to_dict('r')):
+                        shutil.copy(src[key_name], dst[key_name])
+                
+                
             else:
                 images_page_now = 1
                 images_page_max = 1
