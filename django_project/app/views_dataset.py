@@ -284,6 +284,7 @@ def dataset_detail(request, project_id, dataset_id):
                 image_gallery_data = df_image_gallery_data.to_dict('r')
                 
                 if (' with BBox' in selected_dataset_type):
+                    # --- draw annotations ---
                     df_image_gallery_data_src = df_image_gallery_data.copy()
                     df_image_gallery_data_src[key_name] = df_image_gallery_data_src[key_name].map(lambda x: Path(download_dir,
                                                                              selected_dataset_type_base_dir,
@@ -295,9 +296,17 @@ def dataset_detail(request, project_id, dataset_id):
                                                                              x))
                     
                     for src, dst in zip(df_image_gallery_data_src.to_dict('r'), df_image_gallery_data_dst.to_dict('r')):
-                        shutil.copy(src[key_name], dst[key_name])
-                
-                
+                        img = cv2.imread(str(src[key_name]))
+                        for bbox, category_name in zip(src['target']['bbox'], src['target']['category_name']):
+                            bbox = np.array(bbox, dtype=int)
+                            cv2.rectangle(img, [bbox[0], bbox[1]], [bbox[0]+bbox[2], bbox[1]+bbox[3]], color=[255, 0, 0])
+                            if (bbox[1] < 8):
+                                cv2.putText(img, category_name, [bbox[0], bbox[1]+8],
+                                            fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=1, color=(255, 0, 0))
+                            else:
+                                cv2.putText(img, category_name, [bbox[0], bbox[1]-8],
+                                            fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=1, color=(255, 0, 0))
+                        cv2.imwrite(str(dst[key_name]), img)
             else:
                 images_page_now = 1
                 images_page_max = 1
