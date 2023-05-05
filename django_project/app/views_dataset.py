@@ -233,7 +233,7 @@ def dataset_detail(request, project_id, dataset_id):
                 if (Path(download_dir, 'validation', 'info.json').exists()):
                     image_gallery_keys.append('Validation')
                     if (dataloader_obj.dataset_type == 'img_det'):
-                        image_gallery_keys.append('Validationn with BBox')
+                        image_gallery_keys.append('Validation with BBox')
                 if (Path(download_dir, 'test', 'info.json').exists()):
                     image_gallery_keys.append('Test')
                     if (dataloader_obj.dataset_type == 'img_det'):

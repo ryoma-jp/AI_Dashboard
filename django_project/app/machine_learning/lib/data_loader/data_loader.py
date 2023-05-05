@@ -638,9 +638,24 @@ class DataLoaderCOCO2017(DataLoader):
         # --- load annotations(instances) ---
         #  * T.B.D: split training instances to training and validation
         instances_json = Path(dataset_dir, 'annotations', 'instances_train2017.json')
-        self.df_instances_train = _get_instances(instances_json)
-        self.df_instances_train.to_csv(Path(dataset_dir, 'instances_train.csv'))
-        self.df_instances_validation = None
+        df_instances_train_val = _get_instances(instances_json)
+        
+        validation_split = np.clip(validation_split, 0, 0.5)
+        if (validation_split == 0.0):
+            self.df_instances_train = df_instances_train_val
+            self.df_instances_train.to_csv(Path(dataset_dir, 'instances_train.csv'))
+            self.df_instances_validation = None
+        else:
+            image_ids_train_val = df_instances_train_val['image_id'].unique()
+            
+            n_train = int(len(image_ids_train_val) * (1.0 - validation_split))
+            train_ids = image_ids_train_val[0:n_train]
+            self.df_instances_train = df_instances_train_val[df_instances_train_val['image_id'].map(lambda x: x in train_ids)]
+            self.df_instances_train.to_csv(Path(dataset_dir, 'instances_train.csv'))
+            
+            valid_ids = image_ids_train_val[n_train::]
+            self.df_instances_validation = df_instances_train_val[df_instances_train_val['image_id'].map(lambda x: x in valid_ids)]
+            self.df_instances_validation.to_csv(Path(dataset_dir, 'instances_validation.csv'))
         
         instances_json = Path(dataset_dir, 'annotations', 'instances_val2017.json')
         self.df_instances_test = _get_instances(instances_json)

@@ -168,7 +168,7 @@ def load_dataset(dataset):
         
     elif (dataset.name == 'COCO2017'):
         # --- Create dataloader object ---
-        dataloader = DataLoaderCOCO2017(download_dir, download=download)
+        dataloader = DataLoaderCOCO2017(download_dir, validation_split=0.2, download=download)
         
         # --- Create meta data ---
         meta_dir = Path(download_dir, 'meta')
@@ -206,6 +206,36 @@ def load_dataset(dataset):
                 },
             })
         save_image_info(dict_image_file, Path(download_dir, 'train'))
+        
+        # --- save info.json (validation) ---
+        if (dataloader.df_instances_validation is not None):
+            os.makedirs(Path(download_dir, 'validation', 'images'), exist_ok=True)
+            dict_image_file = []
+            image_ids = dataloader.df_instances_validation['image_id'].unique()
+            file_names = dataloader.df_instances_validation['file_name'].unique()
+            instance_ids = dataloader.df_instances_validation.groupby(by=['image_id'], sort=False)['instance_id'].apply(list).values
+            bboxes = dataloader.df_instances_validation.groupby(by=['image_id'], sort=False)['bbox'].apply(list).values
+            category_ids = dataloader.df_instances_validation.groupby(by=['image_id'], sort=False)['category_id'].apply(list).values
+            category_names = dataloader.df_instances_validation.groupby(by=['image_id'], sort=False)['category_name'].apply(list).values
+            for id, image_file, instance_id, bbox, category_id, category_name in zip(image_ids, file_names, instance_ids, bboxes, category_ids, category_names):
+                # --- copy from COCO directory(src) to AI Dashboard directory(dst)
+                if (Path(download_dir, 'train2017', image_file).exists()):
+                    src_file = str(Path(download_dir, 'train2017', image_file))
+                    dst_file = str(Path(download_dir, 'validation', 'images', image_file))
+                    shutil.move(src_file, dst_file)
+                
+                # --- set image info ---
+                dict_image_file.append({
+                    'id': str(id),
+                    keys[0]['name']: str(Path('images', image_file)),
+                    'target': {
+                        'instance_id': instance_id,
+                        'category_id': category_id,
+                        'category_name': category_name,
+                        'bbox': bbox,
+                    },
+                })
+            save_image_info(dict_image_file, Path(download_dir, 'validation'))
         
         # --- save info.json (test) ---
         os.makedirs(Path(download_dir, 'test', 'images'), exist_ok=True)
