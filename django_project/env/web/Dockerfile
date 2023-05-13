@@ -58,8 +58,19 @@ COPY ./static $APP_HOME/static
 #COPY ./project $APP_HOME/project
 #COPY ./templates $APP_HOME/templates
 
+RUN chown -R app:app ${HOME}
 RUN chown -R app:app ${APP_HOME}
 RUN chown -R app:app ${ENV_HOME}
+
+# --- get external tensorflow models ---
+#ENV EXT_MODEL_PATH=${APP_HOME}/app/machine_learning/lib/trainer/tf_models/yolov3
+ENV EXT_MODEL_PATH=/tmp
+
+ENV MODEL_FILE=https://raw.githubusercontent.com/ryoma-jp/yolov3-tf2/b947b6d2dc227b9df8d5d38e6002d7dcc0124bb0/yolov3_tf2/models.py
+RUN wget -P ${EXT_MODEL_PATH} ${MODEL_FILE}
+
+ENV MODEL_FILE=https://raw.githubusercontent.com/ryoma-jp/yolov3-tf2/b947b6d2dc227b9df8d5d38e6002d7dcc0124bb0/yolov3_tf2/utils.py
+RUN wget -P ${EXT_MODEL_PATH} ${MODEL_FILE}
 
 USER app
 

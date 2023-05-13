@@ -136,7 +136,8 @@ class MlModel(models.Model):
                 "DeepCNN",
                 "SimpleResNet",
                 "DeepResNet",
-                "SimpleCNN_Detector",
+                "YOLOv3",
+                "YOLOv3_Tiny",
     ]
     PRESET_TREE_MODELS = [
                 "LightGBM"

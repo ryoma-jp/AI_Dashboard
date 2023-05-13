@@ -22,6 +22,10 @@ from tensorflow import keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+from machine_learning.lib.trainer.tf_models.yolov3 import models as yolov3_models
+from machine_learning.lib.trainer.tf_models.yolov3.utils import freeze_all as yolov3_freeze_all
+from machine_learning.lib.data_loader.data_loader import load_dataset_from_tfrecord
+
 #---------------------------------
 # Set environ
 #---------------------------------
@@ -204,8 +208,10 @@ class Trainer():
         
         if (self.dataset_type in ['img_clf', 'table_clf']):
             metrics = ['accuracy']
-        else:
+        elif (self.dataset_type in ['img_reg', 'table_reg']):
             metrics = ['mean_absolute_error', 'mean_squared_error']
+        else:
+            metrics = None
         
         self.model.compile(
             optimizer=opt,
@@ -880,8 +886,208 @@ class TrainerKerasMLP(Trainer):
         
         return
     
+class TrainerKerasYOLOv3(Trainer):
+    """Trainer for Object Detection model
+    
+    Object Detection model class
+    """
+    def __init__(self, input_shape, classes=80, output_dir=None, model_file=None, model_type='YOLOv3',
+                 web_app_ctrl_fifo=None, trainer_ctrl_fifo=None,
+                 initializer='glorot_uniform', optimizer='adam',
+                 dropout_rate=0.0, learning_rate=0.001,
+                 dataset_type='img_clf', da_params=None,
+                 batch_size=32, epochs=200):
+        """Constructor
+        
+        Constructor
+        
+        Args:
+            input_shape (:obj:`list`, mandatory): Input shape
+            classes (:obj:`int`, mandatory): Number of classes
+            output_dir (:obj:`string`, optional): Output directory path
+            model_file (:obj:`model_file`, optional): Trained model path
+            model_type (:obj:`string`, optional): Type of model('YOLOv3' or YOLOv3-Tiny)
+            web_app_ctrl_fifo (str): FIFO path to control Web app(Trainer -> Web app)
+            trainer_ctrl_fifo (str): FIFO path to control Trainer(Web app -> Trainer)
+            initializer (:obj:`string`, optional): Initializer
+                - glorot_uniform: Xavier uniform distribution
+                - he_normal: He normal distribution
+                - lecun_normal: LeCun normal distribution
+                - he_uniform: He uniform distribution
+                - lecun_uniform: LeCun uniform distribution
+            initializer (:obj:`string`, optional): Initializer
+            optimizer (:obj:`string`, optional): Optimizer
+            dropout_rate (:obj:`string`, optional): Dropout rate
+            learning_rate (:obj:`float`, optional): Learning rate
+            dataset_type (:obj:`string`, optional): Dataset type
+                - img_clf: Image classification
+                - img_reg: Image regression
+                - table_clf: Table data classification
+                - table_reg: Table data regression
+            da_params (:obj:`dict`, optional): DataAugmentation parameters
+            batch_size (:obj:`int`, optional): mini batch size
+            epochs (:obj:`int`, optional): EPOCHs
+        """
+        
+        def _load_model(input_shape, classes):
+            """Load model for simple model
+            
+            Load model for simple model
+            
+            Args:
+                input_shape (list): Shape of input data
+                classes (int): Number of class
+            """
+            model = yolov3_models.YoloV3(size=input_shape[0], classes=classes, training=True)
+            model.summary()
+            
+            return model, None, None
+        
+        # --- Initialize base class ---
+        super().__init__(output_dir=output_dir, model_file=model_file,
+                         web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo,
+                         initializer=initializer, optimizer=optimizer, loss=None,
+                         dropout_rate=dropout_rate, learning_rate=learning_rate,
+                         dataset_type=dataset_type, da_params=da_params,
+                         batch_size=batch_size, epochs=epochs)
+        
+        self.anchors = yolov3_models.yolo_anchors
+        self.anchor_masks = yolov3_models.yolo_anchor_masks
+        print(self.anchors)
+        print(classes)
+        self.loss = [yolov3_models.YoloLoss(self.anchors[mask], classes=classes) for mask in self.anchor_masks]
+        print(self.loss)
+        
+        # --- Create model ---
+        if (self.model is None):
+            self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape, classes)
+            yolov3_freeze_all(self.model.get_layer('yolo_darknet'))
+            
+            self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
+            if (self.output_dir is not None):
+                keras.utils.plot_model(self.model, Path(self.output_dir, 'plot_model.png'), show_shapes=True)
+        
+        return
+    
+    def fit(self, dict_train_dataset, dict_val_dataset):
+        @tf.function
+        def transform_targets_for_output(y_true, grid_size, anchor_idxs):
+            # y_true: (N, boxes, (x1, y1, x2, y2, class, best_anchor))
+            N = tf.shape(y_true)[0]
+
+            # y_true_out: (N, grid, grid, anchors, [x1, y1, x2, y2, obj, class])
+            y_true_out = tf.zeros(
+                (N, grid_size, grid_size, tf.shape(anchor_idxs)[0], 6))
+
+            anchor_idxs = tf.cast(anchor_idxs, tf.int32)
+
+            indexes = tf.TensorArray(tf.int32, 1, dynamic_size=True)
+            updates = tf.TensorArray(tf.float32, 1, dynamic_size=True)
+            idx = 0
+            for i in tf.range(N):
+                for j in tf.range(tf.shape(y_true)[1]):
+                    if tf.equal(y_true[i][j][2], 0):
+                        continue
+                    anchor_eq = tf.equal(
+                        anchor_idxs, tf.cast(y_true[i][j][5], tf.int32))
+
+                    if tf.reduce_any(anchor_eq):
+                        box = y_true[i][j][0:4]
+                        box_xy = (y_true[i][j][0:2] + y_true[i][j][2:4]) / 2
+
+                        anchor_idx = tf.cast(tf.where(anchor_eq), tf.int32)
+                        grid_xy = tf.cast(box_xy // (1/grid_size), tf.int32)
+
+                        # grid[y][x][anchor] = (tx, ty, bw, bh, obj, class)
+                        indexes = indexes.write(
+                            idx, [i, grid_xy[1], grid_xy[0], anchor_idx[0][0]])
+                        updates = updates.write(
+                            idx, [box[0], box[1], box[2], box[3], 1, y_true[i][j][4]])
+                        idx += 1
+
+            # tf.print(indexes.stack())
+            # tf.print(updates.stack())
+
+            return tf.tensor_scatter_nd_update(
+                y_true_out, indexes.stack(), updates.stack())
 
 
+        def transform_targets(y_train, anchors, anchor_masks, size):
+            y_outs = []
+            grid_size = size // 32
+
+            # calculate anchor index for true boxes
+            anchors = tf.cast(anchors, tf.float32)
+            anchor_area = anchors[..., 0] * anchors[..., 1]
+            box_wh = y_train[..., 2:4] - y_train[..., 0:2]
+            box_wh = tf.tile(tf.expand_dims(box_wh, -2),
+                             (1, 1, tf.shape(anchors)[0], 1))
+            box_area = box_wh[..., 0] * box_wh[..., 1]
+            intersection = tf.minimum(box_wh[..., 0], anchors[..., 0]) * \
+                tf.minimum(box_wh[..., 1], anchors[..., 1])
+            iou = intersection / (box_area + anchor_area - intersection)
+            anchor_idx = tf.cast(tf.argmax(iou, axis=-1), tf.float32)
+            anchor_idx = tf.expand_dims(anchor_idx, axis=-1)
+
+            y_train = tf.concat([y_train, anchor_idx], axis=-1)
+
+            for anchor_idxs in anchor_masks:
+                y_outs.append(transform_targets_for_output(
+                    y_train, grid_size, anchor_idxs))
+                grid_size *= 2
+
+            return tuple(y_outs)
+        
+        def transform_images(x_train, size):
+            x_train = tf.image.resize(x_train, (size, size))
+            x_train = x_train / 255
+            return x_train
+        
+        # --- prepare the training dataset ---
+        print(dict_train_dataset)
+        print(dict_val_dataset)
+        train_dataset = load_dataset_from_tfrecord(
+            dict_train_dataset['tfrecord_path'], 
+            dict_train_dataset['class_name_file_path'],
+            dict_train_dataset['model_input_size'])
+        train_dataset = train_dataset.shuffle(buffer_size=512)
+        train_dataset = train_dataset.batch(self.batch_size)
+        train_dataset = train_dataset.map(lambda x, y: (
+            transform_images(x, dict_train_dataset['model_input_size']),
+            transform_targets(y, self.anchors, self.anchor_masks, dict_train_dataset['model_input_size'])))
+        train_dataset = train_dataset.prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
+        
+        # --- prepare the validation dataset ---
+        val_dataset = load_dataset_from_tfrecord(
+            dict_val_dataset['tfrecord_path'], 
+            dict_val_dataset['class_name_file_path'],
+            dict_val_dataset['model_input_size'])
+        val_dataset = val_dataset.batch(self.batch_size)
+        val_dataset = val_dataset.map(lambda x, y: (
+            transform_images(x, dict_val_dataset['model_input_size']),
+            transform_targets(y, self.anchors, self.anchor_masks, dict_val_dataset['model_input_size'])))
+        
+        print(train_dataset)
+        print(val_dataset)
+        
+        
+        os.makedirs(Path(self.output_dir, 'checkpoints'), exist_ok=True)
+        checkpoint_path = Path(self.output_dir, 'checkpoints', 'model.ckpt')
+        cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_path, save_weights_only=True, verbose=1)
+        es_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=1, mode='auto')
+        custom_callback = self.CustomCallback(self.trainer_ctrl_fifo)
+        tensorboard_logdir = Path(self.output_dir, 'logs')
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=tensorboard_logdir, histogram_freq=1)
+        #callbacks = [cp_callback, es_callback]
+        callbacks = [cp_callback, custom_callback, tensorboard_callback]
+
+        history = self.model.fit(train_dataset,
+                            epochs=self.epochs,
+                            callbacks=callbacks,
+                            validation_data=val_dataset)
+    
+    
 def main():
     """Main module
     

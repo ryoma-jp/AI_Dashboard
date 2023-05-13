@@ -258,3 +258,28 @@ def tflite_get_weights(tflite_file):
         tensor = tflite_interpreter.tensor(i)()
         
         print(i, type, name, scales.shape, zero_points.shape, tensor.shape)
+
+def parse_xml(xml, multi_tag=[]):
+    """Parse XML
+    
+    Args:
+        xml (lxml.etree._Element): xml object as lxml element
+        multi_tag (list): string list of multiple tags
+    """
+    if (not len(xml)):
+        return {xml.tag: xml.text}
+    
+    result = {}
+    for item in xml:
+        result_item = parse_xml(item)
+        if (item.tag in multi_tag):
+            if (item.tag not in result):
+                result[item.tag] = []
+            
+            result[item.tag].append(result_item[item.tag])
+        else:
+            result[item.tag] = result_item[item.tag]
+    
+    return {xml.tag: result}
+    
+    

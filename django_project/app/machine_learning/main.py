@@ -20,7 +20,7 @@ from pathlib import Path
 from collections import OrderedDict
 from tensorflow.keras.models import Model
 
-from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet
+from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet, TrainerKerasYOLOv3
 from machine_learning.lib.trainer.trainer_lgb import TrainerLightGBM
 
 #---------------------------------
@@ -108,7 +108,7 @@ def main():
     print(json.dumps(config_data, indent=2))
     
     # --- defiene fiexed parameter ---
-    DNN_MODEL_LIST = ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet']
+    DNN_MODEL_LIST = ['MLP', 'SimpleCNN', 'DeepCNN', 'SimpleResNet', 'DeepResNet', 'YOLOv3', 'YOLOv3_Tiny']
     
     # --- get parameters fron config data ---
     web_app_ctrl_fifo = config_data['env']['web_app_ctrl_fifo']['value']
@@ -153,14 +153,15 @@ def main():
     if ((dataset.dataset_type == 'img_clf') or (dataset.dataset_type == 'table_clf')):
         dataset.convert_label_encoding(one_hot=one_hot)
     
-    print_ndarray_shape(dataset.train_x)
-    print_ndarray_shape(dataset.train_y)
-    print_ndarray_shape(dataset.validation_x)
-    print_ndarray_shape(dataset.validation_y)
-    print_ndarray_shape(dataset.test_x)
-    print_ndarray_shape(dataset.test_y)
-    
-    x_train, y_train, x_val, y_val, x_test, y_test = dataset.preprocessing(norm_mode=data_norm)
+    if (dataset.train_x is not None):
+        print_ndarray_shape(dataset.train_x)
+        print_ndarray_shape(dataset.train_y)
+        print_ndarray_shape(dataset.validation_x)
+        print_ndarray_shape(dataset.validation_y)
+        print_ndarray_shape(dataset.test_x)
+        print_ndarray_shape(dataset.test_y)
+        
+        x_train, y_train, x_val, y_val, x_test, y_test = dataset.preprocessing(norm_mode=data_norm)
     output_dims = dataset.output_dims
     
     # --- get model ---
@@ -227,6 +228,26 @@ def main():
             dropout_rate=dropout_rate, learning_rate=learning_rate,
             dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
+    elif (model_type == 'YOLOv3'):
+        print('Create YOLOv3')
+        model_input_shape = np.array([dataset.train_dataset['model_input_size'], dataset.train_dataset['model_input_size'], 3], dtype=int)
+        print(f'  * output_dims = {output_dims}')
+        trainer = TrainerKerasYOLOv3(model_input_shape, classes=output_dims,
+            output_dir=result_dir, model_file=model_file, model_type='YOLOv3',
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
+    elif (model_type == 'YOLOv3_Tiny'):
+        print('Create YOLOv3_Tiny')
+        trainer = TrainerKerasYOLOv3_Tiny(dataset.train_x.shape[1:], classes=output_dims,
+            output_dir=result_dir, model_file=model_file, model_type='YOLOv3_Tiny',
+            web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
+            initializer=initializer, optimizer=optimizer, loss=loss_func,
+            dropout_rate=dropout_rate, learning_rate=learning_rate,
+            dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
+            batch_size=batch_size, epochs=epochs)
     elif (model_type == 'LightGBM'):
         print('Create LightGBM')
         trainer = TrainerLightGBM(output_dir=result_dir, model_file=model_file,
@@ -241,10 +262,14 @@ def main():
     
     if (args.mode == 'train'):
         # --- model training and save ---
-        trainer.fit(x_train, y_train,
-                    x_val=x_val, y_val=y_val,
-                    x_test=x_test, y_test=y_test)
-        trainer.save_model()
+        if (model_type == 'YOLOv3'):
+            # --- tentative ---
+            trainer.fit(dataset.train_dataset, dataset.validation_dataset)
+        else:
+            trainer.fit(x_train, y_train,
+                        x_val=x_val, y_val=y_val,
+                        x_test=x_test, y_test=y_test)
+            trainer.save_model()
         
         # --- update config file ---
         config_data['model']['input_tensor_name']['value'] = trainer.input_tensor_name

@@ -16,14 +16,149 @@ import requests
 import tarfile
 import gzip
 import json
+import hashlib
+
+import tensorflow as tf
 
 from sklearn.model_selection import train_test_split
 from pathlib import Path
 from PIL import Image
+from lxml import etree as lxml_etree
 
-from machine_learning.lib.utils.utils import zip_extract, download_file
+from machine_learning.lib.utils.utils import zip_extract, download_file, safe_extract_tar, parse_xml
 from machine_learning.lib.utils.preprocessor import image_preprocess
 
+#---------------------------------
+# Functions
+#---------------------------------
+def build_tf_example(annotation, class_map, imagefile_dir=''):
+    """Build TensorFlow Examples
+    
+    Build TensorFlow examples
+    
+    Args:
+        annotation (dict): annotations as dict object
+                           <dict format>
+                               {
+                                   'filename': <image file name>,
+                                   'size': {
+                                       'width': <image width>,
+                                       'height': <image height>,
+                                       'depth': <channels>,
+                                   },
+                                   'object': [
+                                       {
+                                           'bndbox': {
+                                               'xmin': <x pos of left top>,
+                                               'ymin': <y pos of left top>,
+                                               'xmax': <x pos of right bottom>,
+                                               'xmin': <x pos of right bottom>,
+                                           },
+                                           'name': <class name>,
+                                       },
+                                       ...
+                                   ]
+                               }
+        class_map (dict): mapping data between the class name and the class id as dict object
+                          <dict format>
+                              {
+                                  <class name>: <class id>,
+                                  ...
+                              }
+        imagefile_dir (pathlib.Path): directory of image file
+    """
+    img_path = Path(imagefile_dir, annotation['filename'])
+    img_raw = open(img_path, 'rb').read()
+    key = hashlib.sha256(img_raw).hexdigest()
+
+    width = int(annotation['size']['width'])
+    height = int(annotation['size']['height'])
+
+    xmin = []
+    ymin = []
+    xmax = []
+    ymax = []
+    classes = []
+    classes_text = []
+    if 'object' in annotation:
+        for obj in annotation['object']:
+            xmin.append(float(obj['bndbox']['xmin']) / width)
+            ymin.append(float(obj['bndbox']['ymin']) / height)
+            xmax.append(float(obj['bndbox']['xmax']) / width)
+            ymax.append(float(obj['bndbox']['ymax']) / height)
+            classes_text.append(obj['name'].encode('utf8'))
+            classes.append(class_map[obj['name']])
+
+    example = tf.train.Example(features=tf.train.Features(feature={
+        'image/height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+        'image/width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+        'image/filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[
+            annotation['filename'].encode('utf8')])),
+        'image/source_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[
+            annotation['filename'].encode('utf8')])),
+        'image/key/sha256': tf.train.Feature(bytes_list=tf.train.BytesList(value=[key.encode('utf8')])),
+        'image/encoded': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
+        'image/format': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_path.suffix.lstrip('.').encode('utf8')])),
+        'image/object/bbox/xmin': tf.train.Feature(float_list=tf.train.FloatList(value=xmin)),
+        'image/object/bbox/xmax': tf.train.Feature(float_list=tf.train.FloatList(value=xmax)),
+        'image/object/bbox/ymin': tf.train.Feature(float_list=tf.train.FloatList(value=ymin)),
+        'image/object/bbox/ymax': tf.train.Feature(float_list=tf.train.FloatList(value=ymax)),
+        'image/object/class/text': tf.train.Feature(bytes_list=tf.train.BytesList(value=classes_text)),
+        'image/object/class/label': tf.train.Feature(int64_list=tf.train.Int64List(value=classes)),
+    }))
+    
+    return example
+
+def load_dataset_from_tfrecord(tfrecord, class_name_file, img_size):
+    """Load Dataset from TFRecord
+    
+    Load tfrecord and output dataset as TensorFlow dataset
+    
+    Args:
+        tfrecord: dataset as tfrecord format
+        class_name_file: class name file path
+        img_size: image size [img_size, img_size]
+    
+    Returns:
+        dataset (tensorflow.python.data.ops.dataset_ops.MapDataset)
+    """
+    
+    def _parse_tfrecord(tfrecord, class_table, size):
+        # --- parse and scaling ---
+        features = {
+            'image/encoded': tf.io.FixedLenFeature([], tf.string),
+            'image/object/bbox/xmin': tf.io.VarLenFeature(tf.float32),
+            'image/object/bbox/ymin': tf.io.VarLenFeature(tf.float32),
+            'image/object/bbox/xmax': tf.io.VarLenFeature(tf.float32),
+            'image/object/bbox/ymax': tf.io.VarLenFeature(tf.float32),
+            'image/object/class/text': tf.io.VarLenFeature(tf.string),
+        }
+        x = tf.io.parse_single_example(tfrecord, features)
+        x_train = tf.image.decode_jpeg(x['image/encoded'], channels=3)
+        x_train = tf.image.resize(x_train, (size, size))
+        
+        # --- parse annotations ---
+        class_names = tf.sparse.to_dense(x['image/object/class/text'], default_value='')
+        labels = tf.cast(class_table.lookup(class_names), tf.float32)
+        y_train = tf.stack([tf.sparse.to_dense(x['image/object/bbox/xmin']),
+                        tf.sparse.to_dense(x['image/object/bbox/ymin']),
+                        tf.sparse.to_dense(x['image/object/bbox/xmax']),
+                        tf.sparse.to_dense(x['image/object/bbox/ymax']),
+                        labels], axis=1)
+        paddings = [[0, 100 - tf.shape(y_train)[0]], [0, 0]]
+        print(paddings)
+        y_train = tf.pad(y_train, paddings)
+        
+        return x_train, y_train
+    
+    # --- load class table and tfrecord ---
+    class_table = tf.lookup.StaticHashTable(tf.lookup.TextFileInitializer(
+        class_name_file, tf.string, 0, tf.int64, -1, delimiter="\n"), -1)
+    dataset = tf.data.Dataset.list_files(tfrecord).flat_map(tf.data.TFRecordDataset)
+    
+    # --- convert format to tf.data.Dataset and return---
+    return dataset.map(lambda x: _parse_tfrecord(x, class_table, img_size))
+        
 #---------------------------------
 # Class
 #---------------------------------
@@ -58,6 +193,16 @@ class DataLoader():
         
         Constructor
         """
+        self.train_x = None
+        self.train_y = None
+        self.validation_x = None
+        self.validation_y = None
+        self.test_x = None
+        self.test_y = None
+        self.train_dataset = None
+        self.validation_dataset = None
+        self.test_dataset = None
+        
         self.one_hot = True
         self.output_dims = -1
         self.verified = False
@@ -112,7 +257,7 @@ class DataLoader():
         elif (norm_mode == 'z-score'):
             self.preprocessing_params['norm_coef'] = [np.mean(self.train_x), np.std(self.train_x)]
         else:
-            logging.info('[WARNING] Unknown data normalization mode: {}'.format(mode))
+            logging.info(f'[WARNING] Unknown data normalization mode: {mode}')
             self.preprocessing_params['norm_coef'] = [0.0, 1.0]
         
         preprocessed_train_x = image_preprocess(self.train_x, self.preprocessing_params['norm_coef'])
@@ -350,7 +495,7 @@ class DataLoaderCIFAR10(DataLoader):
         
         # --- download dataset and extract ---
         if (download):
-            logging.info('[DataLoaderCIFAR10] {}'.format(dataset_dir))
+            logging.info(f'[DataLoaderCIFAR10] {dataset_dir}')
             os.makedirs(dataset_dir, exist_ok=True)
             if (not Path(dataset_dir, 'cifar-10-batches-py').exists()):
                 url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
@@ -448,7 +593,7 @@ class DataLoaderMNIST(DataLoader):
         
         # --- download dataset and extract ---
         if (download):
-            logging.info('[DataLoaderMNIST] {}'.format(dataset_dir))
+            logging.info(f'[DataLoaderMNIST] {dataset_dir}')
             os.makedirs(dataset_dir, exist_ok=True)
             mnist_files = [
                 'train-images-idx3-ubyte.gz',
@@ -470,7 +615,7 @@ class DataLoaderMNIST(DataLoader):
                         f.write(gz_content)
                     
                 else:
-                    logging.info('{} is exists (Skip Download)'.format(mnist_file))
+                    logging.info(f'{mnist_file} is exists (Skip Download)')
             
         # --- load training data ---
         f = open(Path(dataset_dir, 'train-images-idx3-ubyte'))
@@ -537,7 +682,7 @@ class DataLoaderCOCO2017(DataLoader):
     In this sample code, the validation data is used as the test data, and the training data is split the training data and validation data.
     """
     
-    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
+    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False, model_input_size=224):
         """Constructor
         
         Constructor
@@ -603,12 +748,12 @@ class DataLoaderCOCO2017(DataLoader):
         
         # --- download dataset and extract ---
         if (download):
-            logging.info('[DataLoaderCOCO2017] {}'.format(dataset_dir))
+            logging.info(f'[DataLoaderCOCO2017] {dataset_dir}')
             os.makedirs(dataset_dir, exist_ok=True)
             
             # --- download trainval2017 ---
             if (not Path(dataset_dir, 'annotations_trainval2017.zip').exists()):
-                logging.info('annotations_trainval2017.zip is downloading')
+                logging.info('downloading annotations_trainval2017.zip')
                 url = 'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
                 save_file = download_file(url, dataset_dir)
                 zip_extract(save_file, dataset_dir)
@@ -617,7 +762,7 @@ class DataLoaderCOCO2017(DataLoader):
             
             # --- download train2017 ---
             if (not Path(dataset_dir, 'train2017.zip').exists()):
-                logging.info('train2017.zip is downloading')
+                logging.info('downloading train2017.zip')
                 url = 'http://images.cocodataset.org/zips/train2017.zip'
                 save_file = download_file(url, dataset_dir)
                 zip_extract(save_file, dataset_dir)
@@ -627,7 +772,7 @@ class DataLoaderCOCO2017(DataLoader):
 
             # --- download val2017 ---
             if (not Path(dataset_dir, 'val2017.zip').exists()):
-                logging.info('val2017.zip is downloading')
+                logging.info('downloading val2017.zip')
                 url = 'http://images.cocodataset.org/zips/val2017.zip'
                 save_file = download_file(url, dataset_dir)
                 zip_extract(save_file, dataset_dir)
@@ -636,7 +781,6 @@ class DataLoaderCOCO2017(DataLoader):
                 logging.info('val2017.zip is exists (Skip Download)')
         
         # --- load annotations(instances) ---
-        #  * T.B.D: split training instances to training and validation
         instances_json = Path(dataset_dir, 'annotations', 'instances_train2017.json')
         df_instances_train_val = _get_instances(instances_json)
         
@@ -663,6 +807,171 @@ class DataLoaderCOCO2017(DataLoader):
         
         # --- save output dimension ---
         self.output_dims = self.df_instances_train['category_id'].nunique()
+        
+        # --- set task to image classification ---
+        self.dataset_type = 'img_det'
+        
+        # --- T.B.D ---
+        #   * too many the memory necessary
+        train_x = []
+        train_file_names = self.df_instances_train['file_name'].unique()
+        for file_name in train_file_names[0:min(len(train_file_names), 100)]:
+            img = Image.open(Path(dataset_dir, 'train2017', file_name)).convert('RGB')
+            img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
+            train_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
+            
+        self.train_x = np.array(train_x)
+        self.train_y = None
+        
+        validation_x = []
+        validation_file_names = self.df_instances_validation['file_name'].unique()
+        for file_name in validation_file_names[0:min(len(validation_file_names), 20)]:
+            img = Image.open(Path(dataset_dir, 'train2017', file_name)).convert('RGB')
+            img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
+            validation_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
+        self.validation_x = np.array(validation_x)
+        self.validation_y = None
+        
+        test_x = []
+        test_file_names = self.df_instances_test['file_name'].unique()
+        for file_name in test_file_names[0:min(len(test_file_names), 20)]:
+            img = Image.open(Path(dataset_dir, 'val2017', file_name)).convert('RGB')
+            img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
+            test_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
+        self.test_x = np.array(test_x)
+        self.test_y = None
+        
+        return
+        
+class DataLoaderPascalVOC2012(DataLoader):
+    """DataLoaderPascalVOC2012
+    
+    DataLoader class for PascalVOC 2012 dataset.
+    In this sample code, the validation data is used as the test data, and the training data is split the training data and validation data.
+    """
+    
+    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False, model_input_size=416):
+        """Constructor
+        
+        Constructor
+        
+        Args:
+            dataset_dir (string): dataset directory
+            validation_split (float): ratio of validation data
+            flatten (bool): [T.B.D] If input shape is vector([N, :]), set to True
+            one_hot (bool): If the ground truth is onehot, set to True
+            download (bool): If the dataset downloads from Web, set to True
+            model_input_size (int): image size using to scale to input to the model
+        """
+        
+        # --- initialize super class ---
+        super().__init__()
+        self.one_hot = one_hot
+        self.verified = True
+        
+        # --- download dataset and extract ---
+        if (download):
+            logging.info(f'[DataLoaderPascalVOC2012] {dataset_dir}')
+            os.makedirs(dataset_dir, exist_ok=True)
+            
+            # --- download dataset ---
+            if (not Path(dataset_dir, 'VOCtrainval_11-May-2012.tar').exists()):
+                logging.info('downloading VOCtrainval_11-May-2012.tar')
+                url = 'http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar'
+                save_file = download_file(url, dataset_dir)
+                safe_extract_tar(save_file, dataset_dir)
+            else:
+                logging.info('VOCtrainval_11-May-2012.tar is exists (Skip Download)')
+            
+        # --- load annotations(instances) ---
+        class_map = {
+            'aeroplane': 0,
+            'bicycle': 1,
+            'bird': 2,
+            'boat': 3,
+            'bottle': 4,
+            'bus': 5,
+            'car': 6,
+            'cat': 7,
+            'chair': 8,
+            'cow': 9,
+            'diningtable': 10,
+            'dog': 11,
+            'horse': 12,
+            'motorbike': 13,
+            'person': 14,
+            'pottedplant': 15,
+            'sheep': 16,
+            'sofa': 17,
+            'train': 18,
+            'tvmonitor': 19,
+        }
+        
+        annotation_dir = Path(dataset_dir, 'VOCdevkit', 'VOC2012', 'Annotations')
+        image_dir = Path(dataset_dir, 'VOCdevkit', 'VOC2012', 'JPEGImages')
+        train_txt = open(Path(dataset_dir, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Main', 'train.txt'), 'r').read().splitlines()
+        validation_split = np.clip(validation_split, 0, 0.5)
+        
+        n_validation = int(len(train_txt) * validation_split)
+        n_train = len(train_txt) - n_validation
+        
+        train_tfrecord_path = str(Path(dataset_dir, 'train.tfrecord'))
+        writer = tf.io.TFRecordWriter(train_tfrecord_path)
+        for name in train_txt[0:n_train]:
+            annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
+            annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
+            tf_example = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+        
+        validation_tfrecord_path = str(Path(dataset_dir, 'validation.tfrecord'))
+        writer = tf.io.TFRecordWriter(validation_tfrecord_path)
+        for name in train_txt[n_train::]:
+            annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
+            annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
+            tf_example = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+        
+        test_txt = open(Path(dataset_dir, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Main', 'val.txt'), 'r').read().splitlines()
+        test_tfrecord_path = str(Path(dataset_dir, 'test.tfrecord'))
+        writer = tf.io.TFRecordWriter(test_tfrecord_path)
+        for name in test_txt:
+            annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
+            annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
+            tf_example = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+        
+        # --- save class name ---
+        class_name_file_path = str(Path(dataset_dir, 'voc2012.names'))
+        with open(class_name_file_path, 'w') as f:
+            for class_name in class_map:
+                f.write(f'{class_name}\n')
+        
+        # --- save dataset ---
+        #  * MapDataset object is cannot saved to pickle file.
+        #self.train_dataset = load_dataset_from_tfrecord(train_tfrecord_path, class_name_file_path, model_input_size)
+        #self.validation_dataset = load_dataset_from_tfrecord(validation_tfrecord_path, class_name_file_path, model_input_size)
+        #self.test_dataset = load_dataset_from_tfrecord(test_tfrecord_path, class_name_file_path, model_input_size)
+        self.train_dataset = {
+            'tfrecord_path': train_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        self.validation_dataset = {
+            'tfrecord_path': validation_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        self.test_dataset = {
+            'tfrecord_path': test_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        
+        # --- save output dimension ---
+        self.output_dims = len(class_map)
         
         # --- set task to image classification ---
         self.dataset_type = 'img_det'
@@ -738,12 +1047,6 @@ class DataLoaderCustom(DataLoader):
         # --- initialize super class ---
         super().__init__()
         
-        self.train_x = None
-        self.train_y = None
-        self.validation_x = None
-        self.validation_y = None
-        self.test_x = None
-        self.test_y = None
         self.one_hot = True
         self.output_dims = 1
         
