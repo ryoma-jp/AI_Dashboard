@@ -1087,6 +1087,10 @@ class TrainerKerasYOLOv3(Trainer):
                             callbacks=callbacks,
                             validation_data=val_dataset)
     
+        # --- Notice the finish training to Web app ---
+        if (self.web_app_ctrl_fifo is not None):
+            with open(self.web_app_ctrl_fifo, 'w') as f:
+                f.write('trainer_done\n')
     
 def main():
     """Main module

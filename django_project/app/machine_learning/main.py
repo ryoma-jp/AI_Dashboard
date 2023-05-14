@@ -230,7 +230,7 @@ def main():
             batch_size=batch_size, epochs=epochs)
     elif (model_type == 'YOLOv3'):
         print('Create YOLOv3')
-        model_input_shape = np.array([dataset.train_dataset['model_input_size'], dataset.train_dataset['model_input_size'], 3], dtype=int)
+        model_input_shape = [dataset.train_dataset['model_input_size'], dataset.train_dataset['model_input_size'], 3]
         print(f'  * output_dims = {output_dims}')
         trainer = TrainerKerasYOLOv3(model_input_shape, classes=output_dims,
             output_dir=result_dir, model_file=model_file, model_type='YOLOv3',
@@ -269,14 +269,15 @@ def main():
             trainer.fit(x_train, y_train,
                         x_val=x_val, y_val=y_val,
                         x_test=x_test, y_test=y_test)
-            trainer.save_model()
+            model_input_shape = dataset.train_x.shape[1:]
+        trainer.save_model()
         
         # --- update config file ---
         config_data['model']['input_tensor_name']['value'] = trainer.input_tensor_name
         config_data['model']['output_tensor_name']['value'] = trainer.output_tensor_name
         config_data['inference_parameter']['preprocessing']['norm_coef_a']['value'] = dataset.preprocessing_params['norm_coef'][0]
         config_data['inference_parameter']['preprocessing']['norm_coef_b']['value'] = dataset.preprocessing_params['norm_coef'][1]
-        config_data['inference_parameter']['preprocessing']['input_shape']['value'] = dataset.train_x.shape[1:]
+        config_data['inference_parameter']['preprocessing']['input_shape']['value'] = model_input_shape
         config_data['inference_parameter']['model']['task']['value'] = dataset.dataset_type
         with open(args.config, 'w') as f:
             json.dump(config_data, f, ensure_ascii=False, indent=4)
