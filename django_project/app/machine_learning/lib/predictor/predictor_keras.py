@@ -5,6 +5,7 @@ This file describe about the prediction process using Keras
 
 import cv2
 import json
+import pickle
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -113,7 +114,13 @@ class PredictorMlModel(Predictor):
         
         # --- load model ---
         trained_model_path = Path(mlmodel.model_dir, 'models', 'hdf5', 'model.h5')
-        self.pretrained_model = keras.models.load_model(trained_model_path)
+        custom_objects = None
+        custom_object_path = Path(mlmodel.model_dir, 'models', 'custom_objects.pickle')
+        if (custom_object_path.exists()):
+            with open(custom_object_path, 'rb') as f:
+                custom_objects = pickle.load(f)
+        
+        self.pretrained_model = keras.models.load_model(trained_model_path, custom_objects=custom_objects)
         self.pretrained_model.summary()
         
         if (self.get_feature_map):

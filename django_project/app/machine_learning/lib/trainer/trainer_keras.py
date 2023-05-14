@@ -10,6 +10,7 @@ import gc
 import logging
 import json
 import math
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -1091,6 +1092,17 @@ class TrainerKerasYOLOv3(Trainer):
         if (self.web_app_ctrl_fifo is not None):
             with open(self.web_app_ctrl_fifo, 'w') as f:
                 f.write('trainer_done\n')
+    
+    def save_model(self):
+        super().save_model()
+        
+        # --- save custom object ---
+        custom_objects = {
+            'YoloLoss': self.model.loss,
+        }
+        model_dir = Path(self.output_dir, 'models')
+        with open(Path(model_dir, 'custom_objects.pickle'), 'wb') as f:
+            pickle.dump(custom_objects, f)
     
 def main():
     """Main module
