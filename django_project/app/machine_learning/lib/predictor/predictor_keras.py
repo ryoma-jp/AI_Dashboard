@@ -15,6 +15,19 @@ import logging
 from pathlib import Path
 from PIL import Image
 from tensorflow import keras
+from tensorflow.keras import Model
+from tensorflow.keras.layers import (
+    Add,
+    Concatenate,
+    Conv2D,
+    Input,
+    Lambda,
+    LeakyReLU,
+    MaxPool2D,
+    UpSampling2D,
+    ZeroPadding2D,
+    BatchNormalization,
+)
 
 from machine_learning.lib.utils.utils import download_file, safe_extract_tar
 
@@ -43,7 +56,7 @@ class Predictor():
                 'class_name': None,
                 'score': None,
             }
-        elif (task == 'object_detection'):
+        elif ('object_detection' in task):
             self.decoded_preds = {
                 'num_detections': None,
                 'detection_boxes': None,
@@ -106,8 +119,11 @@ class PredictorMlModel(Predictor):
         elif (task in ['img_reg', 'table_reg']):
             self.task = 'regression'
         else:
-            # --- T.B.D ---
-            self.task = 'object_detection'
+            # --- detection task ---
+            if ('yolo' in task):
+                self.task = 'object_detection_yolo'
+            else:
+                self.task = 'object_detection'
         super().__init__(self.task)
         self.get_feature_map = get_feature_map
         self.feature_map_calc_range = feature_map_calc_range
@@ -130,6 +146,9 @@ class PredictorMlModel(Predictor):
                 if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
                     outputs.append(layer.output)
             self.pretrained_model = keras.models.Model(inputs=self.pretrained_model.inputs, outputs=outputs)
+        
+        # --- for DEBUG ---
+        self.yolo_nms_model = None
         
     def preprocess_input(self, x):
         """Preprocess input data
@@ -160,8 +179,275 @@ class PredictorMlModel(Predictor):
             prediction as np.array
         """
         
+        # --- inference ---
+        #logging.info('-------------------------------------')
+        #logging.info('[DEBUG]')
+        #logging.info(f'  * x.shape: {x.shape}')
+        #logging.info(f'  * self.norm_coef_a: {self.norm_coef_a}')
+        #logging.info(f'  * self.norm_coef_b: {self.norm_coef_b}')
+        #logging.info('-------------------------------------')
         self.prediction = self.pretrained_model.predict(self.preprocess_input(x))
         
+        # --- post processing ---
+        if (self.task == 'object_detection_yolo'):
+            def sigmoid(x):
+                return 1 / (1 + np.exp(-x))
+            
+            def yolo_boxes(pred, anchors, classes):
+                grid_size = pred.shape[1:3]
+                box_xy, box_wh, objectness, class_probs = np.split(pred, (2, 4, 5), axis=-1)
+                
+                box_xy = sigmoid(box_xy)
+                objectness = sigmoid(objectness)
+                class_probs = sigmoid(class_probs)
+                pred_box = np.concatenate((box_xy, box_wh), axis=-1)  # original xywh for loss
+
+                # !!! grid[x][y] == (y, x)
+                grid_x, grid_y = np.meshgrid(np.arange(grid_size[1]), np.arange(grid_size[0]))
+                grid = np.stack((grid_x, grid_y), axis=-1)  # [gx, gy, 1, 2]
+                grid = np.expand_dims(grid, axis=2)
+
+                box_xy = (box_xy + grid) / np.array(grid_size).reshape(1, 1, 1, 2)
+                box_wh = np.exp(box_wh) * anchors
+
+                box_x1y1 = box_xy - box_wh / 2
+                box_x2y2 = box_xy + box_wh / 2
+                bbox = np.concatenate((box_x1y1, box_x2y2), axis=-1)
+
+                return bbox, objectness, class_probs, pred_box
+            
+            def yolo_nms(outputs, anchors, masks, classes, yolo_max_boxes=100, yolo_iou_threshold=0.5, yolo_score_threshold=0.5):
+                # boxes, conf, type
+                b, c, t = [], [], []
+
+                for o in outputs:
+                    b.append(np.reshape(o[0], (np.shape(o[0])[0], -1, np.shape(o[0])[-1])))
+                    c.append(np.reshape(o[1], (np.shape(o[1])[0], -1, np.shape(o[1])[-1])))
+                    t.append(np.reshape(o[2], (np.shape(o[2])[0], -1, np.shape(o[2])[-1])))
+
+                bbox = np.concatenate(b, axis=1)
+                confidence = np.concatenate(c, axis=1)
+                class_probs = np.concatenate(t, axis=1)
+
+                # If we only have one class, do not multiply by class_prob (always 0.5)
+                if classes == 1:
+                    scores = confidence
+                else:
+                    scores = confidence * class_probs
+
+                dscores = np.squeeze(scores, axis=0)
+                #scores = np.reduce_max(dscores, axis=1)
+                scores = np.apply_along_axis(max, 1, dscores)
+                bbox = np.reshape(bbox, (-1, 4))
+                classes = np.argmax(dscores, axis=1)
+
+                selected_indices, selected_scores = non_max_suppression_with_scores(
+                    boxes=bbox,
+                    scores=scores,
+                    max_output_size=yolo_max_boxes,
+                    iou_threshold=yolo_iou_threshold,
+                    score_threshold=yolo_score_threshold,
+                    soft_nms_sigma=0.5
+                )
+
+                num_valid_nms_boxes = np.shape(selected_indices)[0]
+
+                selected_indices = np.concatenate([selected_indices, np.zeros(yolo_max_boxes - num_valid_nms_boxes, np.int32)], 0)
+                selected_scores = np.concatenate([selected_scores, np.zeros(yolo_max_boxes - num_valid_nms_boxes, np.float32)], -1)
+
+                boxes = np.expand_dims(np.take(bbox, selected_indices, axis=0), axis=0)
+                scores = np.expand_dims(selected_scores, axis=0)
+                classes = np.expand_dims(np.take(classes, selected_indices), axis=0)
+                valid_detections = np.expand_dims(num_valid_nms_boxes, axis=0)
+
+                return boxes, scores, classes, valid_detections
+
+            def non_max_suppression_with_scores(boxes, scores, max_output_size, iou_threshold, score_threshold, soft_nms_sigma):
+                # Convert boxes to (x1, y1, x2, y2) format
+                x1 = boxes[:, 0]
+                y1 = boxes[:, 1]
+                x2 = boxes[:, 2]
+                y2 = boxes[:, 3]
+
+                areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+
+                selected_indices = []
+                selected_scores = []
+
+                # Sort boxes by scores in descending order
+                sorted_indices = np.argsort(scores)[::-1]
+
+                while sorted_indices.size > 0:
+                    current_index = sorted_indices[0]
+                    selected_indices.append(current_index)
+                    selected_scores.append(scores[current_index])
+
+                    if len(selected_indices) >= max_output_size:
+                        break
+
+                    # Compute IoU between the current box and the remaining boxes
+                    current_box = boxes[current_index]
+                    x1_i = np.maximum(x1[sorted_indices[1:]], current_box[0])
+                    y1_i = np.maximum(y1[sorted_indices[1:]], current_box[1])
+                    x2_i = np.minimum(x2[sorted_indices[1:]], current_box[2])
+                    y2_i = np.minimum(y2[sorted_indices[1:]], current_box[3])
+
+                    width_i = np.maximum(0.0, x2_i - x1_i + 1)
+                    height_i = np.maximum(0.0, y2_i - y1_i + 1)
+
+                    intersection = width_i * height_i
+                    union = areas[current_index] + areas[sorted_indices[1:]] - intersection
+                    iou = intersection / union
+
+                    # Apply soft-NMS
+                    weights = np.exp(-(iou * iou) / soft_nms_sigma)
+                    scores[sorted_indices[1:]] *= weights
+
+                    # Discard boxes with low scores
+                    discard_indices = np.where(scores[sorted_indices[1:]] < score_threshold)[0]
+                    sorted_indices = np.delete(sorted_indices, discard_indices + 1)
+
+                selected_indices = np.array(selected_indices)
+                selected_scores = np.array(selected_scores)
+
+                return selected_indices, selected_scores
+
+            # As tensorflow lite doesn't support tf.size used in tf.meshgrid, 
+            # we reimplemented a simple meshgrid function that use basic tf function.
+            def _meshgrid(n_a, n_b):
+
+                return [
+                    tf.reshape(tf.tile(tf.range(n_a), [n_b]), (n_b, n_a)),
+                    tf.reshape(tf.repeat(tf.range(n_b), n_a), (n_b, n_a))
+                ]
+
+            def tf_yolo_boxes(pred, anchors, classes):
+                # pred: (batch_size, grid, grid, anchors, (x, y, w, h, obj, ...classes))
+                grid_size = tf.shape(pred)[1:3]
+                box_xy, box_wh, objectness, class_probs = tf.split(
+                    pred, (2, 2, 1, classes), axis=-1)
+
+                box_xy = tf.sigmoid(box_xy)
+                objectness = tf.sigmoid(objectness)
+                class_probs = tf.sigmoid(class_probs)
+                pred_box = tf.concat((box_xy, box_wh), axis=-1)  # original xywh for loss
+
+                # !!! grid[x][y] == (y, x)
+                grid = _meshgrid(grid_size[1],grid_size[0])
+                grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # [gx, gy, 1, 2]
+
+                box_xy = (box_xy + tf.cast(grid, tf.float32)) / \
+                    tf.cast(grid_size, tf.float32)
+                box_wh = tf.exp(box_wh) * anchors
+
+                box_x1y1 = box_xy - box_wh / 2
+                box_x2y2 = box_xy + box_wh / 2
+                bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
+
+                return bbox, objectness, class_probs, pred_box
+
+
+            def tf_yolo_nms(outputs, anchors, masks, classes, yolo_max_boxes=100, yolo_iou_threshold=0.5, yolo_score_threshold=0.5):
+                # boxes, conf, type
+                b, c, t = [], [], []
+
+                for o in outputs:
+                    b.append(tf.reshape(o[0], (tf.shape(o[0])[0], -1, tf.shape(o[0])[-1])))
+                    c.append(tf.reshape(o[1], (tf.shape(o[1])[0], -1, tf.shape(o[1])[-1])))
+                    t.append(tf.reshape(o[2], (tf.shape(o[2])[0], -1, tf.shape(o[2])[-1])))
+
+                bbox = tf.concat(b, axis=1)
+                confidence = tf.concat(c, axis=1)
+                class_probs = tf.concat(t, axis=1)
+
+                # If we only have one class, do not multiply by class_prob (always 0.5)
+                if classes == 1:
+                    scores = confidence
+                else:
+                    scores = confidence * class_probs
+
+                dscores = tf.squeeze(scores, axis=0)
+                scores = tf.reduce_max(dscores,[1])
+                bbox = tf.reshape(bbox,(-1,4))
+                classes = tf.argmax(dscores,1)
+                selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
+                    boxes=bbox,
+                    scores=scores,
+                    max_output_size=yolo_max_boxes,
+                    iou_threshold=yolo_iou_threshold,
+                    score_threshold=yolo_score_threshold,
+                    soft_nms_sigma=0.5
+                )
+                
+                num_valid_nms_boxes = tf.shape(selected_indices)[0]
+
+                selected_indices = tf.concat([selected_indices,tf.zeros(yolo_max_boxes-num_valid_nms_boxes, tf.int32)], 0)
+                selected_scores = tf.concat([selected_scores,tf.zeros(yolo_max_boxes-num_valid_nms_boxes,tf.float32)], -1)
+
+                boxes=tf.gather(bbox, selected_indices)
+                boxes = tf.expand_dims(boxes, axis=0)
+                scores=selected_scores
+                scores = tf.expand_dims(scores, axis=0)
+                classes = tf.gather(classes,selected_indices)
+                classes = tf.expand_dims(classes, axis=0)
+                valid_detections=num_valid_nms_boxes
+                valid_detections = tf.expand_dims(valid_detections, axis=0)
+
+                return boxes, scores, classes, valid_detections
+
+            
+            from machine_learning.lib.trainer.tf_models.yolov3.models import yolo_anchors, yolo_anchor_masks
+            
+            output_0, output_1, output_2 = self.prediction
+            
+            yolo_nms_proc_tf = True
+            if (yolo_nms_proc_tf):
+                if (self.yolo_nms_model is None):
+                    classes = 20
+                    input_0 = Input(output_0.shape[1:], name='yolov3_nms_input_0')
+                    input_1 = Input(output_1.shape[1:], name='yolov3_nms_input_1')
+                    input_2 = Input(output_2.shape[1:], name='yolov3_nms_input_2')
+                    
+                    boxes_0 = Lambda(lambda x: tf_yolo_boxes(x, yolo_anchors[yolo_anchor_masks[0]], classes),
+                                     name='yolo_boxes_0')(input_0)
+                    boxes_1 = Lambda(lambda x: tf_yolo_boxes(x, yolo_anchors[yolo_anchor_masks[1]], classes),
+                                     name='yolo_boxes_1')(input_1)
+                    boxes_2 = Lambda(lambda x: tf_yolo_boxes(x, yolo_anchors[yolo_anchor_masks[2]], classes),
+                                     name='yolo_boxes_2')(input_2)
+
+                    outputs = Lambda(lambda x: tf_yolo_nms(x, yolo_anchors, yolo_anchor_masks, classes),
+                                     name='yolov3_nms_output')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
+
+                    self.yolo_nms_model = Model(inputs=[input_0, input_1, input_2], outputs=outputs, name='yolov3_nms')
+                    self.yolo_nms_model.summary()
+                
+                self.prediction = self.yolo_nms_model.predict([output_0, output_1, output_2])
+            else:
+                
+                #logging.info('-------------------------------------')
+                #logging.info('[DEBUG]')
+                #logging.info(f'  * output_0.shape: {output_0.shape}')
+                #logging.info(f'  * output_1.shape: {output_1.shape}')
+                #logging.info(f'  * output_2.shape: {output_2.shape}')
+                #logging.info('-------------------------------------')
+                boxes_0 = yolo_boxes(output_0, yolo_anchors[yolo_anchor_masks[0]], 20)
+                boxes_1 = yolo_boxes(output_1, yolo_anchors[yolo_anchor_masks[1]], 20)
+                boxes_2 = yolo_boxes(output_2, yolo_anchors[yolo_anchor_masks[2]], 20)
+                
+                self.prediction = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
+
+            boxes, scores, classes, valid_detections = self.prediction
+            logging.info('-------------------------------------')
+            logging.info('[DEBUG]')
+            logging.info(f'  * len(self.prediction): {len(self.prediction)}')
+            logging.info(f'  * valid_detections: {valid_detections}')
+            if (len(valid_detections) > 0):
+                logging.info(f'  * box: {boxes[0]}')
+                logging.info(f'  * scores: {scores[0]}')
+                logging.info(f'  * classes: {classes[0]}')
+            
+            logging.info('-------------------------------------')
+            
         if (self.get_feature_map):
             _preds = self.prediction[-1][0]
         else:

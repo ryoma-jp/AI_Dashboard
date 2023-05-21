@@ -239,6 +239,10 @@ def main():
             dropout_rate=dropout_rate, learning_rate=learning_rate,
             dataset_type=dataset.dataset_type, da_params=image_data_augmentation,
             batch_size=batch_size, epochs=epochs)
+        
+        # --- YOLOv3 has fixed preprocessing parameters ---
+        dataset.preprocessing_params['norm_coef'][1] = 255.0
+        
     elif (model_type == 'YOLOv3_Tiny'):
         print('Create YOLOv3_Tiny')
         trainer = TrainerKerasYOLOv3_Tiny(dataset.train_x.shape[1:], classes=output_dims,
@@ -273,12 +277,16 @@ def main():
         trainer.save_model()
         
         # --- update config file ---
+        #  * detection models have different output tensor each other, so set the different task name
         config_data['model']['input_tensor_name']['value'] = trainer.input_tensor_name
         config_data['model']['output_tensor_name']['value'] = trainer.output_tensor_name
         config_data['inference_parameter']['preprocessing']['norm_coef_a']['value'] = dataset.preprocessing_params['norm_coef'][0]
         config_data['inference_parameter']['preprocessing']['norm_coef_b']['value'] = dataset.preprocessing_params['norm_coef'][1]
         config_data['inference_parameter']['preprocessing']['input_shape']['value'] = model_input_shape
-        config_data['inference_parameter']['model']['task']['value'] = dataset.dataset_type
+        if (model_type == 'YOLOv3'):
+            config_data['inference_parameter']['model']['task']['value'] = f'{dataset.dataset_type}_yolo'
+        else:
+            config_data['inference_parameter']['model']['task']['value'] = dataset.dataset_type
         with open(args.config, 'w') as f:
             json.dump(config_data, f, ensure_ascii=False, indent=4)
 
