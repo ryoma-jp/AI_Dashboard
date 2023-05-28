@@ -194,6 +194,7 @@ class PredictorMlModel(Predictor):
                 return 1 / (1 + np.exp(-x))
             
             def yolo_boxes(pred, anchors, classes):
+                # pred: (batch_size, grid, grid, anchors, (x, y, w, h, obj, ...classes))
                 grid_size = pred.shape[1:3]
                 box_xy, box_wh, objectness, class_probs = np.split(pred, (2, 4, 5), axis=-1)
                 
@@ -263,16 +264,7 @@ class PredictorMlModel(Predictor):
                 return boxes, scores, classes, valid_detections
 
             def non_max_suppression_with_scores(boxes, scores, max_output_size, iou_threshold, score_threshold, soft_nms_sigma):
-                # Convert boxes to (x1, y1, x2, y2) format
-                x1 = boxes[:, 0]
-                y1 = boxes[:, 1]
-                x2 = boxes[:, 2]
-                y2 = boxes[:, 3]
-
-                areas = (x2 - x1 + 1) * (y2 - y1 + 1)
-
                 selected_indices = []
-                selected_scores = []
 
                 # Sort boxes by scores in descending order
                 sorted_indices = np.argsort(scores)[::-1]
@@ -280,35 +272,40 @@ class PredictorMlModel(Predictor):
                 while sorted_indices.size > 0:
                     current_index = sorted_indices[0]
                     selected_indices.append(current_index)
-                    selected_scores.append(scores[current_index])
 
                     if len(selected_indices) >= max_output_size:
                         break
 
                     # Compute IoU between the current box and the remaining boxes
                     current_box = boxes[current_index]
-                    x1_i = np.maximum(x1[sorted_indices[1:]], current_box[0])
-                    y1_i = np.maximum(y1[sorted_indices[1:]], current_box[1])
-                    x2_i = np.minimum(x2[sorted_indices[1:]], current_box[2])
-                    y2_i = np.minimum(y2[sorted_indices[1:]], current_box[3])
+                    remaining_indices = sorted_indices[1:]
 
-                    width_i = np.maximum(0.0, x2_i - x1_i + 1)
-                    height_i = np.maximum(0.0, y2_i - y1_i + 1)
+                    x1 = np.maximum(current_box[0], boxes[remaining_indices, 0])
+                    y1 = np.maximum(current_box[1], boxes[remaining_indices, 1])
+                    x2 = np.minimum(current_box[2], boxes[remaining_indices, 2])
+                    y2 = np.minimum(current_box[3], boxes[remaining_indices, 3])
 
-                    intersection = width_i * height_i
-                    union = areas[current_index] + areas[sorted_indices[1:]] - intersection
-                    iou = intersection / union
+                    intersection_width = np.maximum(0.0, x2 - x1 + 1)
+                    intersection_height = np.maximum(0.0, y2 - y1 + 1)
+                    intersection_area = intersection_width * intersection_height
+
+                    box_area = (current_box[2] - current_box[0] + 1) * (current_box[3] - current_box[1] + 1)
+                    remaining_areas = (boxes[remaining_indices, 2] - boxes[remaining_indices, 0] + 1) * \
+                                      (boxes[remaining_indices, 3] - boxes[remaining_indices, 1] + 1)
+                    union_area = box_area + remaining_areas - intersection_area
+
+                    iou = intersection_area / union_area
 
                     # Apply soft-NMS
                     weights = np.exp(-(iou * iou) / soft_nms_sigma)
-                    scores[sorted_indices[1:]] *= weights
+                    scores[remaining_indices] *= weights
 
                     # Discard boxes with low scores
-                    discard_indices = np.where(scores[sorted_indices[1:]] < score_threshold)[0]
+                    discard_indices = np.where(scores[remaining_indices] < score_threshold)[0]
                     sorted_indices = np.delete(sorted_indices, discard_indices + 1)
 
                 selected_indices = np.array(selected_indices)
-                selected_scores = np.array(selected_scores)
+                selected_scores = scores[selected_indices]
 
                 return selected_indices, selected_scores
 
@@ -419,7 +416,7 @@ class PredictorMlModel(Predictor):
                                      name='yolov3_nms_output')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
 
                     self.yolo_nms_model = Model(inputs=[input_0, input_1, input_2], outputs=outputs, name='yolov3_nms')
-                    self.yolo_nms_model.summary()
+                    self.yolo_nms_model.summary(print_fn=logging.info)
                 
                 self.prediction = self.yolo_nms_model.predict([output_0, output_1, output_2])
             else:
@@ -437,29 +434,21 @@ class PredictorMlModel(Predictor):
                 self.prediction = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
 
             boxes, scores, classes, valid_detections = self.prediction
-            logging.info('-------------------------------------')
-            logging.info('[DEBUG]')
-            logging.info(f'  * len(self.prediction): {len(self.prediction)}')
-            logging.info(f'  * valid_detections: {valid_detections}')
-            if (len(valid_detections) > 0):
-                logging.info(f'  * box: {boxes[0]}')
-                logging.info(f'  * scores: {scores[0]}')
-                logging.info(f'  * classes: {classes[0]}')
+            #logging.info('-------------------------------------')
+            #logging.info('[DEBUG]')
+            #logging.info(f'  * len(self.prediction): {len(self.prediction)}')
+            #logging.info(f'  * valid_detections: {valid_detections}')
+            #if (len(valid_detections) > 0):
+            #    logging.info(f'  * box: {boxes[0]}')
+            #    logging.info(f'  * scores: {scores[0]}')
+            #    logging.info(f'  * classes: {classes[0]}')
+            #
+            #logging.info('-------------------------------------')
             
-            logging.info('-------------------------------------')
-            
-        if (self.get_feature_map):
-            _preds = self.prediction[-1][0]
-        else:
-            _preds = self.prediction[0]
-        
-        top5_score = np.sort(_preds)[::-1][0:5]
-        top5_class_id = np.argsort(_preds)[::-1][0:5]
-        
-        self.decoded_preds['class_id'] = top5_class_id
-        self.decoded_preds['class_name'] = [f'class{i}' for i in top5_class_id]
-        self.decoded_preds['score'] = top5_score
-
+        self.decoded_preds['num_detections'] = valid_detections[0]
+        self.decoded_preds['detection_boxes'] = np.array(boxes[0][0:valid_detections[0]])[:, [1, 0, 3, 2]]  # [x1, y1, x2, y2]->[y1, x1, y2, x1]
+        self.decoded_preds['detection_classes'] = np.array(classes[0][0:valid_detections[0]])
+        self.decoded_preds['detection_scores'] = np.array(scores[0][0:valid_detections[0]])
         
     def create_feature_map(self):
         """Create Freature Map

@@ -41,7 +41,7 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
             - pretrained_model
     """
     
-    categories_coco2017 = None
+    category_names = None
     if (streaming_project_name == 'Sample'):
         if (streaming_model_name == 'ResNet50'):
             # --- load model ---
@@ -57,7 +57,7 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
                 zip_extract('/tmp/annotations_trainval2017.zip', '/tmp')
             with open('/tmp/annotations/instances_val2017.json', 'r') as f:
                 instances_val2017 = json.load(f)
-                categories_coco2017 = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
+                category_names = {data_['id']: data_['name'] for data_ in instances_val2017['categories']}
             
             # --- Create object of Pre-trained model ---
             pretrained_model = PredictorCenterNetHourGlass104()
@@ -95,13 +95,13 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
             streaming_model_name = 'None'
             pretrained_model = None
 
-    return streaming_model_name, pretrained_model, categories_coco2017
+    return streaming_model_name, pretrained_model, category_names
 
 def _create_frame(frame, overlay, 
                   pretrained_model, 
                   fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
                   height, width, 
-                  categories_coco2017):
+                  category_names):
     """Create Frame
     
     This function is internal in the streaming view, creates the frame to draw in the streaming view.
@@ -118,7 +118,7 @@ def _create_frame(frame, overlay,
         alpha (float): blend alpha for drawing the prediction result
         height (int): image height
         width (int): image width
-        categories_coco2017 (list): categories of COCO2017 dataset
+        category_names (list): category name list
     """
     if (pretrained_model is not None):
         if (pretrained_model.task == 'classification'):
@@ -133,7 +133,7 @@ def _create_frame(frame, overlay,
                 cv2.putText(prediction_area, class_text_, class_org_, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(0,250,225))
             
             frame = cv2.hconcat([frame, prediction_area])
-        elif (pretrained_model.task == 'object_detection'):
+        elif ('object_detection' in pretrained_model.task):
             information_area = np.zeros([height, 320, 3], np.uint8)
             cv2.putText(information_area, fps_text, fps_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(250, 225, 0))
             cv2.putText(information_area, model_name_text, model_name_org, fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.5, color=(100, 225, 0))
@@ -142,10 +142,16 @@ def _create_frame(frame, overlay,
                 boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * [height, width, height, width], dtype=int)
                 for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
                     cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                    cv2.putText(overlay,
-                                categories_coco2017[class_],
-                                [box_[1], box_[0]-8],
-                                fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
+                    if (category_names is not None):
+                        cv2.putText(overlay,
+                                    category_names[class_],
+                                    [box_[1], box_[0]-8],
+                                    fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
+                    else:
+                        cv2.putText(overlay,
+                                    f'class{class_}',
+                                    [box_[1], box_[0]-8],
+                                    fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
                 
             frame = cv2.addWeighted(overlay, alpha, frame, 1-alpha, 0)
             frame = cv2.hconcat([frame, information_area])
@@ -354,7 +360,7 @@ def usb_cam(request):
                     
                     # --- Infrerence ---
                     pretrained_model.predict(overlay_for_inference)
-                    
+                            
                 # --- Put Text ---
                 time_end = time.time()
                 processing_rate = 1.0 / (time_end - time_start)
@@ -409,7 +415,7 @@ def youtube(request):
         frame_duration = 1 / fps
         
         # --- Prepare model for inference ---
-        streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
+        streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
         
         # --- Set fixed parameters ---
         fps_org = (5, 15)
@@ -432,6 +438,11 @@ def youtube(request):
             
             overlay = frame.copy()
             
+            #logging.info('-------------------------------------')
+            #logging.info('[DEBUG]')
+            #logging.info(f'  * streaming_model_name = {streaming_model_name}')
+            #logging.info(f'  * pretrained_model_list = {pretrained_model_list}')
+            #logging.info('-------------------------------------')
             if (streaming_model_name in pretrained_model_list):
                 # --- Convert format ---
                 overlay_for_inference = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
@@ -440,6 +451,12 @@ def youtube(request):
                 
                 # --- Infrerence ---
                 pretrained_model.predict(overlay_for_inference)
+                #logging.info('-------------------------------------')
+                #logging.info('[DEBUG]')
+                #logging.info(f'  * pretrained_model.prediction = {pretrained_model.prediction}')
+                #logging.info(f'  * pretrained_model.prediction[0] = {pretrained_model.prediction[0]}')
+                #logging.info(f'  * len(pretrained_model.prediction) = {len(pretrained_model.prediction)}')
+                #logging.info('-------------------------------------')
                 
             # --- Put Text ---
             time_end = time.time()
@@ -454,7 +471,7 @@ def youtube(request):
                                   pretrained_model,
                                   fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
                                   height, width, 
-                                  categories_coco2017)
+                                  category_names)
 
             # --- Encode and Return byte frame ---
             image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()

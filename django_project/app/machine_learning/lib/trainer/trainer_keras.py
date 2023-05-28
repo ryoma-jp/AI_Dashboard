@@ -25,6 +25,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from machine_learning.lib.trainer.tf_models.yolov3 import models as yolov3_models
 from machine_learning.lib.trainer.tf_models.yolov3.utils import freeze_all as yolov3_freeze_all
+from machine_learning.lib.trainer.tf_models.yolov3.utils import load_darknet_weights as yolov3_load_darknet_weights
+from machine_learning.lib.utils.utils import download_file
 from machine_learning.lib.data_loader.data_loader import load_dataset_from_tfrecord
 
 #---------------------------------
@@ -933,14 +935,26 @@ class TrainerKerasYOLOv3(Trainer):
         def _load_model(input_shape, classes):
             """Load model for simple model
             
-            Load model for simple model
+            Load YOLOv3 model and load weights from darknet pretrained model
             
             Args:
                 input_shape (list): Shape of input data
                 classes (int): Number of class
             """
+            # --- Load model ---
             model = yolov3_models.YoloV3(size=input_shape[0], classes=classes, training=True)
             model.summary()
+            
+            # --- Load Darknet pretrined weights ---
+            url = 'https://pjreddie.com/media/files/yolov3.weights'
+            download_file(url, save_dir='/tmp')
+            
+            pretrained_model = yolov3_models.YoloV3(size=input_shape[0], classes=80, training=True)
+            yolov3_load_darknet_weights(pretrained_model, '/tmp/yolov3.weights', False)
+            
+            model.get_layer('yolo_darknet').set_weights(
+                pretrained_model.get_layer('yolo_darknet').get_weights())
+            yolov3_freeze_all(model.get_layer('yolo_darknet'))
             
             return model, None, None
         
@@ -954,15 +968,11 @@ class TrainerKerasYOLOv3(Trainer):
         
         self.anchors = yolov3_models.yolo_anchors
         self.anchor_masks = yolov3_models.yolo_anchor_masks
-        print(self.anchors)
-        print(classes)
         self.loss = [yolov3_models.YoloLoss(self.anchors[mask], classes=classes) for mask in self.anchor_masks]
-        print(self.loss)
         
         # --- Create model ---
         if (self.model is None):
             self.model, self.input_tensor_name, self.output_tensor_name = _load_model(input_shape, classes)
-            yolov3_freeze_all(self.model.get_layer('yolo_darknet'))
             
             self._compile_model(optimizer=self.optimizer, loss=self.loss, init_lr=self.learning_rate)
             if (self.output_dir is not None):
