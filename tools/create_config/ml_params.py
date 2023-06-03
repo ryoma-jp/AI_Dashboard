@@ -396,6 +396,10 @@ class MlParams_PascalVOC2012(MlParams):
     def __init__(self):
         super().__init__()
         self.params['model']['model_type']['value'] = 'YOLOv3'
+        self.params['dnn_training_parameter']['optimizer']['value'] = 'adam'
+        self.params['dnn_training_parameter']['batch_size']['value'] = 16
+        self.params['dnn_training_parameter']['learning_rate']['value'] = 0.001
+        self.params['dnn_training_parameter']['epochs']['value'] = 20
         self.params['dataset']['dataset_name']['value'] = 'PascalVOC2012'
         self.params['dataset']['norm']['value'] = 'z-score'
 
