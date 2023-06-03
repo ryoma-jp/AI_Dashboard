@@ -252,142 +252,15 @@ class PredictorMlModel(Predictor):
                 valid_detections = np.expand_dims(num_valid_nms_boxes, axis=0)
                 
                 return boxes, scores, classes, valid_detections
-
-            # As tensorflow lite doesn't support tf.size used in tf.meshgrid, 
-            # we reimplemented a simple meshgrid function that use basic tf function.
-            def _meshgrid(n_a, n_b):
-
-                return [
-                    tf.reshape(tf.tile(tf.range(n_a), [n_b]), (n_b, n_a)),
-                    tf.reshape(tf.repeat(tf.range(n_b), n_a), (n_b, n_a))
-                ]
-
-            def tf_yolo_boxes(pred, anchors, classes):
-                # pred: (batch_size, grid, grid, anchors, (x, y, w, h, obj, ...classes))
-                grid_size = tf.shape(pred)[1:3]
-                box_xy, box_wh, objectness, class_probs = tf.split(
-                    pred, (2, 2, 1, classes), axis=-1)
-
-                box_xy = tf.sigmoid(box_xy)
-                objectness = tf.sigmoid(objectness)
-                class_probs = tf.sigmoid(class_probs)
-                pred_box = tf.concat((box_xy, box_wh), axis=-1)  # original xywh for loss
-
-                # !!! grid[x][y] == (y, x)
-                grid = _meshgrid(grid_size[1],grid_size[0])
-                grid = tf.expand_dims(tf.stack(grid, axis=-1), axis=2)  # [gx, gy, 1, 2]
-
-                box_xy = (box_xy + tf.cast(grid, tf.float32)) / \
-                    tf.cast(grid_size, tf.float32)
-                box_wh = tf.exp(box_wh) * anchors
-
-                box_x1y1 = box_xy - box_wh / 2
-                box_x2y2 = box_xy + box_wh / 2
-                bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
-
-                return bbox, objectness, class_probs, pred_box
-
-
-            def tf_yolo_nms(outputs, anchors, masks, classes, yolo_max_boxes=100, yolo_iou_threshold=0.5, yolo_score_threshold=0.5):
-                # boxes, conf, type
-                b, c, t = [], [], []
-
-                for o in outputs:
-                    b.append(tf.reshape(o[0], (tf.shape(o[0])[0], -1, tf.shape(o[0])[-1])))
-                    c.append(tf.reshape(o[1], (tf.shape(o[1])[0], -1, tf.shape(o[1])[-1])))
-                    t.append(tf.reshape(o[2], (tf.shape(o[2])[0], -1, tf.shape(o[2])[-1])))
-
-                bbox = tf.concat(b, axis=1)
-                confidence = tf.concat(c, axis=1)
-                class_probs = tf.concat(t, axis=1)
-
-                # If we only have one class, do not multiply by class_prob (always 0.5)
-                if classes == 1:
-                    scores = confidence
-                else:
-                    scores = confidence * class_probs
-
-                dscores = tf.squeeze(scores, axis=0)
-                scores = tf.reduce_max(dscores,[1])
-                bbox = tf.reshape(bbox,(-1,4))
-                classes = tf.argmax(dscores,1)
-                selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
-                    boxes=bbox,
-                    scores=scores,
-                    max_output_size=yolo_max_boxes,
-                    iou_threshold=yolo_iou_threshold,
-                    score_threshold=yolo_score_threshold,
-                    soft_nms_sigma=0.5
-                )
-                
-                num_valid_nms_boxes = tf.shape(selected_indices)[0]
-
-                selected_indices = tf.concat([selected_indices,tf.zeros(yolo_max_boxes-num_valid_nms_boxes, tf.int32)], 0)
-                selected_scores = tf.concat([selected_scores,tf.zeros(yolo_max_boxes-num_valid_nms_boxes,tf.float32)], -1)
-
-                boxes=tf.gather(bbox, selected_indices)
-                boxes = tf.expand_dims(boxes, axis=0)
-                scores=selected_scores
-                scores = tf.expand_dims(scores, axis=0)
-                classes = tf.gather(classes,selected_indices)
-                classes = tf.expand_dims(classes, axis=0)
-                valid_detections=num_valid_nms_boxes
-                valid_detections = tf.expand_dims(valid_detections, axis=0)
-
-                return boxes, scores, classes, valid_detections
-
             
             from machine_learning.lib.trainer.tf_models.yolov3.models import yolo_anchors, yolo_anchor_masks
             
-            output_0, output_1, output_2 = self.prediction
+            boxes_0 = yolo_boxes(self.prediction[0], yolo_anchors[yolo_anchor_masks[0]], 20)
+            boxes_1 = yolo_boxes(self.prediction[1], yolo_anchors[yolo_anchor_masks[1]], 20)
+            boxes_2 = yolo_boxes(self.prediction[2], yolo_anchors[yolo_anchor_masks[2]], 20)
             
-            yolo_nms_proc_tf = False
-            if (yolo_nms_proc_tf):
-                if (self.yolo_nms_model is None):
-                    classes = 20
-                    input_0 = Input(output_0.shape[1:], name='yolov3_nms_input_0')
-                    input_1 = Input(output_1.shape[1:], name='yolov3_nms_input_1')
-                    input_2 = Input(output_2.shape[1:], name='yolov3_nms_input_2')
-                    
-                    boxes_0 = Lambda(lambda x: tf_yolo_boxes(x, yolo_anchors[yolo_anchor_masks[0]], classes),
-                                     name='yolo_boxes_0')(input_0)
-                    boxes_1 = Lambda(lambda x: tf_yolo_boxes(x, yolo_anchors[yolo_anchor_masks[1]], classes),
-                                     name='yolo_boxes_1')(input_1)
-                    boxes_2 = Lambda(lambda x: tf_yolo_boxes(x, yolo_anchors[yolo_anchor_masks[2]], classes),
-                                     name='yolo_boxes_2')(input_2)
-
-                    outputs = Lambda(lambda x: tf_yolo_nms(x, yolo_anchors, yolo_anchor_masks, classes),
-                                     name='yolov3_nms_output')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
-
-                    self.yolo_nms_model = Model(inputs=[input_0, input_1, input_2], outputs=outputs, name='yolov3_nms')
-                    self.yolo_nms_model.summary(print_fn=logging.info)
-                
-                self.prediction = self.yolo_nms_model.predict([output_0, output_1, output_2])
-            else:
-                
-                #logging.info('-------------------------------------')
-                #logging.info('[DEBUG]')
-                #logging.info(f'  * output_0.shape: {output_0.shape}')
-                #logging.info(f'  * output_1.shape: {output_1.shape}')
-                #logging.info(f'  * output_2.shape: {output_2.shape}')
-                #logging.info('-------------------------------------')
-                boxes_0 = yolo_boxes(output_0, yolo_anchors[yolo_anchor_masks[0]], 20)
-                boxes_1 = yolo_boxes(output_1, yolo_anchors[yolo_anchor_masks[1]], 20)
-                boxes_2 = yolo_boxes(output_2, yolo_anchors[yolo_anchor_masks[2]], 20)
-                
-                self.prediction = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
-
+            self.prediction = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
             boxes, scores, classes, valid_detections = self.prediction
-            #logging.info('-------------------------------------')
-            #logging.info('[DEBUG]')
-            #logging.info(f'  * len(self.prediction): {len(self.prediction)}')
-            #logging.info(f'  * valid_detections: {valid_detections}')
-            #if (len(valid_detections) > 0):
-            #    logging.info(f'  * box: {boxes[0]}')
-            #    logging.info(f'  * scores: {scores[0]}')
-            #    logging.info(f'  * classes: {classes[0]}')
-            #
-            #logging.info('-------------------------------------')
             
         self.decoded_preds['num_detections'] = valid_detections[0]
         self.decoded_preds['detection_boxes'] = np.array(boxes[0][0:valid_detections[0]])[:, [1, 0, 3, 2]]  # [x1, y1, x2, y2]->[y1, x1, y2, x1]
