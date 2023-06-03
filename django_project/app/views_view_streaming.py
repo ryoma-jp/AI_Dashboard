@@ -86,9 +86,15 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
                 get_feature_map = False
             feature_map_calc_range = request.session.get('show_features_calc_range_selected', 'Model-wise')
             pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map, feature_map_calc_range=feature_map_calc_range)
+            
+            if (len(pretrained_model.category_list) > 0):
+                category_names = {key: item for key, item in zip(list(range(0, len(pretrained_model.category_list))), pretrained_model.category_list)}
+            
             logging.info('-------------------------------------')
             logging.info(f'model_summary')
             pretrained_model.pretrained_model.summary(print_fn=logging.info)
+            logging.info(f'category_names')
+            logging.info(category_names)
             logging.info('-------------------------------------')
             
         else:
@@ -142,7 +148,7 @@ def _create_frame(frame, overlay,
                 boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * [height, width, height, width], dtype=int)
                 for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
                     cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                    if (category_names is not None):
+                    if (len(category_names) > 0):
                         cv2.putText(overlay,
                                     category_names[class_],
                                     [box_[1], box_[0]-8],
@@ -333,7 +339,7 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
-            streaming_model_name, pretrained_model, categories_coco2017 = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
+            streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
             
             # --- Set fixed parameters ---
             fps_org = (5, 15)
@@ -370,7 +376,7 @@ def usb_cam(request):
                       pretrained_model,
                       fps_text, fps_org, model_name_text, model_name_org, class_org, alpha,
                       height, width, 
-                      categories_coco2017)
+                      category_names)
                 
                 # --- Encode and Return byte frame ---
                 image_bytes = cv2.imencode('.jpg', frame)[1].tobytes()

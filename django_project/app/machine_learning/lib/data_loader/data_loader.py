@@ -179,6 +179,7 @@ class DataLoader():
         test_y (numpy.ndarray): Ground truth for test
         dataset_type (str): Type of dataset
             - 'img_clf': Image Classification
+            - 'img_det': Image Detection
             - 'img_reg': Image Regression
             - 'table_clf': Table data Classification
             - 'table_reg': Table data Regression
@@ -1145,6 +1146,8 @@ class DataLoaderCustom(DataLoader):
             self.dataset_type = 'table_clf'
         elif ((df_meta['task'] == 'regression') and (df_meta['input_type'] == 'table_data')):
             self.dataset_type = 'table_reg'
+        elif ((df_meta['task'] == 'object_detection') and (df_meta['input_type'] == 'image_data')):
+            self.dataset_type = 'img_det'
         else:
             self.dataset_type = None
         

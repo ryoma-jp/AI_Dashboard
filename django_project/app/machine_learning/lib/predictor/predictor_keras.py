@@ -109,6 +109,7 @@ class PredictorMlModel(Predictor):
         with open(config_path, 'r') as f:
             config_data = json.load(f)
             task = config_data['inference_parameter']['model']['task']['value']
+            self.category_list = config_data['inference_parameter']['model']['category_list']['value']
             self.input_shape = config_data['inference_parameter']['preprocessing']['input_shape']['value']
             self.norm_coef_a = config_data['inference_parameter']['preprocessing']['norm_coef_a']['value']
             self.norm_coef_b = config_data['inference_parameter']['preprocessing']['norm_coef_b']['value']

@@ -337,6 +337,14 @@ class MlParams():
                         'configurable': False,
                         'selectable': False,
                     },
+                    'category_list': {
+                        'name': 'Category List',
+                        'description': 'Category name list',
+                        'dtype': 'list',
+                        'value': [],
+                        'configurable': False,
+                        'selectable': False,
+                    },
                 },
             },
         }

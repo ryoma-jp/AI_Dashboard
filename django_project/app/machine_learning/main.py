@@ -179,6 +179,7 @@ def main():
     else:
         model_file = None
     
+    category_list = []
     if (model_type == 'MLP'):
         print('Create MLP')
         
@@ -243,6 +244,10 @@ def main():
         # --- YOLOv3 has fixed preprocessing parameters ---
         dataset.preprocessing_params['norm_coef'][1] = 255.0
         
+        # --- Load category names ---
+        with open(dataset.train_dataset['class_name_file_path'], 'r') as f:
+            category_list = f.read().splitlines()
+        
     elif (model_type == 'YOLOv3_Tiny'):
         print('Create YOLOv3_Tiny')
         trainer = TrainerKerasYOLOv3_Tiny(dataset.train_x.shape[1:], classes=output_dims,
@@ -280,6 +285,7 @@ def main():
         #  * detection models have different output tensor each other, so set the different task name
         config_data['model']['input_tensor_name']['value'] = trainer.input_tensor_name
         config_data['model']['output_tensor_name']['value'] = trainer.output_tensor_name
+        config_data['inference_parameter']['model']['category_list']['value'] = category_list
         config_data['inference_parameter']['preprocessing']['norm_coef_a']['value'] = dataset.preprocessing_params['norm_coef'][0]
         config_data['inference_parameter']['preprocessing']['norm_coef_b']['value'] = dataset.preprocessing_params['norm_coef'][1]
         config_data['inference_parameter']['preprocessing']['input_shape']['value'] = model_input_shape
