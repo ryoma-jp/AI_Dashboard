@@ -238,77 +238,20 @@ class PredictorMlModel(Predictor):
                     scores = confidence * class_probs
 
                 dscores = np.squeeze(scores, axis=0)
-                #scores = np.reduce_max(dscores, axis=1)
                 scores = np.apply_along_axis(max, 1, dscores)
                 bbox = np.reshape(bbox, (-1, 4))
                 classes = np.argmax(dscores, axis=1)
-
-                selected_indices, selected_scores = non_max_suppression_with_scores(
-                    boxes=bbox,
-                    scores=scores,
-                    max_output_size=yolo_max_boxes,
-                    iou_threshold=yolo_iou_threshold,
-                    score_threshold=yolo_score_threshold,
-                    soft_nms_sigma=0.5
-                )
-
-                num_valid_nms_boxes = np.shape(selected_indices)[0]
-
-                selected_indices = np.concatenate([selected_indices, np.zeros(yolo_max_boxes - num_valid_nms_boxes, np.int32)], 0)
-                selected_scores = np.concatenate([selected_scores, np.zeros(yolo_max_boxes - num_valid_nms_boxes, np.float32)], -1)
-
-                boxes = np.expand_dims(np.take(bbox, selected_indices, axis=0), axis=0)
-                scores = np.expand_dims(selected_scores, axis=0)
-                classes = np.expand_dims(np.take(classes, selected_indices), axis=0)
+                
+                final_boxes = cv2.dnn.NMSBoxes(bbox, scores, yolo_score_threshold, yolo_iou_threshold)
+                num_valid_nms_boxes = len(final_boxes)
+                selected_indices = np.concatenate([final_boxes, np.zeros(yolo_max_boxes - num_valid_nms_boxes)], 0).astype(np.int32)
+                
+                boxes = np.expand_dims(bbox[selected_indices], axis=0)
+                scores = np.expand_dims(scores[selected_indices], axis=0)
+                classes = np.expand_dims(classes[selected_indices], axis=0)
                 valid_detections = np.expand_dims(num_valid_nms_boxes, axis=0)
-
+                
                 return boxes, scores, classes, valid_detections
-
-            def non_max_suppression_with_scores(boxes, scores, max_output_size, iou_threshold, score_threshold, soft_nms_sigma):
-                selected_indices = []
-
-                # Sort boxes by scores in descending order
-                sorted_indices = np.argsort(scores)[::-1]
-
-                while sorted_indices.size > 0:
-                    current_index = sorted_indices[0]
-                    selected_indices.append(current_index)
-
-                    if len(selected_indices) >= max_output_size:
-                        break
-
-                    # Compute IoU between the current box and the remaining boxes
-                    current_box = boxes[current_index]
-                    remaining_indices = sorted_indices[1:]
-
-                    x1 = np.maximum(current_box[0], boxes[remaining_indices, 0])
-                    y1 = np.maximum(current_box[1], boxes[remaining_indices, 1])
-                    x2 = np.minimum(current_box[2], boxes[remaining_indices, 2])
-                    y2 = np.minimum(current_box[3], boxes[remaining_indices, 3])
-
-                    intersection_width = np.maximum(0.0, x2 - x1 + 1)
-                    intersection_height = np.maximum(0.0, y2 - y1 + 1)
-                    intersection_area = intersection_width * intersection_height
-
-                    box_area = (current_box[2] - current_box[0] + 1) * (current_box[3] - current_box[1] + 1)
-                    remaining_areas = (boxes[remaining_indices, 2] - boxes[remaining_indices, 0] + 1) * \
-                                      (boxes[remaining_indices, 3] - boxes[remaining_indices, 1] + 1)
-                    union_area = box_area + remaining_areas - intersection_area
-
-                    iou = intersection_area / union_area
-
-                    # Apply soft-NMS
-                    weights = np.exp(-(iou * iou) / soft_nms_sigma)
-                    scores[remaining_indices] *= weights
-
-                    # Discard boxes with low scores
-                    discard_indices = np.where(scores[remaining_indices] < score_threshold)[0]
-                    sorted_indices = np.delete(sorted_indices, discard_indices + 1)
-
-                selected_indices = np.array(selected_indices)
-                selected_scores = scores[selected_indices]
-
-                return selected_indices, selected_scores
 
             # As tensorflow lite doesn't support tf.size used in tf.meshgrid, 
             # we reimplemented a simple meshgrid function that use basic tf function.
@@ -398,7 +341,7 @@ class PredictorMlModel(Predictor):
             
             output_0, output_1, output_2 = self.prediction
             
-            yolo_nms_proc_tf = True
+            yolo_nms_proc_tf = False
             if (yolo_nms_proc_tf):
                 if (self.yolo_nms_model is None):
                     classes = 20
