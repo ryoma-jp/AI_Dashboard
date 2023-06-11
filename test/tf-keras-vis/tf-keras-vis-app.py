@@ -13,6 +13,7 @@ from tf_keras_vis.activation_maximization.input_modifiers import Jitter, Rotate2
 from tf_keras_vis.activation_maximization.regularizers import TotalVariation2D, Norm
 from tf_keras_vis.utils.model_modifiers import ExtractIntermediateLayer, ReplaceToLinear
 from tf_keras_vis.utils.scores import CategoricalScore
+from machine_learning.lib.trainer.tf_models.yolov3 import models as yolov3_models
 
 FILTER_INDEX = 0
 
@@ -23,7 +24,8 @@ def ArgParser():
     parser.add_argument('--config', dest='config', type=str, required=True, \
             help='Config file path(*.json)\n'
                  '  {\n'
-                 '    "model": <model name(VGG16)>\n'
+                 '    "model": <model name(VGG16, YOLOv3)>\n'
+                 '       - YOLOv3 does not work\n'
                  '    "index": <layer index(0, 1, ...)>\n'
                  '    "name": <layer name>\n'
                  '  }')
@@ -51,6 +53,10 @@ def main():
     
     if (model_name == 'VGG16'):
         model = VGG16()
+    elif (model_name == 'YOLOv3'):
+        model = yolov3_models.YoloV3(size=416, classes=80, training=True)
+    else:
+        assert f'{model_name} is not supported'
     
     # Create the visualization instance.
     # All visualization classes accept a model and model-modifier, which, for example,
