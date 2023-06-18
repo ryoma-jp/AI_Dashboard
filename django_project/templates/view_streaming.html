@@ -110,6 +110,7 @@
       <div class="col-10 mt-2">
         <img src="{% url 'view_streaming_usb_cam' %}">
       </div>
+    
     {% elif streaming_interface|stringformat:'s' == 'YouTube' %}
       <h1 class="h3">Select Project</h1>
       <form method="post">
@@ -270,6 +271,13 @@
       <div class="col-10 mt-2">
         <img src="{% url 'view_streaming_youtube' %}">
       </div>
+      
+      <div>
+        {% if show_features_supported_model|stringformat:'s' == 'False' %}
+          <p>This model is not supported to show features</p>
+        {% endif %}
+      </div>
+      
     {% elif streaming_interface|stringformat:'s' == 'Network Camera' %}
       <!-- Set IP address and PORT -->
       <form method="post">

@@ -24,7 +24,7 @@ from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url
 
 # Create your views here.
 
-def _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width):
+def _get_model_for_inference(request, streaming_project_name, streaming_model_name):
     """Get Model for Inference
     
     This function is internal in the streaming view, gets the model for inference.
@@ -32,8 +32,6 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
     Args:
         streaming_project_name (string): project name in Streaming view
         streaming_model_name (string): model name in Streaming view
-        height (int): image height to view
-        width (int): image width to view
         
     Returns:
         model name and model object
@@ -245,6 +243,15 @@ def view_streaming(request):
     show_features_enable_selected = request.session.get('show_features_enable_selected', 'False')
     show_features_calc_range_selected = request.session.get('show_features_calc_range_selected', 'Model-wise')
     
+    streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_selected_project, streaming_selected_model)
+    get_feature_map = True
+    if (show_features_enable_selected == 'False'):
+        get_feature_map = False
+    if (get_feature_map and (not pretrained_model.get_feature_map)):
+        show_features_supported_model = 'False'
+    else:
+        show_features_supported_model = 'True'
+    
     if (streaming_selected_project == 'Sample'):
         pretrained_model_list = [
             'ResNet50',
@@ -302,6 +309,7 @@ def view_streaming(request):
         'valid_url': valid_url,
         'youtube_url': youtube_url,
         'show_features_enable_selected': show_features_enable_selected,
+        'show_features_supported_model': show_features_supported_model,
         'show_features_calc_range_selected': show_features_calc_range_selected,
     }
     return render(request, 'view_streaming.html', context)
@@ -339,7 +347,7 @@ def usb_cam(request):
             cap.set(cv2.CAP_PROP_FPS, fps)
             
             # --- Prepare model for inference ---
-            streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
+            streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_project_name, streaming_model_name)
             
             # --- Set fixed parameters ---
             fps_org = (5, 15)
@@ -421,8 +429,8 @@ def youtube(request):
         frame_duration = 1 / fps
         
         # --- Prepare model for inference ---
-        streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_project_name, streaming_model_name, height, width)
-        
+        streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_project_name, streaming_model_name)
+
         # --- Set fixed parameters ---
         fps_org = (5, 15)
         model_name_org = (5, 35)

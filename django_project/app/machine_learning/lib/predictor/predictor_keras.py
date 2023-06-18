@@ -142,11 +142,43 @@ class PredictorMlModel(Predictor):
         
         if (self.get_feature_map):
             # --- If get feature map, re-define the model ---
-            outputs = []
-            for layer in self.pretrained_model.layers:
-                if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
+            #   * Functional layer that includes InputLayer is not supported
+            inputs = []
+            #outputs = []
+            outputs = self.pretrained_model.output
+            logging.info('-------------------------------------')
+            logging.info('[DEBUG]')
+            for i, layer in enumerate(self.pretrained_model.layers):
+                logging.info(f'  * layer.__class__.__name__[#{i}]: {layer.__class__.__name__}')
+                if (layer.__class__.__name__ in ['InputLayer']):
+                    inputs.append(layer.input)
+                elif (layer.__class__.__name__ in ['Conv2D', 'Dense']):
                     outputs.append(layer.output)
-            self.pretrained_model = keras.models.Model(inputs=self.pretrained_model.inputs, outputs=outputs)
+                elif (layer.__class__.__name__ in ['Functional']):
+                    layer_config = layer.get_config()
+                    #logging.info(f'  * functional_layer.layers: {layer.layers}')
+                    logging.info(f'  * config: {layer_config}')
+                    
+                    for j, func_layer in enumerate(layer_config['layers']):
+                        if (func_layer["class_name"] in ['InputLayer']):
+                            # --- Functional layer that includes InputLayer is not supported ---
+                            #inputs.append(layer.layers[j].input)
+                            self.get_feature_map = False
+                        elif (func_layer["class_name"] in ['Conv2D', 'Dense']):
+                            outputs.append(layer.layers[j].output)
+                            #logging.info(f'  * func_layer[#{j}]: {func_layer}')
+                            #logging.info(f'    * class_name: {func_layer["class_name"]}')
+                    
+            logging.info('-------------------------------------')
+            logging.info(f'  * outputs: {outputs}')
+            logging.info(f'  * inputs: {inputs}')
+            logging.info('-------------------------------------')
+            
+            if (self.get_feature_map):
+                #self.pretrained_model = keras.models.Model(inputs=self.pretrained_model.inputs, outputs=outputs)
+                self.pretrained_model = keras.models.Model(inputs=inputs, outputs=outputs)
+            else:
+                self.pretrained_model = keras.models.load_model(trained_model_path, custom_objects=custom_objects)
         
         # --- for DEBUG ---
         self.yolo_nms_model = None
