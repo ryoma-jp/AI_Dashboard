@@ -1,0 +1,237 @@
+@startuml
+folder "AI_Dashboard" {
+[LICENSE]
+[README.md]
+[build_and_run.sh]
+[clear_data.sh]
+folder "django_project" {
+folder "app" {
+[__init__.py]
+[admin.py]
+[apis.py]
+[apps.py]
+[forms.py]
+folder "machine_learning" {
+folder "lib" {
+folder "data_loader" {
+[data_loader.py]
+}
+folder "predictor" {
+[predictor_keras.py]
+}
+folder "trainer" {
+[trainer_keras.py]
+[trainer_lgb.py]
+}
+folder "utils" {
+[preprocessor.py]
+[utils.py]
+}
+}
+[main.py]
+folder "test" {
+folder "centernet_hourglass_104" {
+[test_predict.sh]
+}
+folder "simple_cnn" {
+[config.json]
+[test_predict.sh]
+[test_predict_with_features.sh]
+[test_training.sh]
+}
+}
+}
+folder "migrations" {
+[__init__.py]
+}
+[models.py]
+[serializers.py]
+folder "templatetags" {
+[custom_filter.py]
+}
+[tests.py]
+[urls.py]
+[urls_api.py]
+[views_common.py]
+[views_dataset.py]
+[views_index.py]
+[views_inference.py]
+[views_project.py]
+[views_training.py]
+[views_view_streaming.py]
+}
+[entrypoint.sh]
+folder "env" {
+folder "jupyter_notebook_tf" {
+[Dockerfile]
+}
+folder "web" {
+[Dockerfile]
+[requirements.txt]
+}
+}
+[manage.py]
+folder "media" {
+folder "config" {
+}
+folder "dataset" {
+}
+folder "model" {
+}
+folder "notebooks" {
+folder "samples" {
+folder "001_CIFAR-10_ImageClassification" {
+[001_CIFAR-10_ImageClassification.ipynb]
+}
+folder "002_CaliforniaHousing_LightGBM" {
+[002_CaliforniaHousing_LightGBM.ipynb]
+}
+}
+}
+}
+folder "project" {
+[__init__.py]
+[asgi.py]
+[settings.py]
+[urls.py]
+[wsgi.py]
+}
+folder "static" {
+folder "css" {
+[bootstrap-grid.css]
+[bootstrap-grid.css.map]
+[bootstrap-grid.min.css]
+[bootstrap-grid.min.css.map]
+[bootstrap-grid.rtl.css]
+[bootstrap-grid.rtl.css.map]
+[bootstrap-grid.rtl.min.css]
+[bootstrap-grid.rtl.min.css.map]
+[bootstrap-reboot.css]
+[bootstrap-reboot.css.map]
+[bootstrap-reboot.min.css]
+[bootstrap-reboot.min.css.map]
+[bootstrap-reboot.rtl.css]
+[bootstrap-reboot.rtl.css.map]
+[bootstrap-reboot.rtl.min.css]
+[bootstrap-reboot.rtl.min.css.map]
+[bootstrap-utilities.css]
+[bootstrap-utilities.css.map]
+[bootstrap-utilities.min.css]
+[bootstrap-utilities.min.css.map]
+[bootstrap-utilities.rtl.css]
+[bootstrap-utilities.rtl.css.map]
+[bootstrap-utilities.rtl.min.css]
+[bootstrap-utilities.rtl.min.css.map]
+[bootstrap.css]
+[bootstrap.css.map]
+[bootstrap.min.css]
+[bootstrap.min.css.map]
+[bootstrap.rtl.css]
+[bootstrap.rtl.css.map]
+[bootstrap.rtl.min.css]
+[bootstrap.rtl.min.css.map]
+[custom_dropdown.css]
+[dashboard.css]
+[dashboard.rtl.css]
+}
+folder "js" {
+[bootstrap.bundle.js]
+[bootstrap.bundle.js.map]
+[bootstrap.bundle.min.js]
+[bootstrap.bundle.min.js.map]
+[bootstrap.esm.js]
+[bootstrap.esm.js.map]
+[bootstrap.esm.min.js]
+[bootstrap.esm.min.js.map]
+[bootstrap.js]
+[bootstrap.js.map]
+[bootstrap.min.js]
+[bootstrap.min.js.map]
+[dashboard.js]
+}
+}
+folder "templates" {
+[base.html]
+[dataset.html]
+[dataset_detail.html]
+[index.html]
+[inference.html]
+[model_edit.html]
+[model_new.html]
+[model_parameter_edit.html]
+[project_edit.html]
+[project_new.html]
+[training.html]
+[view_streaming.html]
+}
+}
+[docker-compose.yml]
+folder "ext" {
+folder "raspberrypi-streaming" {
+[README.md]
+folder "lib" {
+[inference_tflite.py]
+}
+[main.py]
+folder "models" {
+}
+[start_server.sh]
+}
+}
+folder "figure" {
+[concept_movie_thumbnail.png]
+[config_file_structure.png]
+[custom_dataset_format.png]
+[django_admin_before_after.png]
+[django_rocket.png]
+[erd_ml_project_database.png]
+[figure.xlsx]
+[helloworld.png]
+folder "plantuml" {
+[erd_ml_project_database.pu]
+}
+}
+folder "nginx" {
+[Dockerfile]
+[nginx.conf]
+}
+folder "test" {
+folder "load_trained_model" {
+[README.md]
+[load_trained_model.py]
+}
+folder "tf-keras-vis" {
+[README.md]
+[create_config.py]
+[run_centernethourglass104.sh]
+[run_mobilenetv2.sh]
+[run_vgg16.sh]
+[run_yolov3.sh]
+[tf-keras-vis-app.py]
+}
+folder "usb_cam" {
+[README.md]
+folder "bin" {
+[create_categories_list.sh]
+}
+[usb_cam.py]
+}
+}
+folder "tools" {
+folder "create_config" {
+[create_config.py]
+[ml_params.py]
+}
+folder "create_custom_dataset_sample" {
+[README.md]
+[create_custom_dataset_sample.py]
+folder "lib" {
+[data_sample_loader.py]
+}
+}
+folder "create_local_settings" {
+[create_local_settings.py]
+}
+}
+}
+@enduml

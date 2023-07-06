@@ -122,6 +122,11 @@ ToDoのメモ．思いついたら順次追加する．
 
 ![ER Diagram](./figure/erd_ml_project_database.png)
 
+## ディレクトリ構成
+
+※PlantUMLのコンポーネント図で書いたので，勝手に横長になってしまった．
+
+![Directory Structure](./figure/directory_structure.png)
 
 ## カスタムデータセットの仕様
 
