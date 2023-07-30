@@ -282,4 +282,19 @@ def parse_xml(xml, multi_tag=[]):
     
     return {xml.tag: result}
     
-    
+def save_config(add_data, save_path):
+    """Save Config
+
+    Load base config (``/home/app/media/config/config.json``), add ``add_data`` and save to ``save_path``.
+
+    Args:
+        add_data (dict): add data
+        save_path (PosixPath): directory to save
+    """
+    with open('/home/app/media/config/config.json', 'r') as f:
+        dict_config = json.load(f)
+
+    dict_config.update(add_data)
+
+    with open(Path(save_path, 'config.json'), 'w') as f:
+        json.dump(dict_config, f, ensure_ascii=False, indent=4)

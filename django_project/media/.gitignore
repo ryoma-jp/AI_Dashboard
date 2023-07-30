@@ -18,3 +18,7 @@
 !/notebooks/.gitignore
 !/notebooks/samples
 
+!/ai_model_sdk
+/ai_model_sdk/.gitignore
+/ai_model_sdk/SimpleCNN
+
