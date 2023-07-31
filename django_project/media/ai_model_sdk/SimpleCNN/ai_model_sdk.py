@@ -184,13 +184,38 @@ class AI_Model_SDK():
         """
         input = keras.layers.Input(shape=self.input_shape)
         
-        x = keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=self.input_shape, kernel_initializer='glorot_uniform')(input)
-        x = keras.layers.MaxPooling2D((2, 2))(x)
-        x = keras.layers.Conv2D(64, (3, 3), activation='relu', kernel_initializer='glorot_uniform')(x)
-        x = keras.layers.MaxPooling2D((2, 2))(x)
-        x = keras.layers.Flatten()(x)
-        x = keras.layers.Dense(512, activation='relu')(x)
-        x = keras.layers.Dense(64, activation='relu')(x)
+        x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), input_shape=self.input_shape, padding='same')(input)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), padding='same')(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+
+        x = keras.layers.Conv2D(filters=128, kernel_size=(3, 3), padding='same')(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.Conv2D(filters=128, kernel_size=(3, 3), padding='same')(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+
+        x = keras.layers.Conv2D(filters=256, kernel_size=(3, 3), padding='same')(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.Conv2D(filters=256, kernel_size=(3, 3), padding='same')(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x)
+
+        x = keras.layers.GlobalAveragePooling2D()(x)
+        x = keras.layers.Dense(512)(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+        x = keras.layers.Dense(512)(x)
+        x = keras.layers.BatchNormalization()(x)
+        x = keras.layers.Activation('relu')(x)
+
         y = keras.layers.Dense(self.class_num, activation='softmax')(x)
         
         self.model = keras.models.Model(input, y)
@@ -202,7 +227,8 @@ class AI_Model_SDK():
         """Train Model
         """
         # --- compile model ---
-        optimizer = tf.keras.optimizers.Adam()
+        learning_rate = 0.003
+        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         metrics = ['accuracy']
         loss = 'categorical_crossentropy'
         self.model.compile(
@@ -224,18 +250,20 @@ class AI_Model_SDK():
 
         # --- data augmentation ---
         datagen = ImageDataGenerator(
-            rotation_range=0.1,
-            width_shift_range=0.1,
-            height_shift_range=0.1,
-            zoom_range=0.1,
-            channel_shift_range=0.1,
-            horizontal_flip=False)
+            rotation_range=0.2,
+            width_shift_range=0.2,
+            height_shift_range=0.2,
+            zoom_range=0.2,
+            channel_shift_range=0.2,
+            horizontal_flip=True)
         datagen.fit(self.x_train)
         
         # --- fit ---
-        history = self.model.fit(datagen.flow(self.x_train, self.y_train, batch_size=32),
-                    steps_per_epoch=len(self.x_train)//32, validation_data=(self.x_val, self.y_val),
-                    epochs=50, callbacks=callbacks,
+        batch_size = 512
+        epochs = 100
+        history = self.model.fit(datagen.flow(self.x_train, self.y_train, batch_size=batch_size),
+                    steps_per_epoch=len(self.x_train)//batch_size, validation_data=(self.x_val, self.y_val),
+                    epochs=epochs, callbacks=callbacks,
                     verbose=0)
         
         return
