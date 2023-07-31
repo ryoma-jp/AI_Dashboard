@@ -62,7 +62,7 @@ def main():
     from ai_model_sdk import AI_Model_SDK
     print(AI_Model_SDK.__version__)
 
-    #  --- Create instance ---
+    # --- Create instance ---
     dataset_params = {
         'meta': args.meta_json,
         'train': args.train_json,
@@ -73,6 +73,15 @@ def main():
         'model_path': args.model_path,
     }
     ai_model_sdk = AI_Model_SDK(dataset_params, model_params)
+
+    # --- load dataset ---
+    ai_model_sdk.load_dataset()
+
+    # --- build model ---
+    ai_model_sdk.build_model()
+
+    # --- training ---
+    ai_model_sdk.train_model()
 
     return
 
