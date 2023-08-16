@@ -108,46 +108,6 @@ class Dataset(models.Model):
         super().save(*args, **kwargs)
 
 #---------------------------------------
-# クラス：MlModel
-#---------------------------------------
-class MlModel(models.Model):
-    name = models.CharField('ModelName', max_length=128)
-    description = models.TextField('Description', blank=True)
-    hash = models.CharField('Model hash', max_length=128)
-    project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
-    dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.SET_NULL, null=True)
-    dataset_pickle = models.CharField('Dataset Object (*.pkl)', max_length=512, blank=True)
-    
-    model_dir = models.CharField('Model Directory', max_length=1024)
-    
-    STAT_IDLE = 'IDLE'
-    STAT_TRAINING = 'TRAINING'
-    STAT_DONE = 'DONE'
-    status = models.TextField('Status')
-    
-    # --- for Training control ---
-    training_pid = models.IntegerField('Training worker PID', null=True, default=None)
-    tensorboard_pid = models.IntegerField('Tensorboard worker PID', null=True, default=None)
-    
-    # --- Pre-set models ---
-    PRESET_DNN_MODELS = [
-                "MLP",
-                "SimpleCNN",
-                "DeepCNN",
-                "SimpleResNet",
-                "DeepResNet",
-                "YOLOv3",
-                "YOLOv3_Tiny",
-    ]
-    PRESET_TREE_MODELS = [
-                "LightGBM"
-    ]
-    PRESET_MODELS = PRESET_DNN_MODELS+PRESET_TREE_MODELS
-    
-    def __str__(self):
-        return self.name
-
-#---------------------------------------
 # クラス：AI Model SDK
 #---------------------------------------
 def ai_model_sdk_path(instance, filename):
@@ -189,4 +149,31 @@ class AIModelSDK(models.Model):
                                    f'ai_model_sdk_{self.id}')
             
         super().save(*args, **kwargs)
+        
+#---------------------------------------
+# クラス：MlModel
+#---------------------------------------
+class MlModel(models.Model):
+    name = models.CharField('ModelName', max_length=128)
+    description = models.TextField('Description', blank=True)
+    hash = models.CharField('Model hash', max_length=128)
+    project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
+    dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.SET_NULL, null=True)
+    dataset_pickle = models.CharField('Dataset Object (*.pkl)', max_length=512, blank=True)
+    ai_model_sdk = models.ForeignKey(AIModelSDK, verbose_name='AIModelSDK', on_delete=models.SET_NULL, null=True)
+    
+    model_dir = models.CharField('Model Directory', max_length=1024)
+    
+    STAT_IDLE = 'IDLE'
+    STAT_TRAINING = 'TRAINING'
+    STAT_DONE = 'DONE'
+    status = models.TextField('Status')
+    
+    # --- for Training control ---
+    training_pid = models.IntegerField('Training worker PID', null=True, default=None)
+    tensorboard_pid = models.IntegerField('Tensorboard worker PID', null=True, default=None)
+    
+    def __str__(self):
+        return self.name
+
 

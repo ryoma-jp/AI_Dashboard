@@ -18,7 +18,7 @@
       </button>
       <ul class="dropdown-menu" area-labelledby="model_new_model_dropdown" id="model_new_model_dropdown_list">
       {% for model_ in model %}
-        <li><button type="button" class="dropdown-item" value="{{ model_ }}">{{ model_ }}</button></li>
+        <li><button type="button" class="dropdown-item" value="{{ model_.name }}">{{ model_.name }}</button></li>
       {% endfor %}
       </ul>
         <script>

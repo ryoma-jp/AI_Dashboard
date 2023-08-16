@@ -282,6 +282,7 @@ def model_new(request, project_id):
             
             selected_model = request.POST.getlist('model_new_model_dropdown_submit')[0]
             dict_config['model']['model_type']['value'] = selected_model
+            model.ai_model_sdk = get_object_or_404(AIModelSDK.objects.filter(project=project, name=selected_model))
             
             # --- save config.json ---
             with open(Path(model.model_dir, 'config.json'), 'w') as f:
@@ -319,11 +320,13 @@ def model_new(request, project_id):
     
     model_new_model_selected = None
     
+    ai_model_sdk = AIModelSDK.objects.all().filter(project=project).order_by('-id').reverse()
+
     context = {
         'model_new_model_selected': model_new_model_selected,
         'model_new_dataset_selected': model_new_dataset_selected,
         'dataset': dataset,
-        'model': MlModel.PRESET_MODELS,
+        'model': ai_model_sdk,
         'form': form,
         'text': get_version(),
         'jupyter_nb_url': get_jupyter_nb_url(),
