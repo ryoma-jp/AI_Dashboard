@@ -63,8 +63,10 @@ echo "[Used storages]"
 echo "  if necessary, remove comment out below."
 #echo "---------------------------------------------"
 #docker system df
-#echo "---------------------------------------------"
+echo "---------------------------------------------"
 
+
+echo "---------------------------------------------"
 echo "[How to remove images, containers, and build chaches]"
 echo "---------------------------------------------"
 echo "  * How to remove images -> docker image prune"
