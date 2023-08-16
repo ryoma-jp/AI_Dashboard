@@ -46,15 +46,38 @@ def training(request):
                 config_data = json.load(f)
             
             # --- Training Model ---
-            main_path = Path('./app/machine_learning/main.py').resolve()
-            logging.info('-------------------------------------')
-            logging.info(f'main_path: {main_path}')
-            logging.info(f'current working directory: {os.getcwd()}')
-            logging.info(f'command: python {main_path} --mode train --config {config_path}')
-            logging.info('-------------------------------------')
-            subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
-            logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
-            
+            if False:
+                # --- main.py ---
+                main_path = Path('./app/machine_learning/main.py').resolve()
+                logging.info('-------------------------------------')
+                logging.info(f'main_path: {main_path}')
+                logging.info(f'current working directory: {os.getcwd()}')
+                logging.info(f'command: python {main_path} --mode train --config {config_path}')
+                logging.info('-------------------------------------')
+                subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
+                logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
+            else:
+                # --- ml_main.py ---
+                command = ['python', Path('./app/machine_learning/ml_main.py').resolve()]
+                command += ['--sdk_path', selected_model.ai_model_sdk.ai_model_sdk_dir]
+                dataset_path = config_data['dataset']['dataset_dir']['value']
+                if Path(dataset_path, 'meta').exists():
+                    command += ['--meta_json', Path(dataset_path, 'meta', 'info.json')]
+                if Path(dataset_path, 'train').exists():
+                    command += ['--train_json', Path(dataset_path, 'train', 'info.json')]
+                if Path(dataset_path, 'validation').exists():
+                    command += ['--val_json', Path(dataset_path, 'validation', 'info.json')]
+                if Path(dataset_path, 'test').exists():
+                    command += ['--test_json', Path(dataset_path, 'test', 'info.json')]
+                command += ['--model_path', config_data['env']['result_dir']['value']]
+                logging.info('-------------------------------------')
+                logging.info(f'current working directory: {os.getcwd()}')
+                logging.info(f'dataset_path: {dataset_path}')
+                logging.info(f'command: {command}')
+                logging.info('-------------------------------------')
+                subproc_training = subprocess.Popen(command)
+                logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
+
             # --- Update status and Register PID to MlModel database ---
             selected_model.status = selected_model.STAT_TRAINING
             selected_model.training_pid = subproc_training.pid

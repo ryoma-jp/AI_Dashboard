@@ -150,9 +150,10 @@ def project_new(request):
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'AI_MODEL_SDK_DIR', None),
                                    'sample_sdk')
-            simple_cnn = AIModelSDK.objects.create(name='SimpleCNN', project=project)
-            simple_cnn.ai_model_sdk_dir = Path(sample_sdk_path, 'SimpleCNN')
-            simple_cnn.ai_model_sdk_dir_offset = Path('sample_sdk', 'SimpleCNN')
+            simple_cnn = AIModelSDK.objects.create(name='SimpleCNN', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN'))
+            #simple_cnn.ai_model_sdk_dir = Path(sample_sdk_path, 'SimpleCNN')
+            #simple_cnn.ai_model_sdk_dir_offset = Path('sample_sdk', 'SimpleCNN')
+            #simple_cnn.save()
 
             # --- create project directory ---
             os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
@@ -278,7 +279,8 @@ def model_new(request, project_id):
             dict_config['env']['web_app_ctrl_fifo']['value'] = str(Path(env_dir, 'web_app_ctrl_fifo'))
             dict_config['env']['trainer_ctrl_fifo']['value'] = str(Path(env_dir, 'fifo_trainer_ctrl'))
             dict_config['env']['result_dir']['value'] = str(model.model_dir)
-            dict_config['dataset']['dataset_dir']['value'] = str(model.model_dir)	# directory that contains 'dataset.pkl'
+            #dict_config['dataset']['dataset_dir']['value'] = str(model.model_dir)	# directory that contains 'dataset.pkl'
+            dict_config['dataset']['dataset_dir']['value'] = str(Path(dataset_dir, f'dataset_{model.dataset.id}'))
             
             selected_model = request.POST.getlist('model_new_model_dropdown_submit')[0]
             dict_config['model']['model_type']['value'] = selected_model

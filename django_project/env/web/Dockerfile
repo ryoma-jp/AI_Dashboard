@@ -1,5 +1,8 @@
 # --- Builder stage ---
-FROM nvcr.io/nvidia/tensorflow:21.03-tf2-py3 as builder
+FROM nvcr.io/nvidia/tensorflow:23.07-tf2-py3 as builder
+
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN mkdir -p /home/app
 RUN groupadd app && useradd app -g app
@@ -27,7 +30,10 @@ RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requir
 
 
 # --- Main stage ---
-FROM nvcr.io/nvidia/tensorflow:21.03-tf2-py3
+FROM nvcr.io/nvidia/tensorflow:23.07-tf2-py3
+
+ENV TZ=Asia/Tokyo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN mkdir -p /home/app
 RUN groupadd app && useradd app -g app

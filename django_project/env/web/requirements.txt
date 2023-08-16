@@ -8,12 +8,13 @@ matplotlib==3.5.1
 pydot==1.4.2
 pydotplus==2.0.2
 graphviz==0.19.1
-numba==0.54.1
+numba==0.57.1
 opencv-python==4.5.5.64
 scikit-learn==1.1.2
 lightgbm==3.3.5
 tensorflow-hub==0.12.0
 lxml==4.9.2
+tzdata==2023.3
 
 --extra-index-url https://download.pytorch.org/whl/cu113
 torch==1.12.1+cu113

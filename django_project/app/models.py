@@ -119,6 +119,8 @@ class AIModelSDK(models.Model):
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     
     ai_model_sdk_zip = models.FileField(upload_to=ai_model_sdk_path, max_length=512)
+    ai_model_sdk_dir = models.CharField('', max_length=512, blank=True)
+    ai_model_sdk_dir_offset = models.CharField('', max_length=512, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -137,19 +139,21 @@ class AIModelSDK(models.Model):
                 kwargs.pop('force_insert')
         
             # --- set ai_model_sdk_dir ---
-            self.ai_model_sdk_dir = Path(
-                                   getattr(settings, 'MEDIA_ROOT', None),
-                                   getattr(settings, 'AI_MODEL_SDK_DIR', None),
-                                   'user_custom_sdk',
-                                   self.project.hash,
-                                   f'ai_model_sdk_{self.id}')
-            self.ai_model_sdk_dir_offset = Path(
-                                   'user_custom_sdk',
-                                   self.project.hash,
-                                   f'ai_model_sdk_{self.id}')
+            if (self.ai_model_sdk_dir is None):
+                self.ai_model_sdk_dir = str(Path(
+                                    getattr(settings, 'MEDIA_ROOT', None),
+                                    getattr(settings, 'AI_MODEL_SDK_DIR', None),
+                                    'user_custom_sdk',
+                                    self.project.hash,
+                                    f'ai_model_sdk_{self.id}'))
+            if (self.ai_model_sdk_dir_offset is None):
+                self.ai_model_sdk_dir_offset = str(Path(
+                                    'user_custom_sdk',
+                                    self.project.hash,
+                                    f'ai_model_sdk_{self.id}'))
             
         super().save(*args, **kwargs)
-        
+
 #---------------------------------------
 # クラス：MlModel
 #---------------------------------------
