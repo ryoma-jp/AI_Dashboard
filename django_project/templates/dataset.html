@@ -58,6 +58,7 @@
         
         <!-- Upload Dataset -->
         <h1 class="h3">Upload Dataset</h1>
+        <!-- this condition should might change ``dropdown_selected_project in project`` -->
         {% if dataset|in_project:dropdown_selected_project %}
           <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
