@@ -1,5 +1,5 @@
-import os
 import logging
+import shutil
 
 from pathlib import Path
 
@@ -25,7 +25,27 @@ def ai_model_sdk(request):
             logging.info(f'[DEBUG] {request.POST.getlist("ai_model_sdk_view_dropdown")}')
             logging.info('----------------------------------------')
             request.session['ai_model_sdk_view_dropdown_selected_project'] = request.POST.getlist('ai_model_sdk_view_dropdown')[0]
+        
+        elif ('ai_model_sdk_view_upload' in request.POST):
+            form_ai_model_sdk = AIModelSDKForm(request.POST, request.FILES)
+            if (form_ai_model_sdk.is_valid()):
+                # --- get related project ---
+                project_name = request.session.get('ai_model_sdk_view_dropdown_selected_project', None)
+                project = Project.objects.get(name=project_name)
                 
+                # --- save model ---
+                ai_model_sdk_model = AIModelSDK.objects.create(
+                              name=form_ai_model_sdk.cleaned_data.get('name'),
+                              project=project,
+                              ai_model_sdk_zip=form_ai_model_sdk.cleaned_data.get('ai_model_sdk_zip'),
+                          )
+        
+                # --- unzip ---
+                logging.info('[INFO] unzip START')
+                ai_model_sdk_dir = Path(ai_model_sdk_model.ai_model_sdk_zip.path).parent
+                shutil.unpack_archive(ai_model_sdk_model.ai_model_sdk_zip.path, ai_model_sdk_dir)
+                logging.info('[INFO] unzip DONE')
+
         return redirect('ai_model_sdk')
         
     else:

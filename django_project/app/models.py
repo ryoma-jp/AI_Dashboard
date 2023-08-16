@@ -152,7 +152,7 @@ class MlModel(models.Model):
 #---------------------------------------
 def ai_model_sdk_path(instance, filename):
     base_dir = getattr(settings, 'AI_MODEL_SDK_DIR', None)
-    return Path(base_dir, f'{instance.project.hash}', f'ai_model_sdk_{instance.id}', filename)
+    return Path(base_dir, 'user_custom_sdk', f'{instance.project.hash}', f'ai_model_sdk_{instance.id}', filename)
     
 class AIModelSDK(models.Model):
     name = models.CharField('AI Model SDK Name', max_length=128)
@@ -180,9 +180,11 @@ class AIModelSDK(models.Model):
             self.ai_model_sdk_dir = Path(
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'AI_MODEL_SDK_DIR', None),
+                                   'user_custom_sdk',
                                    self.project.hash,
                                    f'ai_model_sdk_{self.id}')
             self.ai_model_sdk_dir_offset = Path(
+                                   'user_custom_sdk',
                                    self.project.hash,
                                    f'ai_model_sdk_{self.id}')
             
