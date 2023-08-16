@@ -181,40 +181,47 @@ class AI_Model_SDK():
 
     def build_model(self):
         """Build Model
+
+        This is CNN sample model structured by Conv2D, ReLU and BatchNormalization.
+        The original BatchNormalization paper prescribes using the BatchNormalization before ReLU.
+        (https://arxiv.org/abs/1502.03167)
+
+        But there is clarified that the after ReLU is better than the before ReLU by the after activities.
+        (https://stackoverflow.com/questions/47143521/where-to-apply-batch-normalization-on-standard-cnns)
         """
         input = keras.layers.Input(shape=self.input_shape)
         
         x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), input_shape=self.input_shape, padding='same')(input)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Conv2D(filters=64, kernel_size=(3, 3), padding='same')(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x)
 
         x = keras.layers.Conv2D(filters=128, kernel_size=(3, 3), padding='same')(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Conv2D(filters=128, kernel_size=(3, 3), padding='same')(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x)
 
         x = keras.layers.Conv2D(filters=256, kernel_size=(3, 3), padding='same')(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Conv2D(filters=256, kernel_size=(3, 3), padding='same')(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.MaxPooling2D(pool_size=(2, 2), padding='same')(x)
 
         x = keras.layers.GlobalAveragePooling2D()(x)
         x = keras.layers.Dense(512)(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Dense(512)(x)
-        x = keras.layers.BatchNormalization()(x)
         x = keras.layers.Activation('relu')(x)
+        x = keras.layers.BatchNormalization()(x)
 
         y = keras.layers.Dense(self.class_num, activation='softmax')(x)
         
@@ -227,8 +234,9 @@ class AI_Model_SDK():
         """Train Model
         """
         # --- compile model ---
-        learning_rate = 0.003
-        optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        learning_rate = 0.001
+        weight_decay = 0.004
+        optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=weight_decay)
         metrics = ['accuracy']
         loss = 'categorical_crossentropy'
         self.model.compile(
