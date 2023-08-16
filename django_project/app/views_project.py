@@ -12,7 +12,7 @@ from pathlib import Path
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 
-from app.models import Project, Dataset, MlModel
+from app.models import Project, Dataset, MlModel, AIModelSDK
 from app.forms import ProjectForm, MlModelForm
 
 from views_common import SidebarActiveStatus, get_version, load_dataset, get_jupyter_nb_url
@@ -101,6 +101,10 @@ def _project_delete(request, project):
     if (dataset_dir.exists()):
         shutil.rmtree(dataset_dir)
     
+    ai_model_sdk_dir = Path(settings.MEDIA_ROOT, settings.AI_MODEL_SDK_DIR, 'user_custom_sdk', project.hash)
+    if (ai_model_sdk_dir.exists()):
+        shutil.rmtree(ai_model_sdk_dir)
+    
     # --- delete session data ---
     if 'training_view_selected_project' in request.session.keys():
         if (request.session['training_view_selected_project'] == project.name):
@@ -141,6 +145,15 @@ def project_new(request):
             Dataset.objects.create(name='PascalVOC2012', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
             Dataset.objects.create(name='CaliforniaHousing', project=project, dataset_type=Dataset.DATASET_TYPE_TABLE)
             
+            # --- create sample SDK ---
+            sample_sdk_path = Path(
+                                   getattr(settings, 'MEDIA_ROOT', None),
+                                   getattr(settings, 'AI_MODEL_SDK_DIR', None),
+                                   'sample_sdk')
+            simple_cnn = AIModelSDK.objects.create(name='SimpleCNN', project=project)
+            simple_cnn.ai_model_sdk_dir = Path(sample_sdk_path, 'SimpleCNN')
+            simple_cnn.ai_model_sdk_dir_offset = Path('sample_sdk', 'SimpleCNN')
+
             # --- create project directory ---
             os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))
             
