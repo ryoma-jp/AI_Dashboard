@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% load custom_filter %}
+
+{% block main %}
+<div class="container-fluid">
+  <div class="row">
+  
+    <!-- AI Model SDK tab -->
+    <div id="ai_model_sdk" class="tab-pane">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2">AI Model SDK</h1>
+      </div>
+      
+      <!-- Select Project -->
+      <h1 class="h3">Select Project</h1>
+      {% if project %}
+        <form method="post">
+          {% csrf_token %}
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if dropdown_selected_project %}
+                  {{ dropdown_selected_project.name }}
+                {% else %}
+                  Select Project
+                {% endif %}
+              </button>
+              <ul class="dropdown-menu">
+              {% for project_ in project %}
+                <li><button class="dropdown-item" type="submit" name="ai_model_sdk_view_dropdown" value="{{ project_.name }}">{{ project_.name }}</button></li>
+              {% endfor %}
+              </ul>
+            </div>
+        </form>
+        
+        <!-- AI Model SDK List -->
+        <h1 class="h3">AI Model SDK List</h1>
+        {% if ai_model_sdk|in_project:dropdown_selected_project %}
+          <table class="table table-bordered border-primary table-hover ms-4">
+            <thead class="table-dark">
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">URL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for data_ in ai_model_sdk|in_project:dropdown_selected_project %}
+                <tr>
+                  <td>{{ data_.name }}</td>
+                  <td>---</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p>No AI Model SDK registered</p>
+        {% endif %}
+        
+        <!-- Upload AI Model SDK -->
+        <h1 class="h3">Upload AI Model SDK</h1>
+        {% if dropdown_selected_project in project %}
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% bootstrap_form form_ai_model_sdk %}
+            <button class="btn btn-primary" type="submit" name="ai_model_sdk_view_upload">Upload</button>
+          </form>
+        {% else %}
+          <p>Please select project</p>
+        {% endif %}
+        
+      {% else %}
+        <p>No Projects</p>
+      {% endif %}
+    </div>
+    
+  </div>
+</div>
+{% endblock %}
+

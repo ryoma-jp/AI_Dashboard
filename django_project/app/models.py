@@ -146,3 +146,45 @@ class MlModel(models.Model):
     
     def __str__(self):
         return self.name
+
+#---------------------------------------
+# クラス：AI Model SDK
+#---------------------------------------
+def ai_model_sdk_path(instance, filename):
+    base_dir = getattr(settings, 'AI_MODEL_SDK_DIR', None)
+    return Path(base_dir, f'{instance.project.hash}', f'ai_model_sdk_{instance.id}', filename)
+    
+class AIModelSDK(models.Model):
+    name = models.CharField('AI Model SDK Name', max_length=128)
+    project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
+    
+    ai_model_sdk_zip = models.FileField(upload_to=ai_model_sdk_path, max_length=512)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        if (self.id is None):
+            # --- dummy save, set id and zip files ---
+            _tmp_ai_model_sdk_zip = self.ai_model_sdk_zip
+            
+            self.ai_model_sdk_zip = None
+            super().save(*args, **kwargs)
+            
+            self.ai_model_sdk_zip = _tmp_ai_model_sdk_zip
+            if ('force_insert' in kwargs):
+                kwargs.pop('force_insert')
+        
+            # --- set ai_model_sdk_dir ---
+            self.ai_model_sdk_dir = Path(
+                                   getattr(settings, 'MEDIA_ROOT', None),
+                                   getattr(settings, 'AI_MODEL_SDK_DIR', None),
+                                   self.project.hash,
+                                   f'ai_model_sdk_{self.id}')
+            self.ai_model_sdk_dir_offset = Path(
+                                   self.project.hash,
+                                   f'ai_model_sdk_{self.id}')
+            
+        super().save(*args, **kwargs)
+
