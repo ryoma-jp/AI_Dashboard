@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+import fcntl
 from pathlib import Path
 from PIL import Image
 from machine_learning.lib.utils.utils import save_config
@@ -23,29 +24,29 @@ class AI_Model_SDK():
             super().__init__()
             self.trainer_ctrl_fifo = trainer_ctrl_fifo
             
-        #def on_train_batch_end(self, batch, logs=None):
-        #    if (self.trainer_ctrl_fifo is not None):
-        #        fd = os.open(self.trainer_ctrl_fifo, os.O_RDONLY | os.O_NONBLOCK)
-        #        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-        #        flags &= ~os.O_NONBLOCK
-        #        fcntl.fcntl(fd, fcntl.F_SETFL, flags)
-        #        
-        #        try:
-        #            command = os.read(fd, 128)
-        #            command = command.decode()[:-1]
-        #            while (True):
-        #                buf = os.read(fd, 65536)
-        #                if not buf:
-        #                    break
-        #        finally:
-        #            os.close(fd)
-        #    
-        #        if (command):
-        #            if (command == 'stop'):
-        #                print('End batch: recv command={}'.format(command))
-        #                self.model.stop_training = True
-        #            else:
-        #                print('End batch: recv unknown command={}'.format(command))
+        def on_train_batch_end(self, batch, logs=None):
+            if (self.trainer_ctrl_fifo is not None):
+                fd = os.open(self.trainer_ctrl_fifo, os.O_RDONLY | os.O_NONBLOCK)
+                flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+                flags &= ~os.O_NONBLOCK
+                fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+                
+                try:
+                    command = os.read(fd, 128)
+                    command = command.decode()[:-1]
+                    while (True):
+                        buf = os.read(fd, 65536)
+                        if not buf:
+                            break
+                finally:
+                    os.close(fd)
+            
+                if (command):
+                    if (command == 'stop'):
+                        print('End batch: recv command={}'.format(command))
+                        self.model.stop_training = True
+                    else:
+                        print('End batch: recv unknown command={}'.format(command))
             
         def on_epoch_end(self, epoch, logs=None):
             keys = list(logs.keys())
@@ -55,7 +56,7 @@ class AI_Model_SDK():
             log_str += '({} = {})'.format(keys[-1], logs[keys[-1]])
             print("End epoch {}: {}".format(epoch, log_str))
 
-    def __init__(self, dataset_params, model_params):
+    def __init__(self, dataset_params, model_params, web_app_ctrl_fifo=None, trainer_ctrl_fifo=None):
         """Constructor
 
         Args:
@@ -101,6 +102,8 @@ class AI_Model_SDK():
         self.class_num = 10
         self.model_path = model_params['model_path']
         self.trainer_ctrl_fifo = None
+        self.web_app_ctrl_fifo = web_app_ctrl_fifo
+        self.trainer_ctrl_fifo = trainer_ctrl_fifo
 
         # --- load info.json ---
         self.x_train_info, self.y_train_info, \
@@ -274,6 +277,11 @@ class AI_Model_SDK():
                     epochs=epochs, callbacks=callbacks,
                     verbose=0)
         
+        # --- Notice the finish training to Web app ---
+        if (self.web_app_ctrl_fifo is not None):
+            with open(self.web_app_ctrl_fifo, 'w') as f:
+                f.write('trainer_done\n')
+                
         return
 
     def Predict(self):

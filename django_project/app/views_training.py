@@ -70,6 +70,10 @@ def training(request):
                 if Path(dataset_path, 'test').exists():
                     command += ['--test_json', Path(dataset_path, 'test', 'info.json')]
                 command += ['--model_path', config_data['env']['result_dir']['value']]
+                web_app_ctrl_fifo_path = config_data['env']['web_app_ctrl_fifo']['value']
+                command += ['--web_app_ctrl_fifo', web_app_ctrl_fifo_path]
+                trainer_ctrl_fifo_path = config_data['env']['trainer_ctrl_fifo']['value']
+                command += ['--trainer_ctrl_fifo', trainer_ctrl_fifo_path]
                 logging.info('-------------------------------------')
                 logging.info(f'current working directory: {os.getcwd()}')
                 logging.info(f'dataset_path: {dataset_path}')

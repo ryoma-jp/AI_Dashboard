@@ -35,6 +35,10 @@ def ArgParser():
             help='info.json for test data')
     parser.add_argument('--model_path', dest='model_path', type=str, default=None, required=True, \
             help='AI Model Path')
+    parser.add_argument('--web_app_ctrl_fifo', dest='web_app_ctrl_fifo', type=str, default=None, required=False, \
+            help='FIFO path for Web App Control')
+    parser.add_argument('--trainer_ctrl_fifo', dest='trainer_ctrl_fifo', type=str, default=None, required=False, \
+            help='FIFO path for Trainer Control')
 
     args = parser.parse_args()
 
@@ -54,6 +58,8 @@ def main():
     print('  * args.val_json = {}'.format(args.val_json))
     print('  * args.test_json = {}'.format(args.test_json))
     print('  * args.model_path = {}'.format(args.model_path))
+    print('  * args.web_app_ctrl_fifo = {}'.format(args.web_app_ctrl_fifo))
+    print('  * args.trainer_ctrl_fifo = {}'.format(args.trainer_ctrl_fifo))
     
     # --- add AI Model SDK path to Python path ---
     sys.path.append(args.sdk_path)
@@ -72,7 +78,7 @@ def main():
     model_params = {
         'model_path': args.model_path,
     }
-    ai_model_sdk = AI_Model_SDK(dataset_params, model_params)
+    ai_model_sdk = AI_Model_SDK(dataset_params, model_params, web_app_ctrl_fifo=args.web_app_ctrl_fifo, trainer_ctrl_fifo=args.trainer_ctrl_fifo)
 
     # --- load dataset ---
     ai_model_sdk.load_dataset()

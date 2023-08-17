@@ -290,9 +290,9 @@ def model_new(request, project_id):
             with open(Path(model.model_dir, 'config.json'), 'w') as f:
                 json.dump(dict_config, f, ensure_ascii=False, indent=4)
                 
-            # logging.info('-------------------------------------')
-            # logging.info(dict_config)
-            # logging.info('-------------------------------------')
+            logging.info('-------------------------------------')
+            logging.info(dict_config)
+            logging.info('-------------------------------------')
             
             # --- save dataset ---
             model.dataset_pickle = Path(model.model_dir, 'dataset.pkl')
