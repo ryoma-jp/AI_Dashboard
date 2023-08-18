@@ -1,6 +1,6 @@
-"""Main routine of Machine Learning
+"""Main routine of Machine Learning for Training
 
-Training and Testing models with AI Model SDK.
+Training model with AI Model SDK.
 """
 
 #---------------------------------
@@ -20,7 +20,7 @@ def ArgParser():
     
     """
     
-    parser = argparse.ArgumentParser(description='Training and Testing with AI Model SDK',
+    parser = argparse.ArgumentParser(description='Training with AI Model SDK',
                 formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('--sdk_path', dest='sdk_path', type=str, default=None, required=True, \
@@ -52,14 +52,14 @@ def main():
     """
     args = ArgParser()
     print('[INFO] Arguments')
-    print('  * args.sdk_path = {}'.format(args.sdk_path))
-    print('  * args.meta_json = {}'.format(args.meta_json))
-    print('  * args.train_json = {}'.format(args.train_json))
-    print('  * args.val_json = {}'.format(args.val_json))
-    print('  * args.test_json = {}'.format(args.test_json))
-    print('  * args.model_path = {}'.format(args.model_path))
-    print('  * args.web_app_ctrl_fifo = {}'.format(args.web_app_ctrl_fifo))
-    print('  * args.trainer_ctrl_fifo = {}'.format(args.trainer_ctrl_fifo))
+    print(f'  * args.sdk_path = {args.sdk_path}')
+    print(f'  * args.meta_json = {args.meta_json}')
+    print(f'  * args.train_json = {args.train_json}')
+    print(f'  * args.val_json = {args.val_json}')
+    print(f'  * args.test_json = {args.test_json}')
+    print(f'  * args.model_path = {args.model_path}')
+    print(f'  * args.web_app_ctrl_fifo = {args.web_app_ctrl_fifo}')
+    print(f'  * args.trainer_ctrl_fifo = {args.trainer_ctrl_fifo}')
     
     # --- add AI Model SDK path to Python path ---
     sys.path.append(args.sdk_path)
