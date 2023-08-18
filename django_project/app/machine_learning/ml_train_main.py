@@ -89,6 +89,9 @@ def main():
     # --- training ---
     ai_model_sdk.train_model()
 
+    # --- save model ---
+    ai_model_sdk.save_model()
+    
     return
 
 #---------------------------------

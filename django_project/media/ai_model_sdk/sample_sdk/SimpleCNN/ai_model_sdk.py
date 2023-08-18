@@ -233,6 +233,38 @@ class AI_Model_SDK():
 
         return
 
+    def save_model(self):
+        """Save Model
+
+        Save trained model
+        """
+
+        # --- save model for saved_model ---
+        save_path = Path(self.model_path, 'saved_model')
+        os.makedirs(save_path, exist_ok=True)
+        self.model.save(save_path)
+
+        # --- save model for h5 ---
+        save_path = Path(self.model_path, 'h5', 'model.h5')
+        os.makedirs(Path(self.model_path, 'h5'), exist_ok=True)
+        self.model.save(save_path)
+
+        return
+    
+    def load_model(self, trained_model_path):
+        """Load Model
+
+        Load trained model
+
+        Args:
+            trained_model_path (str) : path to trained model
+        """
+
+        self.model = keras.models.load_model(trained_model_path)
+        self.model.summary()
+
+        return
+    
     def train_model(self):
         """Train Model
         """
@@ -284,10 +316,19 @@ class AI_Model_SDK():
                 
         return
 
-    def Predict(self):
+    def predict(self, x):
         """Predict
+
+        Predict target from input
+
+        Args:
+            x (numpy.ndarray) : input data
         """
-        return
+
+        x = self.preprocess_data(x)
+        y = self.model.predict(x)
+        
+        return y
     
     def eval_model(self):
         """Evaluate Model
