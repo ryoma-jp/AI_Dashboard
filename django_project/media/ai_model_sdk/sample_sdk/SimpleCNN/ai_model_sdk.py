@@ -65,6 +65,7 @@ class AI_Model_SDK():
                                       - 'train': info.json path for train data
                                       - 'val': info.json path for validation data
                                       - 'test': info.json path for test data
+                                      - 'inference': info.json path for inference data that doesn't need to have target
             model_params (dict) : AI model parameters
                                     - 'model_path': path to save trained model
         """
@@ -73,18 +74,18 @@ class AI_Model_SDK():
             """Split Data to Input and Target
             Split input samples and target from each ``info.json`` files
             """
-            x_train = y_train = x_val = y_val = x_test = y_test = None
+            x_train = y_train = x_val = y_val = x_test = y_test = x_inference = None
 
             if (('meta' in dataset_params.keys()) and (dataset_params['meta'] is not None)):
                 df_meta = pd.read_json(dataset_params['meta'])
                 input_key_list = [key['name'] for key in df_meta['keys']]
 
+                print(dataset_params)
                 if (('train' in dataset_params.keys()) and (dataset_params['train'] is not None)):
                     df_train = pd.read_json(dataset_params['train'])
                     x_train = df_train[['id'] + input_key_list]
                     y_train = df_train[['id', 'target']]
 
-                print(dataset_params)
                 if (('val' in dataset_params.keys()) and (dataset_params['val'] is not None)):
                     df_val = pd.read_json(dataset_params['val'])
                     x_val = df_val[['id'] + input_key_list]
@@ -95,7 +96,11 @@ class AI_Model_SDK():
                     x_test = df_test[['id'] + input_key_list]
                     y_test = df_test[['id', 'target']]
 
-            return x_train, y_train, x_val, y_val, x_test, y_test
+                if (('inference' in dataset_params.keys()) and (dataset_params['inference'] is not None)):
+                    df_test = pd.read_json(dataset_params['inference'])
+                    x_inference = df_test[['id'] + input_key_list]
+
+            return x_train, y_train, x_val, y_val, x_test, y_test, x_inference
         
         # --- initialize parameters ---
         self.input_shape = [32, 32, 3]    # [H, W, C]
@@ -108,17 +113,19 @@ class AI_Model_SDK():
         # --- load info.json ---
         self.x_train_info, self.y_train_info, \
         self.x_val_info, self.y_val_info, \
-        self.x_test_info, self.y_test_info \
+        self.x_test_info, self.y_test_info, \
+        self.x_inference_info \
             = split_input_and_target(dataset_params)
 
         # --- replace path to absolute path ---
-        dataset_base_dir = Path(dataset_params['meta']).parent.parent
         if (self.x_train_info is not None):
-            self.x_train_info['img_file'] = self.x_train_info['img_file'].map(lambda x: Path(dataset_base_dir, 'train', x))
+            self.x_train_info['img_file'] = self.x_train_info['img_file'].map(lambda x: Path(Path(dataset_params['train']).parent, x))
         if (self.x_val_info is not None):
-            self.x_val_info['img_file'] = self.x_val_info['img_file'].map(lambda x: Path(dataset_base_dir, 'validation', x))
+            self.x_val_info['img_file'] = self.x_val_info['img_file'].map(lambda x: Path(Path(dataset_params['val']).parent, x))
         if (self.x_test_info is not None):
-            self.x_test_info['img_file'] = self.x_test_info['img_file'].map(lambda x: Path(dataset_base_dir, 'test', x))
+            self.x_test_info['img_file'] = self.x_test_info['img_file'].map(lambda x: Path(Path(dataset_params['test']).parent, x))
+        if (self.x_inference_info is not None):
+            self.x_inference_info['img_file'] = self.x_inference_info['img_file'].map(lambda x: Path(Path(dataset_params['inference']).parent, x))
 
         # --- save config file ---
         configurable_parameters = []
@@ -163,6 +170,12 @@ class AI_Model_SDK():
         else:
             self.x_test = np.array([fn_img2ndarray(x) for x in self.x_test_info['img_file']])
             self.x_test = self.preprocess_data(self.x_test)
+
+        if (self.x_inference_info is None): 
+            self.x_inference = None
+        else:
+            self.x_inference = np.array([fn_img2ndarray(x) for x in self.x_inference_info['img_file']])
+            self.x_inference = self.preprocess_data(self.x_inference)
 
         # --- target ---
         if (self.y_train_info is None):
