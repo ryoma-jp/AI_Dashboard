@@ -74,7 +74,7 @@ class AI_Model_SDK():
             """Split Data to Input and Target
             Split input samples and target from each ``info.json`` files
             """
-            x_train = y_train = x_val = y_val = x_test = y_test = x_inference = None
+            x_train = y_train = x_val = y_val = x_test = y_test = x_inference = y_inference = None
 
             if (('meta' in dataset_params.keys()) and (dataset_params['meta'] is not None)):
                 df_meta = pd.read_json(dataset_params['meta'])
@@ -97,10 +97,11 @@ class AI_Model_SDK():
                     y_test = df_test[['id', 'target']]
 
                 if (('inference' in dataset_params.keys()) and (dataset_params['inference'] is not None)):
-                    df_test = pd.read_json(dataset_params['inference'])
-                    x_inference = df_test[['id'] + input_key_list]
+                    df_inference = pd.read_json(dataset_params['inference'])
+                    x_inference = df_inference[['id'] + input_key_list]
+                    y_inference = df_inference[['id', 'target']]
 
-            return x_train, y_train, x_val, y_val, x_test, y_test, x_inference
+            return x_train, y_train, x_val, y_val, x_test, y_test, x_inference, y_inference
         
         # --- initialize parameters ---
         self.input_shape = [32, 32, 3]    # [H, W, C]
@@ -114,7 +115,7 @@ class AI_Model_SDK():
         self.x_train_info, self.y_train_info, \
         self.x_val_info, self.y_val_info, \
         self.x_test_info, self.y_test_info, \
-        self.x_inference_info \
+        self.x_inference_info, self.y_inference_info \
             = split_input_and_target(dataset_params)
 
         # --- replace path to absolute path ---
@@ -192,6 +193,11 @@ class AI_Model_SDK():
             self.y_test = None
         else:
             self.y_test = to_categorical(self.y_test_info['target'], self.class_num)
+
+        if (self.y_inference_info is None):
+            self.y_inference = None
+        else:
+            self.y_inference = to_categorical(self.y_inference_info['target'], self.class_num)
 
         return
 
@@ -329,16 +335,18 @@ class AI_Model_SDK():
                 
         return
 
-    def predict(self, x):
+    def predict(self, x, preprocessing=True):
         """Predict
 
         Predict target from input
 
         Args:
             x (numpy.ndarray) : input data
+            preprocessing (bool) : if nesessary the preprocessing, set to True
         """
 
-        x = self.preprocess_data(x)
+        if (preprocessing):
+            x = self.preprocess_data(x)
         y = self.model.predict(x)
         
         return y

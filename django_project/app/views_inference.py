@@ -3,12 +3,15 @@ import os
 import json
 import subprocess
 import logging
+import numpy as np
+import pandas as pd
 
 from pathlib import Path
 
 from django.shortcuts import render, redirect
 
 from app.models import Project, MlModel, Dataset
+from machine_learning.lib.utils.utils import JsonEncoder
 
 from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url, get_dataloader_obj
 from django.http import FileResponse
@@ -52,28 +55,53 @@ def inference(request):
                 from ai_model_sdk import AI_Model_SDK
                 logging.info(AI_Model_SDK.__version__)
 
-                # --- Create instance ---
-                dataset_path = config_data['dataset']['dataset_dir']['value']
-                dataset_params = {
-                    'meta': Path(dataset_path, 'meta', 'info.json'),
-                    'inference': Path(dataset_path, 'test', 'info.json'),
-                }
-                model_params = {
-                    'model_path': selected_model.model_dir,
-                }
-                ai_model_sdk = AI_Model_SDK(dataset_params, model_params)
+                # --- Dataset loop ---
+                dataset_list = ['train', 'validation', 'test']
+                for dataset_name in dataset_list:
+                    # --- Create instance ---
+                    dataset_path = config_data['dataset']['dataset_dir']['value']
+                    dataset_params = {
+                        'meta': Path(dataset_path, 'meta', 'info.json'),
+                        'inference': Path(dataset_path, dataset_name, 'info.json'),
+                    }
+                    model_params = {
+                        'model_path': selected_model.model_dir,
+                    }
+                    ai_model_sdk = AI_Model_SDK(dataset_params, model_params)
 
-                # --- load dataset ---
-                ai_model_sdk.load_dataset()
+                    # --- load dataset ---
+                    ai_model_sdk.load_dataset()
 
-                # --- load model ---
-                trained_model = Path(selected_model.model_dir, 'h5', 'model.h5')
-                ai_model_sdk.load_model(trained_model)
+                    # --- load model ---
+                    trained_model = Path(selected_model.model_dir, 'h5', 'model.h5')
+                    ai_model_sdk.load_model(trained_model)
 
-                # --- inference ---
-                prediction = ai_model_sdk.predict(ai_model_sdk.x_inference)
-                logging.info(prediction.shape)
-                logging.info(prediction)
+                    # --- inference ---
+                    prediction = ai_model_sdk.predict(ai_model_sdk.x_inference, preprocessing=False)
+                    logging.info(prediction.shape)
+                    logging.info(prediction)
+
+                    # --- save prediction ---
+                    #  - np.argmax is tentative
+                    json_data = []
+                    if (ai_model_sdk.y_inference is None):
+                        for id, pred in zip(ai_model_sdk.y_inference_info['id'], prediction):
+                            json_data.append({
+                                'id': id,
+                                'prediction': np.argmax(pred),
+                                'target': '(no data)',
+                            })
+                    else:
+                        logging.info(f'ai_model_sdk.y_inference: {ai_model_sdk.y_inference}')
+                        for id, pred, target in zip(ai_model_sdk.y_inference_info['id'], prediction, ai_model_sdk.y_inference):
+                            json_data.append({
+                                'id': id,
+                                'prediction': np.argmax(pred),
+                                'target': np.argmax(target),
+                            })
+                    with open(Path(selected_model.model_dir, f'{dataset_name}_prediction.json'), 'w') as f:
+                        json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
+                    pd.DataFrame(json_data).to_csv(Path(selected_model.model_dir, f'{dataset_name}_prediction.csv'), index=False)
 
                 # --- unimport AI Model SDK ---
                 del AI_Model_SDK

@@ -10,11 +10,29 @@ import requests
 import tarfile
 import gzip
 import cv2
+import numpy as np
 import pandas as pd
 
 from urllib import request
 from pathlib import Path
 
+#############################
+# Classes
+#############################
+
+class JsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(JsonEncoder, self).default(obj)
+
+#############################
+# Functions
+#############################
 
 def download_file(url, save_dir='output'):
     """Download file
