@@ -150,10 +150,7 @@ def project_new(request):
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'AI_MODEL_SDK_DIR', None),
                                    'sample_sdk')
-            simple_cnn = AIModelSDK.objects.create(name='SimpleCNN', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN'))
-            #simple_cnn.ai_model_sdk_dir = Path(sample_sdk_path, 'SimpleCNN')
-            #simple_cnn.ai_model_sdk_dir_offset = Path('sample_sdk', 'SimpleCNN')
-            #simple_cnn.save()
+            AIModelSDK.objects.create(name='SimpleCNN', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN'))
 
             # --- create project directory ---
             os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))

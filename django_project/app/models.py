@@ -139,18 +139,20 @@ class AIModelSDK(models.Model):
                 kwargs.pop('force_insert')
         
             # --- set ai_model_sdk_dir ---
-            if (self.ai_model_sdk_dir is None):
+            if (self.ai_model_sdk_dir == ''):
                 self.ai_model_sdk_dir = str(Path(
                                     getattr(settings, 'MEDIA_ROOT', None),
                                     getattr(settings, 'AI_MODEL_SDK_DIR', None),
                                     'user_custom_sdk',
                                     self.project.hash,
-                                    f'ai_model_sdk_{self.id}'))
-            if (self.ai_model_sdk_dir_offset is None):
+                                    f'ai_model_sdk_{self.id}',
+                                    str(Path(self.ai_model_sdk_zip.path).stem)))
+            if (self.ai_model_sdk_dir_offset == ''):
                 self.ai_model_sdk_dir_offset = str(Path(
                                     'user_custom_sdk',
                                     self.project.hash,
-                                    f'ai_model_sdk_{self.id}'))
+                                    f'ai_model_sdk_{self.id}',
+                                    str(Path(self.ai_model_sdk_zip.path).stem)))
             
         super().save(*args, **kwargs)
 
