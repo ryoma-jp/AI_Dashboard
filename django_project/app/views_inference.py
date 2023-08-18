@@ -1,3 +1,4 @@
+import sys
 import os
 import json
 import subprocess
@@ -38,11 +39,48 @@ def inference(request):
                 config_data = json.load(f)
             
             # --- Predict ---
-            main_path = Path('./app/machine_learning/main.py').resolve()
-            logging.debug(f'main_path: {main_path}')
-            logging.debug(f'current working directory: {os.getcwd()}')
-            subproc_inference = subprocess.Popen(['python', main_path, '--mode', 'predict', '--config', config_path])
-    
+            if False:
+                main_path = Path('./app/machine_learning/main.py').resolve()
+                logging.info(f'main_path: {main_path}')
+                logging.info(f'current working directory: {os.getcwd()}')
+                subproc_inference = subprocess.Popen(['python', main_path, '--mode', 'predict', '--config', config_path])
+            else:
+                # --- add AI Model SDK path to Python path ---
+                sys.path.append(selected_model.ai_model_sdk.ai_model_sdk_dir)
+
+                # --- import AI Model SDK ---
+                from ai_model_sdk import AI_Model_SDK
+                logging.info(AI_Model_SDK.__version__)
+
+                # --- Create instance ---
+                dataset_path = config_data['dataset']['dataset_dir']['value']
+                dataset_params = {
+                    'meta': Path(dataset_path, 'meta', 'info.json'),
+                    'inference': Path(dataset_path, 'test', 'info.json'),
+                }
+                model_params = {
+                    'model_path': selected_model.model_dir,
+                }
+                ai_model_sdk = AI_Model_SDK(dataset_params, model_params)
+
+                # --- load dataset ---
+                ai_model_sdk.load_dataset()
+
+                # --- load model ---
+                trained_model = Path(selected_model.model_dir, 'h5', 'model.h5')
+                ai_model_sdk.load_model(trained_model)
+
+                # --- inference ---
+                prediction = ai_model_sdk.predict(ai_model_sdk.x_inference)
+                logging.info(prediction.shape)
+                logging.info(prediction)
+
+                # --- unimport AI Model SDK ---
+                del AI_Model_SDK
+
+                # --- remove AI Model SDK path from Python path ---
+                sys.path.remove(selected_model.ai_model_sdk.ai_model_sdk_dir)
+
     # logging.info('-------------------------------------')
     # logging.info(request.method)
     # logging.info(request.POST)
