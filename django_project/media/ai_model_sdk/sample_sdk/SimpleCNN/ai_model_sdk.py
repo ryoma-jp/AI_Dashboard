@@ -259,12 +259,12 @@ class AI_Model_SDK():
         """
 
         # --- save model for saved_model ---
-        save_path = Path(self.model_path, 'saved_model')
+        save_path = Path(self.model_path, 'models', 'saved_model')
         os.makedirs(save_path, exist_ok=True)
         self.model.save(save_path)
 
         # --- save model for h5 ---
-        save_path = Path(self.model_path, 'h5', 'model.h5')
+        save_path = Path(self.model_path, 'models', 'h5', 'model.h5')
         os.makedirs(Path(self.model_path, 'h5'), exist_ok=True)
         self.model.save(save_path)
 

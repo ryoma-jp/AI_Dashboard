@@ -73,7 +73,7 @@ def inference(request):
                     ai_model_sdk.load_dataset()
 
                     # --- load model ---
-                    trained_model = Path(selected_model.model_dir, 'h5', 'model.h5')
+                    trained_model = Path(selected_model.model_dir, 'models', 'h5', 'model.h5')
                     ai_model_sdk.load_model(trained_model)
 
                     # --- inference ---
@@ -99,9 +99,11 @@ def inference(request):
                                 'prediction': np.argmax(pred),
                                 'target': np.argmax(target),
                             })
-                    with open(Path(selected_model.model_dir, f'{dataset_name}_prediction.json'), 'w') as f:
+                    evaluation_dir = Path(selected_model.model_dir, 'evaluations')
+                    os.makedirs(evaluation_dir, exist_ok=True)
+                    with open(Path(evaluation_dir, f'{dataset_name}_prediction.json'), 'w') as f:
                         json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
-                    pd.DataFrame(json_data).to_csv(Path(selected_model.model_dir, f'{dataset_name}_prediction.csv'), index=False)
+                    pd.DataFrame(json_data).to_csv(Path(evaluation_dir, f'{dataset_name}_prediction.csv'), index=False)
 
                 # --- unimport AI Model SDK ---
                 del AI_Model_SDK
@@ -213,7 +215,7 @@ def inference(request):
             dataloader_obj = get_dataloader_obj(dataset_dropdown_selected)
             
             # --- get prediction ---
-            prediction_json = Path(model_dropdown_selected.model_dir, f'{prediction_data_type_selected.lower()}_prediction.json')
+            prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')
             if (prediction_json.exists()):
                 with open(prediction_json, 'r') as f:
                     prediction = json.load(f)
