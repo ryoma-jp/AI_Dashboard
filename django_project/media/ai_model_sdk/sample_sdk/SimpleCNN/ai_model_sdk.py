@@ -6,6 +6,7 @@ import fcntl
 from pathlib import Path
 from PIL import Image
 from machine_learning.lib.utils.utils import save_config
+from sklearn.metrics import accuracy_score
 
 import tensorflow as tf
 from tensorflow import keras
@@ -351,7 +352,17 @@ class AI_Model_SDK():
         
         return y
     
-    def eval_model(self):
+    def eval_model(self, pred, target):
         """Evaluate Model
+
+        Calculate accuracy score between pred and target
+
+        Args:
+            pred (numpy.ndarray): prediction
+            target (numpy.ndarray): target
         """
-        return
+
+        accuracy = accuracy_score(np.argmax(target, axis=1), np.argmax(pred, axis=1))
+        ret = {'accuracy': accuracy}
+
+        return ret

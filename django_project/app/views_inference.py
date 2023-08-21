@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from pathlib import Path
+from collections import OrderedDict
 
 from django.shortcuts import render, redirect
 
@@ -57,6 +58,7 @@ def inference(request):
 
                 # --- Dataset loop ---
                 dataset_list = ['train', 'validation', 'test']
+                dict_evaluations = None
                 for dataset_name in dataset_list:
                     # --- Create instance ---
                     dataset_path = config_data['dataset']['dataset_dir']['value']
@@ -104,6 +106,17 @@ def inference(request):
                     with open(Path(evaluation_dir, f'{dataset_name}_prediction.json'), 'w') as f:
                         json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
                     pd.DataFrame(json_data).to_csv(Path(evaluation_dir, f'{dataset_name}_prediction.csv'), index=False)
+
+                    # --- evaluation ---
+                    scores = ai_model_sdk.eval_model(prediction, ai_model_sdk.y_inference)
+                    if (dict_evaluations is None):
+                        dict_evaluations = OrderedDict([[key, {}] for key in scores.keys()])
+                    for key in scores.keys():
+                        dict_evaluations[key][dataset_name] = scores[key]
+
+                # --- save evaluation ---
+                with open(Path(evaluation_dir, f'evaluations.json'), 'w') as f:
+                    json.dump(dict_evaluations, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
 
                 # --- unimport AI Model SDK ---
                 del AI_Model_SDK
