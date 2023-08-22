@@ -139,6 +139,14 @@
         <h1 class="h4">Result</h1>
         
         {% if prediction %}
+          <ul>
+            {% with model_dropdown_selected|get_metrics as dict_metrics %}
+              {% for key, value in dict_metrics.items %}
+                <li>{{ key }} : {{ value }}</li>
+              {% endfor %}
+            {% endwith %}
+          </ul>
+
           <p><a href="{% url 'download_prediction' %}">Download prediction as csv</a></p>
           
           <div class="container">

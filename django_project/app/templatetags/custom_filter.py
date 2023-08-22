@@ -61,7 +61,7 @@ def get_metrics(value):
         value: object of MlModel
     """
     
-    metrics_file = Path(value.model_dir, 'metrics', 'metrics.json')
+    metrics_file = Path(value.model_dir, 'evaluations', 'evaluations.json')
     
     if (metrics_file.exists()):
         with open(metrics_file, 'r') as f:

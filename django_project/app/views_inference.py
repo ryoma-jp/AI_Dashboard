@@ -58,7 +58,7 @@ def inference(request):
 
                 # --- Dataset loop ---
                 dataset_list = ['train', 'validation', 'test']
-                dict_evaluations = None
+                dict_evaluations = {}
                 for dataset_name in dataset_list:
                     # --- Create instance ---
                     dataset_path = config_data['dataset']['dataset_dir']['value']
@@ -109,10 +109,8 @@ def inference(request):
 
                     # --- evaluation ---
                     scores = ai_model_sdk.eval_model(prediction, ai_model_sdk.y_inference)
-                    if (dict_evaluations is None):
-                        dict_evaluations = OrderedDict([[key, {}] for key in scores.keys()])
                     for key in scores.keys():
-                        dict_evaluations[key][dataset_name] = scores[key]
+                        dict_evaluations[f'{dataset_name} {key}'] = scores[key]
 
                 # --- save evaluation ---
                 with open(Path(evaluation_dir, f'evaluations.json'), 'w') as f:
