@@ -1,3 +1,4 @@
 /*
 !/.gitignore
-!/SimpleCNN
+!/SimpleCNN_for_MNIST
+!/SimpleCNN_for_CIFAR-10

@@ -18,7 +18,7 @@ class AI_Model_SDK():
     
     Sample SDK for training classification CNN model using CIFAR-10 dataset
     """
-    __version__ = 'SimpleCNN v0.0.1'
+    __version__ = 'SimpleCNN for CIFAR-10 v0.0.1'
 
     class CustomCallback(keras.callbacks.Callback):
         def __init__(self, trainer_ctrl_fifo):
