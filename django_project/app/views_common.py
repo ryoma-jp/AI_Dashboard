@@ -290,6 +290,7 @@ def load_dataset(dataset):
         dict_meta = save_meta(meta_dir, 'True', 'regression', 'table_data', keys)
         
         # --- save info.json ---
+        df_meta = pd.DataFrame(dict_meta)
         save_table_info(df_meta, dataloader.train_x, dataloader.train_y, Path(download_dir, 'train'))
         save_table_info(df_meta, dataloader.validation_x, dataloader.validation_y, Path(download_dir, 'validation'))
         save_table_info(df_meta, dataloader.test_x, dataloader.test_y, Path(download_dir, 'test'))

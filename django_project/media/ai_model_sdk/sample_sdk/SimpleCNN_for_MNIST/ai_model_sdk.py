@@ -280,7 +280,7 @@ class AI_Model_SDK():
             trained_model_path (str) : path to trained model
         """
 
-        self.model = keras.models.load_model(trained_model_path)
+        self.model = keras.models.load_model(Path(trained_model_path, 'h5', 'model.h5'))
         self.model.summary()
 
         return

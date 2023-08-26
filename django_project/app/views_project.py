@@ -150,8 +150,15 @@ def project_new(request):
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'AI_MODEL_SDK_DIR', None),
                                    'sample_sdk')
-            AIModelSDK.objects.create(name='SimpleCNN for MNIST', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN_for_MNIST'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN_for_MNIST'))
-            AIModelSDK.objects.create(name='SimpleCNN for CIFAR-10', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN_for_CIFAR-10'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN_for_CIFAR-10'))
+            sample_sdk_list = [
+                ['SimpleCNN for MNIST', 'SimpleCNN_for_MNIST'],
+                ['SimpleCNN for CIFAR-10', 'SimpleCNN_for_CIFAR-10'],
+                ['LightGBM for CaliforniaHousing', 'LightGBM_for_CaliforniaHousing']
+            ]
+            for name, path in sample_sdk_list:
+                AIModelSDK.objects.create(name=name, project=project, ai_model_sdk_dir=Path(sample_sdk_path, path), ai_model_sdk_dir_offset=Path('sample_sdk', path))
+            #AIModelSDK.objects.create(name='SimpleCNN for MNIST', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN_for_MNIST'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN_for_MNIST'))
+            #AIModelSDK.objects.create(name='SimpleCNN for CIFAR-10', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN_for_CIFAR-10'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN_for_CIFAR-10'))
 
             # --- create project directory ---
             os.makedirs(Path(settings.MEDIA_ROOT, settings.MODEL_DIR, project.hash))

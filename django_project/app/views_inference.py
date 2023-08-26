@@ -75,7 +75,7 @@ def inference(request):
                     ai_model_sdk.load_dataset()
 
                     # --- load model ---
-                    trained_model = Path(selected_model.model_dir, 'models', 'h5', 'model.h5')
+                    trained_model = Path(selected_model.model_dir, 'models')
                     ai_model_sdk.load_model(trained_model)
 
                     # --- inference ---
