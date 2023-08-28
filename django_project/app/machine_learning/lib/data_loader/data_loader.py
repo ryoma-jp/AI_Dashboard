@@ -17,6 +17,7 @@ import tarfile
 import gzip
 import json
 import hashlib
+import shutil
 
 import tensorflow as tf
 
@@ -78,16 +79,25 @@ def build_tf_example(annotation, class_map, imagefile_dir=''):
     ymin = []
     xmax = []
     ymax = []
+    bbox = []
     classes = []
     classes_text = []
+    classes_name = []
     if 'object' in annotation:
         for obj in annotation['object']:
             xmin.append(float(obj['bndbox']['xmin']) / width)
             ymin.append(float(obj['bndbox']['ymin']) / height)
             xmax.append(float(obj['bndbox']['xmax']) / width)
             ymax.append(float(obj['bndbox']['ymax']) / height)
+            bbox.append([
+                float(obj['bndbox']['xmin']),
+                float(obj['bndbox']['ymin']),
+                float(obj['bndbox']['xmax']) - float(obj['bndbox']['xmin']),
+                float(obj['bndbox']['ymax']) - float(obj['bndbox']['ymin']),
+            ])
             classes_text.append(obj['name'].encode('utf8'))
             classes.append(class_map[obj['name']])
+            classes_name.append(obj['name'])
 
     example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
@@ -106,8 +116,14 @@ def build_tf_example(annotation, class_map, imagefile_dir=''):
         'image/object/class/text': tf.train.Feature(bytes_list=tf.train.BytesList(value=classes_text)),
         'image/object/class/label': tf.train.Feature(int64_list=tf.train.Int64List(value=classes)),
     }))
+
+    info_target = {
+        'class_id': classes,
+        'category_name': classes_name,
+        'bbox': bbox,
+    }
     
-    return example
+    return example, info_target
 
 def load_dataset_from_tfrecord(tfrecord, class_name_file, img_size):
     """Load Dataset from TFRecord
@@ -918,31 +934,76 @@ class DataLoaderPascalVOC2012(DataLoader):
         
         train_tfrecord_path = str(Path(dataset_dir, 'train.tfrecord'))
         writer = tf.io.TFRecordWriter(train_tfrecord_path)
+        info_json_data = []
+        train_images_dir = Path(dataset_dir, 'train', 'images')
+        os.makedirs(train_images_dir, exist_ok=True)
         for name in train_txt[0:n_train]:
             annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
             annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
-            tf_example = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
+
+            # --- copy image file ---
+            shutil.copy(Path(image_dir, f'{name}.jpg'), Path(train_images_dir, f'{name}.jpg'))
+
+            # --- create info.json ---
+            info_json_data.append({
+                'id': name,
+                'img_file': f'images/{name}.jpg',
+                'target': info_target,
+            })
         writer.close()
+        with open(Path(dataset_dir, 'train', 'info.json'), 'w') as f:
+            json.dump(info_json_data, f, ensure_ascii=False, indent=4)
         
         validation_tfrecord_path = str(Path(dataset_dir, 'validation.tfrecord'))
         writer = tf.io.TFRecordWriter(validation_tfrecord_path)
+        info_json_data = []
+        validation_images_dir = Path(dataset_dir, 'validation', 'images')
+        os.makedirs(validation_images_dir, exist_ok=True)
         for name in train_txt[n_train::]:
             annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
             annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
-            tf_example = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
+
+            # --- copy image file ---
+            shutil.copy(Path(image_dir, f'{name}.jpg'), Path(validation_images_dir, f'{name}.jpg'))
+
+            # --- create info.json ---
+            info_json_data.append({
+                'id': name,
+                'img_file': f'images/{name}.jpg',
+                'target': info_target,
+            })
         writer.close()
+        with open(Path(dataset_dir, 'validation', 'info.json'), 'w') as f:
+            json.dump(info_json_data, f, ensure_ascii=False, indent=4)
         
         test_txt = open(Path(dataset_dir, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Main', 'val.txt'), 'r').read().splitlines()
         test_tfrecord_path = str(Path(dataset_dir, 'test.tfrecord'))
         writer = tf.io.TFRecordWriter(test_tfrecord_path)
+        info_json_data = []
+        test_images_dir = Path(dataset_dir, 'test', 'images')
+        os.makedirs(test_images_dir, exist_ok=True)
         for name in test_txt:
             annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
             annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
-            tf_example = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
+
+            # --- copy image file ---
+            shutil.copy(Path(image_dir, f'{name}.jpg'), Path(test_images_dir, f'{name}.jpg'))
+
+            # --- create info.json ---
+            info_json_data.append({
+                'id': name,
+                'img_file': f'images/{name}.jpg',
+                'target': info_target,
+            })
         writer.close()
+        with open(Path(dataset_dir, 'test', 'info.json'), 'w') as f:
+            json.dump(info_json_data, f, ensure_ascii=False, indent=4)
         
         # --- save class name ---
         class_name_file_path = str(Path(dataset_dir, 'voc2012.names'))
