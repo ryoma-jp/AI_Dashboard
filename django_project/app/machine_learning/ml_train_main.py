@@ -25,6 +25,8 @@ def ArgParser():
 
     parser.add_argument('--sdk_path', dest='sdk_path', type=str, default=None, required=True, \
             help='AI Model SDK path')
+    parser.add_argument('--dataset', dest='dataset', type=str, default=None, required=True, \
+            help='path to dataset.pkl')
     parser.add_argument('--meta_json', dest='meta_json', type=str, default=None, required=True, \
             help='info.json for meta data')
     parser.add_argument('--train_json', dest='train_json', type=str, default=None, required=False, \
@@ -53,6 +55,7 @@ def main():
     args = ArgParser()
     print('[INFO] Arguments')
     print(f'  * args.sdk_path = {args.sdk_path}')
+    print(f'  * args.dataset = {args.dataset}')
     print(f'  * args.meta_json = {args.meta_json}')
     print(f'  * args.train_json = {args.train_json}')
     print(f'  * args.val_json = {args.val_json}')
@@ -78,7 +81,7 @@ def main():
     model_params = {
         'model_path': args.model_path,
     }
-    ai_model_sdk = AI_Model_SDK(dataset_params, model_params, web_app_ctrl_fifo=args.web_app_ctrl_fifo, trainer_ctrl_fifo=args.trainer_ctrl_fifo)
+    ai_model_sdk = AI_Model_SDK(args.dataset, model_params, web_app_ctrl_fifo=args.web_app_ctrl_fifo, trainer_ctrl_fifo=args.trainer_ctrl_fifo)
 
     # --- load dataset ---
     ai_model_sdk.load_dataset()

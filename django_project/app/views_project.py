@@ -153,7 +153,8 @@ def project_new(request):
             sample_sdk_list = [
                 ['SimpleCNN for MNIST', 'SimpleCNN_for_MNIST'],
                 ['SimpleCNN for CIFAR-10', 'SimpleCNN_for_CIFAR-10'],
-                ['LightGBM for CaliforniaHousing', 'LightGBM_for_CaliforniaHousing']
+                ['LightGBM for CaliforniaHousing', 'LightGBM_for_CaliforniaHousing'],
+                ['YOLOv3 for PascalVOC', 'YOLOv3_for_PascalVOC'],
             ]
             for name, path in sample_sdk_list:
                 AIModelSDK.objects.create(name=name, project=project, ai_model_sdk_dir=Path(sample_sdk_path, path), ai_model_sdk_dir_offset=Path('sample_sdk', path))

@@ -79,6 +79,8 @@ def build_tf_example(annotation, class_map, imagefile_dir=''):
     ymin = []
     xmax = []
     ymax = []
+    bbox_width = []
+    bbox_height = []
     bbox = []
     classes = []
     classes_text = []
@@ -89,6 +91,8 @@ def build_tf_example(annotation, class_map, imagefile_dir=''):
             ymin.append(float(obj['bndbox']['ymin']) / height)
             xmax.append(float(obj['bndbox']['xmax']) / width)
             ymax.append(float(obj['bndbox']['ymax']) / height)
+            bbox_width.append(float(obj['bndbox']['xmax']) / width - float(obj['bndbox']['xmin']) / width)
+            bbox_height.append(float(obj['bndbox']['ymax']) / height - float(obj['bndbox']['ymin']) / height)
             bbox.append([
                 float(obj['bndbox']['xmin']),
                 float(obj['bndbox']['ymin']),
@@ -100,21 +104,21 @@ def build_tf_example(annotation, class_map, imagefile_dir=''):
             classes_name.append(obj['name'])
 
     example = tf.train.Example(features=tf.train.Features(feature={
-        'image/height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
-        'image/width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
-        'image/filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[
-            annotation['filename'].encode('utf8')])),
-        'image/source_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[
-            annotation['filename'].encode('utf8')])),
-        'image/key/sha256': tf.train.Feature(bytes_list=tf.train.BytesList(value=[key.encode('utf8')])),
-        'image/encoded': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
-        'image/format': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_path.suffix.lstrip('.').encode('utf8')])),
-        'image/object/bbox/xmin': tf.train.Feature(float_list=tf.train.FloatList(value=xmin)),
-        'image/object/bbox/xmax': tf.train.Feature(float_list=tf.train.FloatList(value=xmax)),
-        'image/object/bbox/ymin': tf.train.Feature(float_list=tf.train.FloatList(value=ymin)),
-        'image/object/bbox/ymax': tf.train.Feature(float_list=tf.train.FloatList(value=ymax)),
-        'image/object/class/text': tf.train.Feature(bytes_list=tf.train.BytesList(value=classes_text)),
-        'image/object/class/label': tf.train.Feature(int64_list=tf.train.Int64List(value=classes)),
+        'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+        'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+        'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
+        'source_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
+        'key/sha256': tf.train.Feature(bytes_list=tf.train.BytesList(value=[key.encode('utf8')])),
+        'encoded': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
+        'format': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_path.suffix.lstrip('.').encode('utf8')])),
+        'target/bbox/x': tf.train.Feature(float_list=tf.train.FloatList(value=xmin)),
+        'target/bbox/y': tf.train.Feature(float_list=tf.train.FloatList(value=ymin)),
+        'target/bbox/xmax': tf.train.Feature(float_list=tf.train.FloatList(value=xmax)),
+        'target/bbox/ymax': tf.train.Feature(float_list=tf.train.FloatList(value=ymax)),
+        'target/bbox/width': tf.train.Feature(float_list=tf.train.FloatList(value=bbox_width)),
+        'target/bbox/height': tf.train.Feature(float_list=tf.train.FloatList(value=bbox_height)),
+        'target/class_text': tf.train.Feature(bytes_list=tf.train.BytesList(value=classes_text)),
+        'target/class_id': tf.train.Feature(int64_list=tf.train.Int64List(value=classes)),
     }))
 
     info_target = {
@@ -142,24 +146,24 @@ def load_dataset_from_tfrecord(tfrecord, class_name_file, img_size):
     def _parse_tfrecord(tfrecord, class_table, size):
         # --- parse and scaling ---
         features = {
-            'image/encoded': tf.io.FixedLenFeature([], tf.string),
-            'image/object/bbox/xmin': tf.io.VarLenFeature(tf.float32),
-            'image/object/bbox/ymin': tf.io.VarLenFeature(tf.float32),
-            'image/object/bbox/xmax': tf.io.VarLenFeature(tf.float32),
-            'image/object/bbox/ymax': tf.io.VarLenFeature(tf.float32),
-            'image/object/class/text': tf.io.VarLenFeature(tf.string),
+            'encoded': tf.io.FixedLenFeature([], tf.string),
+            'target/bbox/x': tf.io.VarLenFeature(tf.float32),
+            'target/bbox/y': tf.io.VarLenFeature(tf.float32),
+            'target/bbox/xmax': tf.io.VarLenFeature(tf.float32),
+            'target/bbox/ymax': tf.io.VarLenFeature(tf.float32),
+            'target/class_text': tf.io.VarLenFeature(tf.string),
         }
         x = tf.io.parse_single_example(tfrecord, features)
-        x_train = tf.image.decode_jpeg(x['image/encoded'], channels=3)
+        x_train = tf.image.decode_jpeg(x['encoded'], channels=3)
         x_train = tf.image.resize(x_train, (size, size))
         
         # --- parse annotations ---
-        class_names = tf.sparse.to_dense(x['image/object/class/text'], default_value='')
+        class_names = tf.sparse.to_dense(x['target/class_text'], default_value='')
         labels = tf.cast(class_table.lookup(class_names), tf.float32)
-        y_train = tf.stack([tf.sparse.to_dense(x['image/object/bbox/xmin']),
-                        tf.sparse.to_dense(x['image/object/bbox/ymin']),
-                        tf.sparse.to_dense(x['image/object/bbox/xmax']),
-                        tf.sparse.to_dense(x['image/object/bbox/ymax']),
+        y_train = tf.stack([tf.sparse.to_dense(x['target/bbox/x']),
+                        tf.sparse.to_dense(x['target/bbox/y']),
+                        tf.sparse.to_dense(x['target/bbox/xmax']),
+                        tf.sparse.to_dense(x['target/bbox/ymax']),
                         labels], axis=1)
         paddings = [[0, 100 - tf.shape(y_train)[0]], [0, 0]]
         print(paddings)

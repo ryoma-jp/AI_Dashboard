@@ -58,9 +58,10 @@ def training(request):
                 logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
             else:
                 # --- ml_main.py ---
+                dataset_path = config_data['dataset']['dataset_dir']['value']
                 command = ['python', Path('./app/machine_learning/ml_train_main.py').resolve()]
                 command += ['--sdk_path', selected_model.ai_model_sdk.ai_model_sdk_dir]
-                dataset_path = config_data['dataset']['dataset_dir']['value']
+                command += ['--dataset', Path(dataset_path, 'dataset.pkl')]
                 if Path(dataset_path, 'meta').exists():
                     command += ['--meta_json', Path(dataset_path, 'meta', 'info.json')]
                 if Path(dataset_path, 'train').exists():
