@@ -166,9 +166,9 @@ def _create_frame(frame, overlay,
                 boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * [height, width, height, width], dtype=int)
                 for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
                     cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                    if ((category_names is not None) and (len(category_names) > 0)):
+                    if ((pretrained_model.category_names is not None) and (len(pretrained_model.category_names) > 0)):
                         cv2.putText(overlay,
-                                    category_names[class_],
+                                    pretrained_model.category_names[class_],
                                     [box_[1], box_[0]-8],
                                     fontFace=cv2.FONT_HERSHEY_COMPLEX, fontScale=0.4, thickness=2, color=(255, 0, 0))
                     else:

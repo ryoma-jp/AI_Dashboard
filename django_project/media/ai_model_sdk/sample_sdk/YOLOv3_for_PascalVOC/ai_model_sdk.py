@@ -268,6 +268,13 @@ class AI_Model_SDK():
         #if (self.x_inference_info is not None):
         #    self.x_inference_info['img_file'] = self.x_inference_info['img_file'].map(lambda x: Path(Path(dataset_params['inference']).parent, x))
 
+        # --- load category names ---
+        if (Path(dataset.train_dataset['class_name_file_path']).exists()):
+            with open(dataset.train_dataset['class_name_file_path'], 'r') as f:
+                self.category_names = f.read().splitlines()
+        else:
+            self.category_names = None
+
         # --- save config file ---
         configurable_parameters = []
         config_model = {

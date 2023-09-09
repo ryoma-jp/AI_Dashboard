@@ -1010,7 +1010,7 @@ class DataLoaderPascalVOC2012(DataLoader):
             json.dump(info_json_data, f, ensure_ascii=False, indent=4)
         
         # --- save class name ---
-        class_name_file_path = str(Path(dataset_dir, 'voc2012.names'))
+        class_name_file_path = str(Path(dataset_dir, 'category_names.txt'))
         with open(class_name_file_path, 'w') as f:
             for class_name in class_map:
                 f.write(f'{class_name}\n')
