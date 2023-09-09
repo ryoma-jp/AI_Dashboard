@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
+import cv2
 import fcntl
 import pickle
 from pathlib import Path
@@ -198,6 +199,9 @@ class AI_Model_SDK():
         self.trainer_ctrl_fifo = None
         self.web_app_ctrl_fifo = web_app_ctrl_fifo
         self.trainer_ctrl_fifo = trainer_ctrl_fifo
+        self.task = 'object_detection'
+        self.decoded_preds = {}
+        self.get_feature_map = False
 
         self.batch_size = 32
         self.epochs = 100
@@ -283,7 +287,12 @@ class AI_Model_SDK():
         # --- Normalization ---
         y = np.array(x) / 255.0
 
-        return y.tolist()
+        # --- Insert batch dimension ---
+        if (len(y.shape) == 3):
+            y = np.expand_dims(y, axis=0)
+
+        #return y.tolist()
+        return y
 
     def load_dataset(self):
         """Load Dataset
@@ -428,6 +437,14 @@ class AI_Model_SDK():
         os.makedirs(Path(self.model_path, 'h5'), exist_ok=True)
         self.model.save(save_path)
 
+        # --- save custom object ---
+        #custom_objects = {
+        #    'YoloLoss': self.model.loss,
+        #}
+        #model_dir = Path(self.model_path, 'models')
+        #with open(Path(model_dir, 'custom_objects.pickle'), 'wb') as f:
+        #    pickle.dump(custom_objects, f)
+
         return
     
     def load_model(self, trained_model_path):
@@ -439,7 +456,17 @@ class AI_Model_SDK():
             trained_model_path (str) : path to trained model
         """
 
-        self.model = keras.models.load_model(Path(trained_model_path, 'h5', 'model.h5'))
+        #self.model = keras.models.load_model(Path(trained_model_path, 'h5', 'model.h5'))
+        #self.model.summary()
+
+        custom_objects = None
+        custom_object_path = Path(trained_model_path, 'custom_objects.pickle')
+        if (custom_object_path.exists()):
+            with open(custom_object_path, 'rb') as f:
+                custom_objects = pickle.load(f)
+        
+        trained_model_path = Path(trained_model_path, 'h5', 'model.h5')
+        self.model = keras.models.load_model(trained_model_path, custom_objects=custom_objects)
         self.model.summary()
 
         return
@@ -518,6 +545,95 @@ class AI_Model_SDK():
         
         return y
     
+    def decode_prediction(self, pred):
+        """Decode Prediction
+
+        Decode prediction to target
+
+        Args:
+            pred (numpy.ndarray) : prediction
+
+        Returns:
+            numpy.ndarray : target
+        """
+        def sigmoid(x):
+            return 1 / (1 + np.exp(-x))
+        
+        def yolo_boxes(pred, anchors, classes):
+            # pred: (batch_size, grid, grid, anchors, (x, y, w, h, obj, ...classes))
+            grid_size = pred.shape[1:3]
+            box_xy, box_wh, objectness, class_probs = np.split(pred, (2, 4, 5), axis=-1)
+            
+            box_xy = sigmoid(box_xy)
+            objectness = sigmoid(objectness)
+            class_probs = sigmoid(class_probs)
+            pred_box = np.concatenate((box_xy, box_wh), axis=-1)  # original xywh for loss
+
+            # !!! grid[x][y] == (y, x)
+            grid_x, grid_y = np.meshgrid(np.arange(grid_size[1]), np.arange(grid_size[0]))
+            grid = np.stack((grid_x, grid_y), axis=-1)  # [gx, gy, 1, 2]
+            grid = np.expand_dims(grid, axis=2)
+
+            box_xy = (box_xy + grid) / np.array(grid_size).reshape(1, 1, 1, 2)
+            box_wh = np.exp(box_wh) * anchors
+
+            box_x1y1 = box_xy - box_wh / 2
+            box_x2y2 = box_xy + box_wh / 2
+            bbox = np.concatenate((box_x1y1, box_x2y2), axis=-1)
+
+            return bbox, objectness, class_probs, pred_box
+        
+        def yolo_nms(outputs, anchors, masks, classes, yolo_max_boxes=100, yolo_iou_threshold=0.5, yolo_score_threshold=0.5):
+            # boxes, conf, type
+            b, c, t = [], [], []
+
+            for o in outputs:
+                b.append(np.reshape(o[0], (np.shape(o[0])[0], -1, np.shape(o[0])[-1])))
+                c.append(np.reshape(o[1], (np.shape(o[1])[0], -1, np.shape(o[1])[-1])))
+                t.append(np.reshape(o[2], (np.shape(o[2])[0], -1, np.shape(o[2])[-1])))
+
+            bbox = np.concatenate(b, axis=1)
+            confidence = np.concatenate(c, axis=1)
+            class_probs = np.concatenate(t, axis=1)
+
+            # If we only have one class, do not multiply by class_prob (always 0.5)
+            if classes == 1:
+                scores = confidence
+            else:
+                scores = confidence * class_probs
+
+            dscores = np.squeeze(scores, axis=0)
+            scores = np.apply_along_axis(max, 1, dscores)
+            bbox = np.reshape(bbox, (-1, 4))
+            classes = np.argmax(dscores, axis=1)
+            
+            final_boxes = cv2.dnn.NMSBoxes(bbox, scores, yolo_score_threshold, yolo_iou_threshold)
+            num_valid_nms_boxes = len(final_boxes)
+            selected_indices = np.concatenate([final_boxes, np.zeros(yolo_max_boxes - num_valid_nms_boxes)], 0).astype(np.int32)
+            
+            boxes = np.expand_dims(bbox[selected_indices], axis=0)
+            scores = np.expand_dims(scores[selected_indices], axis=0)
+            classes = np.expand_dims(classes[selected_indices], axis=0)
+            valid_detections = np.expand_dims(num_valid_nms_boxes, axis=0)
+            
+            return boxes, scores, classes, valid_detections
+            
+        from machine_learning.lib.trainer.tf_models.yolov3.models import yolo_anchors, yolo_anchor_masks
+        
+        boxes_0 = yolo_boxes(pred[0], yolo_anchors[yolo_anchor_masks[0]], 20)
+        boxes_1 = yolo_boxes(pred[1], yolo_anchors[yolo_anchor_masks[1]], 20)
+        boxes_2 = yolo_boxes(pred[2], yolo_anchors[yolo_anchor_masks[2]], 20)
+        
+        self.prediction = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
+        boxes, scores, classes, valid_detections = self.prediction
+            
+        self.decoded_preds['num_detections'] = valid_detections[0]
+        self.decoded_preds['detection_boxes'] = np.array(boxes[0][0:valid_detections[0]])[:, [1, 0, 3, 2]]  # [x1, y1, x2, y2]->[y1, x1, y2, x1]
+        self.decoded_preds['detection_classes'] = np.array(classes[0][0:valid_detections[0]])
+        self.decoded_preds['detection_scores'] = np.array(scores[0][0:valid_detections[0]])
+
+        return self.decoded_preds
+    
     def eval_model(self, pred, target):
         """Evaluate Model
 
@@ -532,3 +648,4 @@ class AI_Model_SDK():
         ret = {'accuracy': accuracy}
 
         return ret
+    

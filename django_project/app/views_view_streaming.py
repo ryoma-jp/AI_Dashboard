@@ -1,3 +1,4 @@
+import sys
 import os
 import logging
 import cv2
@@ -78,22 +79,41 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
         if (streaming_model_name in [f.name for f in MlModel.objects.filter(project=streaming_project)]):
             streaming_model = MlModel.objects.get(name=streaming_model_name, project=streaming_project)
             
-            # --- Create object of Pre-trained model ---
-            get_feature_map = True
-            if (request.session.get('show_features_enable_selected', 'False') == 'False'):
-                get_feature_map = False
-            feature_map_calc_range = request.session.get('show_features_calc_range_selected', 'Model-wise')
-            pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map, feature_map_calc_range=feature_map_calc_range)
-            
-            if (len(pretrained_model.category_list) > 0):
-                category_names = {key: item for key, item in zip(list(range(0, len(pretrained_model.category_list))), pretrained_model.category_list)}
-            
-            logging.info('-------------------------------------')
-            logging.info(f'model_summary')
-            pretrained_model.pretrained_model.summary(print_fn=logging.info)
-            logging.info(f'category_names')
-            logging.info(category_names)
-            logging.info('-------------------------------------')
+            ## --- Create object of Pre-trained model ---
+            #get_feature_map = True
+            #if (request.session.get('show_features_enable_selected', 'False') == 'False'):
+            #    get_feature_map = False
+            #feature_map_calc_range = request.session.get('show_features_calc_range_selected', 'Model-wise')
+            #pretrained_model = PredictorMlModel(streaming_model, get_feature_map=get_feature_map, feature_map_calc_range=feature_map_calc_range)
+            #
+            #if (len(pretrained_model.category_list) > 0):
+            #    category_names = {key: item for key, item in zip(list(range(0, len(pretrained_model.category_list))), pretrained_model.category_list)}
+            #
+            #logging.info('-------------------------------------')
+            #logging.info(f'model_summary')
+            #pretrained_model.pretrained_model.summary(print_fn=logging.info)
+            #logging.info(f'category_names')
+            #logging.info(category_names)
+            #logging.info('-------------------------------------')
+
+            # --- import AI Model SDK ---
+            sys.path.append(streaming_model.ai_model_sdk.ai_model_sdk_dir)
+            from ai_model_sdk import AI_Model_SDK
+            logging.info(AI_Model_SDK.__version__)
+
+            config_path = Path(streaming_model.model_dir, 'config.json')
+            with open(config_path, 'r') as f:
+                config_data = json.load(f)
+
+            model_params = {
+                'model_path': streaming_model.model_dir,
+            }
+            dataset_path = config_data['dataset']['dataset_dir']['value']
+            dataset = Path(dataset_path, 'dataset.pkl')
+            pretrained_model = AI_Model_SDK(dataset, model_params)
+
+            trained_model = Path(streaming_model.model_dir, 'models')
+            pretrained_model.load_model(trained_model)
             
         else:
             streaming_model_name = 'None'
@@ -146,7 +166,7 @@ def _create_frame(frame, overlay,
                 boxes = np.asarray(pretrained_model.decoded_preds['detection_boxes'] * [height, width, height, width], dtype=int)
                 for box_, class_, score_ in zip(boxes, pretrained_model.decoded_preds['detection_classes'], pretrained_model.decoded_preds['detection_scores']):
                     cv2.rectangle(overlay, [box_[1], box_[0]], [box_[3], box_[2]], color=[255, 0, 0])
-                    if (len(category_names) > 0):
+                    if ((category_names is not None) and (len(category_names) > 0)):
                         cv2.putText(overlay,
                                     category_names[class_],
                                     [box_[1], box_[0]-8],
@@ -242,8 +262,11 @@ def view_streaming(request):
     streaming_selected_model = request.session.get('streaming_selected_model', None)
     show_features_enable_selected = request.session.get('show_features_enable_selected', 'False')
     show_features_calc_range_selected = request.session.get('show_features_calc_range_selected', 'Model-wise')
-    
-    streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_selected_project, streaming_selected_model)
+
+    streaming_model_name, pretrained_model, category_names = None, None, None    
+    if (streaming_selected_project in [proj.name for proj in Project.objects.all()]):
+        streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_selected_project, streaming_selected_model)
+
     get_feature_map = True
     if (show_features_enable_selected == 'False'):
         get_feature_map = False
@@ -252,14 +275,15 @@ def view_streaming(request):
     else:
         show_features_supported_model = 'True'
     
-    if (streaming_selected_project == 'Sample'):
+    if (streaming_selected_project in [proj.name for proj in Project.objects.all()]):
+        selected_project = Project.objects.get(name=streaming_selected_project)
+        pretrained_model_list = [model.name for model in MlModel.objects.filter(project=selected_project)]
+    else:
+        streaming_selected_project = 'Sample'
         pretrained_model_list = [
             'ResNet50',
             'CenterNetHourGlass104',
         ]
-    else:
-        selected_project = Project.objects.get(name=streaming_selected_project)
-        pretrained_model_list = [model.name for model in MlModel.objects.filter(project=selected_project)]
     
     request.session['pretrained_model_list'] = pretrained_model_list
     
@@ -369,11 +393,12 @@ def usb_cam(request):
                 if (streaming_model_name in pretrained_model_list):
                     # --- Convert format ---
                     overlay_for_inference = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
-                    overlay_for_inference = overlay_for_inference.resize(pretrained_model.input_shape[0:2])
-                    overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
+                    #overlay_for_inference = overlay_for_inference.resize(pretrained_model.input_shape[0:2])
+                    #overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
                     
                     # --- Infrerence ---
-                    pretrained_model.predict(overlay_for_inference)
+                    pred = pretrained_model.predict(overlay_for_inference)
+                    pretrained_model.decode_prediction(pred)
                             
                 # --- Put Text ---
                 time_end = time.time()
