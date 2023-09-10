@@ -1,5 +1,6 @@
 import sys
 import os
+import pickle
 import json
 import subprocess
 import logging
@@ -11,8 +12,11 @@ from collections import OrderedDict
 
 from django.shortcuts import render, redirect
 
+from tensorflow.keras.utils import to_categorical
+
 from app.models import Project, MlModel, Dataset
 from machine_learning.lib.utils.utils import JsonEncoder
+from machine_learning.lib.data_loader.data_loader import load_dataset_from_tfrecord
 
 from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url, get_dataloader_obj
 from django.http import FileResponse
@@ -56,61 +60,182 @@ def inference(request):
                 from ai_model_sdk import AI_Model_SDK
                 logging.info(AI_Model_SDK.__version__)
 
-                # --- Dataset loop ---
-                dataset_list = ['train', 'validation', 'test']
+                # --- Prepare inference ---
+                dataset = Path(config_data['dataset']['dataset_dir']['value'], 'dataset.pkl')
+                model_params = {
+                    'model_path': selected_model.model_dir,
+                }
+                ai_model_sdk = AI_Model_SDK(dataset, model_params)
+
+                ai_model_sdk.load_dataset()
+                trained_model = Path(selected_model.model_dir, 'models')
+                ai_model_sdk.load_model(trained_model)
+
+                with open(dataset, 'rb') as f:
+                    dataset = pickle.load(f)
+                train_dataset = load_dataset_from_tfrecord(
+                    dataset.train_dataset['tfrecord_path'], 
+                    dataset.train_dataset['class_name_file_path'],
+                    dataset.train_dataset['model_input_size'])
+                #train_dataset = train_dataset.batch(ai_model_sdk.batch_size)
+                validation_dataset = load_dataset_from_tfrecord(
+                    dataset.validation_dataset['tfrecord_path'], 
+                    dataset.validation_dataset['class_name_file_path'],
+                    dataset.validation_dataset['model_input_size'])
+                #validation_dataset = validation_dataset.batch(ai_model_sdk.batch_size)
+                test_dataset = load_dataset_from_tfrecord(
+                    dataset.test_dataset['tfrecord_path'], 
+                    dataset.test_dataset['class_name_file_path'],
+                    dataset.test_dataset['model_input_size'])
+                #test_dataset = test_dataset.batch(ai_model_sdk.batch_size)
                 dict_evaluations = {}
-                for dataset_name in dataset_list:
-                    # --- Create instance ---
-                    dataset_path = config_data['dataset']['dataset_dir']['value']
-                    dataset_params = {
-                        'meta': Path(dataset_path, 'meta', 'info.json'),
-                        'inference': Path(dataset_path, dataset_name, 'info.json'),
-                    }
-                    model_params = {
-                        'model_path': selected_model.model_dir,
-                    }
-                    ai_model_sdk = AI_Model_SDK(dataset_params, model_params)
+                
+                input_tensor = []
+                target_tensor = []
+                for train_batch in train_dataset:
+                    input_tensor.append(train_batch[0].numpy().tolist())
+                    target_tensor.append(train_batch[1].numpy()[0, -1].tolist())
+                input_tensor = np.array(input_tensor, dtype=np.float32)
+                target_tensor = to_categorical(np.array(target_tensor, dtype=int))
+                prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
 
-                    # --- load dataset ---
-                    ai_model_sdk.load_dataset()
+                # --- save prediction ---
+                #  - np.argmax is tentative
+                json_data = []
+                logging.info(f'target_tensor: {target_tensor}')
+                for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                    json_data.append({
+                        'id': id,
+                        'prediction': np.argmax(pred),
+                        'target': np.argmax(target),
+                    })
+                evaluation_dir = Path(selected_model.model_dir, 'evaluations')
+                os.makedirs(evaluation_dir, exist_ok=True)
+                with open(Path(evaluation_dir, 'train_prediction.json'), 'w') as f:
+                    json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
+                pd.DataFrame(json_data).to_csv(Path(evaluation_dir, 'train_prediction.csv'), index=False)
 
-                    # --- load model ---
-                    trained_model = Path(selected_model.model_dir, 'models')
-                    ai_model_sdk.load_model(trained_model)
+                # --- evaluation ---
+                scores = ai_model_sdk.eval_model(prediction, target_tensor)
+                for key in scores.keys():
+                    dict_evaluations[f'train {key}'] = scores[key]
 
-                    # --- inference ---
-                    prediction = ai_model_sdk.predict(ai_model_sdk.x_inference, preprocessing=False)
-                    logging.info(prediction.shape)
-                    logging.info(prediction)
+                input_tensor = []
+                target_tensor = []
+                for validation_batch in validation_dataset:
+                    input_tensor.append(validation_batch[0].numpy().tolist())
+                    target_tensor.append(validation_batch[1].numpy()[0, -1].tolist())
+                input_tensor = np.array(input_tensor, dtype=np.float32)
+                target_tensor = to_categorical(np.array(target_tensor, dtype=int))
+                prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
 
-                    # --- save prediction ---
-                    #  - np.argmax is tentative
-                    json_data = []
-                    if (ai_model_sdk.y_inference is None):
-                        for id, pred in zip(ai_model_sdk.y_inference_info['id'], prediction):
-                            json_data.append({
-                                'id': id,
-                                'prediction': np.argmax(pred),
-                                'target': '(no data)',
-                            })
-                    else:
-                        logging.info(f'ai_model_sdk.y_inference: {ai_model_sdk.y_inference}')
-                        for id, pred, target in zip(ai_model_sdk.y_inference_info['id'], prediction, ai_model_sdk.y_inference):
-                            json_data.append({
-                                'id': id,
-                                'prediction': np.argmax(pred),
-                                'target': np.argmax(target),
-                            })
-                    evaluation_dir = Path(selected_model.model_dir, 'evaluations')
-                    os.makedirs(evaluation_dir, exist_ok=True)
-                    with open(Path(evaluation_dir, f'{dataset_name}_prediction.json'), 'w') as f:
-                        json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
-                    pd.DataFrame(json_data).to_csv(Path(evaluation_dir, f'{dataset_name}_prediction.csv'), index=False)
+                # --- save prediction ---
+                #  - np.argmax is tentative
+                json_data = []
+                logging.info(f'target_tensor: {target_tensor}')
+                for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                    json_data.append({
+                        'id': id,
+                        'prediction': np.argmax(pred),
+                        'target': np.argmax(target),
+                    })
+                evaluation_dir = Path(selected_model.model_dir, 'evaluations')
+                os.makedirs(evaluation_dir, exist_ok=True)
+                with open(Path(evaluation_dir, 'validation_prediction.json'), 'w') as f:
+                    json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
+                pd.DataFrame(json_data).to_csv(Path(evaluation_dir, 'validation_prediction.csv'), index=False)
 
-                    # --- evaluation ---
-                    scores = ai_model_sdk.eval_model(prediction, ai_model_sdk.y_inference)
-                    for key in scores.keys():
-                        dict_evaluations[f'{dataset_name} {key}'] = scores[key]
+                # --- evaluation ---
+                scores = ai_model_sdk.eval_model(prediction, target_tensor)
+                for key in scores.keys():
+                    dict_evaluations[f'validation {key}'] = scores[key]
+
+                input_tensor = []
+                target_tensor = []
+                for test_batch in test_dataset:
+                    input_tensor.append(test_batch[0].numpy().tolist())
+                    target_tensor.append(test_batch[1].numpy()[0, -1].tolist())
+                input_tensor = np.array(input_tensor, dtype=np.float32)
+                target_tensor = to_categorical(np.array(target_tensor, dtype=int))
+                prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
+
+                # --- save prediction ---
+                #  - np.argmax is tentative
+                json_data = []
+                logging.info(f'target_tensor: {target_tensor}')
+                for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                    json_data.append({
+                        'id': id,
+                        'prediction': np.argmax(pred),
+                        'target': np.argmax(target),
+                    })
+                evaluation_dir = Path(selected_model.model_dir, 'evaluations')
+                os.makedirs(evaluation_dir, exist_ok=True)
+                with open(Path(evaluation_dir, 'test_prediction.json'), 'w') as f:
+                    json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
+                pd.DataFrame(json_data).to_csv(Path(evaluation_dir, 'test_prediction.csv'), index=False)
+
+                # --- evaluation ---
+                scores = ai_model_sdk.eval_model(prediction, target_tensor)
+                for key in scores.keys():
+                    dict_evaluations[f'test {key}'] = scores[key]
+
+                ## --- Dataset loop ---
+                #dataset_list = ['train', 'validation', 'test']
+                #dict_evaluations = {}
+                #for dataset_name in dataset_list:
+                #    # --- Create instance ---
+                #    dataset = Path(config_data['dataset']['dataset_dir']['value'], 'dataset.pkl')
+                #    dataset_path = config_data['dataset']['dataset_dir']['value']
+                #    dataset_params = {
+                #        'meta': Path(dataset_path, 'meta', 'info.json'),
+                #        'inference': Path(dataset_path, dataset_name, 'info.json'),
+                #    }
+                #    model_params = {
+                #        'model_path': selected_model.model_dir,
+                #    }
+                #    ai_model_sdk = AI_Model_SDK(dataset, model_params)
+#
+                #    # --- load dataset ---
+                #    ai_model_sdk.load_dataset()
+#
+                #    # --- load model ---
+                #    trained_model = Path(selected_model.model_dir, 'models')
+                #    ai_model_sdk.load_model(trained_model)
+#
+                #    # --- inference ---
+                #    prediction = ai_model_sdk.predict(ai_model_sdk.x_inference, preprocessing=False)
+                #    logging.info(prediction.shape)
+                #    logging.info(prediction)
+#
+                #    # --- save prediction ---
+                #    #  - np.argmax is tentative
+                #    json_data = []
+                #    if (ai_model_sdk.y_inference is None):
+                #        for id, pred in zip(ai_model_sdk.y_inference_info['id'], prediction):
+                #            json_data.append({
+                #                'id': id,
+                #                'prediction': np.argmax(pred),
+                #                'target': '(no data)',
+                #            })
+                #    else:
+                #        logging.info(f'ai_model_sdk.y_inference: {ai_model_sdk.y_inference}')
+                #        for id, pred, target in zip(ai_model_sdk.y_inference_info['id'], prediction, ai_model_sdk.y_inference):
+                #            json_data.append({
+                #                'id': id,
+                #                'prediction': np.argmax(pred),
+                #                'target': np.argmax(target),
+                #            })
+                #    evaluation_dir = Path(selected_model.model_dir, 'evaluations')
+                #    os.makedirs(evaluation_dir, exist_ok=True)
+                #    with open(Path(evaluation_dir, f'{dataset_name}_prediction.json'), 'w') as f:
+                #        json.dump(json_data, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
+                #    pd.DataFrame(json_data).to_csv(Path(evaluation_dir, f'{dataset_name}_prediction.csv'), index=False)
+#
+                #    # --- evaluation ---
+                #    scores = ai_model_sdk.eval_model(prediction, ai_model_sdk.y_inference)
+                #    for key in scores.keys():
+                #        dict_evaluations[f'{dataset_name} {key}'] = scores[key]
 
                 # --- save evaluation ---
                 with open(Path(evaluation_dir, f'evaluations.json'), 'w') as f:

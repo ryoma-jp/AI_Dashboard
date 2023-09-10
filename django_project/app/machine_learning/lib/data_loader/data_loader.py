@@ -18,6 +18,7 @@ import gzip
 import json
 import hashlib
 import shutil
+import cv2
 
 import tensorflow as tf
 
@@ -26,7 +27,7 @@ from pathlib import Path
 from PIL import Image
 from lxml import etree as lxml_etree
 
-from machine_learning.lib.utils.utils import zip_extract, download_file, safe_extract_tar, parse_xml
+from machine_learning.lib.utils.utils import zip_extract, download_file, safe_extract_tar, parse_xml, save_meta, save_image_files
 from machine_learning.lib.utils.preprocessor import image_preprocess
 
 #---------------------------------
@@ -490,7 +491,7 @@ class DataLoaderCIFAR10(DataLoader):
     DataLoader class for CIFAR-10 dataset
     """
     
-    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
+    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False, model_input_size=32):
         """Constructor
         
         Constructor
@@ -546,21 +547,21 @@ class DataLoaderCIFAR10(DataLoader):
                     # --- CVE-2007-4559 end ---
             else:
                 logging.info('CIFAR-10 dataset is exists (Skip Download)')
-        dataset_dir = Path(dataset_dir, 'cifar-10-batches-py')
+        cifar10_dir = Path(dataset_dir, 'cifar-10-batches-py')
             
         # --- load training data ---
         train_data_list = ["data_batch_1", "data_batch_2", "data_batch_3", "data_batch_4", "data_batch_5"]
-        dict_data = unpickle(Path(dataset_dir, train_data_list[0]))
+        dict_data = unpickle(Path(cifar10_dir, train_data_list[0]))
         train_x = dict_data[b'data']
         train_y = dict_data[b'labels'].copy()
         for train_data in train_data_list[1:]:
-            dict_data = unpickle(Path(dataset_dir, train_data))
+            dict_data = unpickle(Path(cifar10_dir, train_data))
             train_x = np.vstack((train_x, dict_data[b'data']))
             train_y = np.hstack((train_y, dict_data[b'labels']))
         
         # --- load test data ---
         test_data = "test_batch"
-        dict_data = unpickle(Path(dataset_dir, test_data))
+        dict_data = unpickle(Path(cifar10_dir, test_data))
         test_x = dict_data[b'data']
         test_y = dict_data[b'labels'].copy()
         
@@ -586,6 +587,157 @@ class DataLoaderCIFAR10(DataLoader):
         # --- set task to image classification ---
         self.dataset_type = 'img_clf'
         
+        # --- save image files ---
+        meta_dir = Path(dataset_dir, 'meta')
+        keys = [{
+                    'name': 'img_file',
+                    'type': 'image_file',
+                }]
+        dict_meta = save_meta(meta_dir, 'True', 'classification', 'image_data', keys)
+        
+        if (self.train_x is not None):
+            ids = np.arange(len(self.train_x))
+            save_image_files(self.train_x, self.train_y, ids,
+                             Path(dataset_dir, 'train'), name='images', key_name=keys[0]['name'])
+        if (self.validation_x is not None):
+            ids = np.arange(len(self.validation_x))
+            save_image_files(self.validation_x, self.validation_y, ids,
+                             Path(dataset_dir, 'validation'), name='images', key_name=keys[0]['name'])
+        if (self.test_x is not None):
+            ids = np.arange(len(self.test_x))
+            save_image_files(self.test_x, self.test_y, ids,
+                             Path(dataset_dir, 'test'), name='images', key_name=keys[0]['name'])
+
+        # --- create tfrecord ---
+        class_list = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+        class_map = {
+            'airplane': 0,
+            'automobile': 1,
+            'bird': 2,
+            'cat': 3,
+            'deer': 4,
+            'dog': 5,
+            'frog': 6,
+            'horse': 7,
+            'ship': 8,
+            'truck': 9,
+        }
+
+        with open(Path(dataset_dir, 'train', 'info.json'), 'r') as f:
+            train_info = json.load(f)
+        train_tfrecord_path = str(Path(dataset_dir, 'train.tfrecord'))
+        writer = tf.io.TFRecordWriter(train_tfrecord_path)
+        for train_info_ in train_info:
+            image = cv2.imread(str(Path(dataset_dir, 'train', train_info_['img_file'])))
+            height, width, depth = image.shape
+            annotation = {
+                'filename': train_info_['img_file'],
+                'size': {
+                    'width': width,
+                    'height': height,
+                    'depth': depth,
+                },
+                'object': [
+                    {
+                        'bndbox': {
+                            'xmin': 0,
+                            'ymin': 0,
+                            'xmax': width,
+                            'ymax': height,
+                        },
+                        'name': class_list[int(train_info_['target'])],
+                    }
+                ],
+            }
+            image_dir = Path(dataset_dir, 'train')
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+
+        with open(Path(dataset_dir, 'validation', 'info.json'), 'r') as f:
+            validation_info = json.load(f)
+        validation_tfrecord_path = str(Path(dataset_dir, 'validation.tfrecord'))
+        writer = tf.io.TFRecordWriter(validation_tfrecord_path)
+        for validation_info_ in validation_info:
+            image = cv2.imread(str(Path(dataset_dir, 'validation', validation_info_['img_file'])))
+            height, width, depth = image.shape
+            annotation = {
+                'filename': validation_info_['img_file'],
+                'size': {
+                    'width': width,
+                    'height': height,
+                    'depth': depth,
+                },
+                'object': [
+                    {
+                        'bndbox': {
+                            'xmin': 0,
+                            'ymin': 0,
+                            'xmax': width,
+                            'ymax': height,
+                        },
+                        'name': class_list[int(validation_info_['target'])],
+                    }
+                ],
+            }
+            image_dir = Path(dataset_dir, 'validation')
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+        
+        with open(Path(dataset_dir, 'test', 'info.json'), 'r') as f:
+            test_info = json.load(f)
+        test_tfrecord_path = str(Path(dataset_dir, 'test.tfrecord'))
+        writer = tf.io.TFRecordWriter(test_tfrecord_path)
+        for test_info_ in test_info:
+            image = cv2.imread(str(Path(dataset_dir, 'test', test_info_['img_file'])))
+            height, width, depth = image.shape
+            annotation = {
+                'filename': test_info_['img_file'],
+                'size': {
+                    'width': width,
+                    'height': height,
+                    'depth': depth,
+                },
+                'object': [
+                    {
+                        'bndbox': {
+                            'xmin': 0,
+                            'ymin': 0,
+                            'xmax': width,
+                            'ymax': height,
+                        },
+                        'name': class_list[int(test_info_['target'])],
+                    }
+                ],
+            }
+            image_dir = Path(dataset_dir, 'test')
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+
+        # --- save class name ---
+        class_name_file_path = str(Path(dataset_dir, 'category_names.txt'))
+        with open(class_name_file_path, 'w') as f:
+            for class_name in class_map:
+                f.write(f'{class_name}\n')
+
+        self.train_dataset = {
+            'tfrecord_path': train_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        self.validation_dataset = {
+            'tfrecord_path': validation_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        self.test_dataset = {
+            'tfrecord_path': test_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+
         return
         
 class DataLoaderMNIST(DataLoader):
@@ -694,6 +846,41 @@ class DataLoaderMNIST(DataLoader):
         # --- set task to image classification ---
         self.dataset_type = 'img_clf'
         
+        # --- save image files ---
+        meta_dir = Path(dataset_dir, 'meta')
+        keys = [{
+                    'name': 'img_file',
+                    'type': 'image_file',
+                }]
+        dict_meta = save_meta(meta_dir, 'True', 'classification', 'image_data', keys)
+
+        if (self.train_x is not None):
+            ids = np.arange(len(self.train_x))
+            save_image_files(self.train_x, self.train_y, ids,
+                             Path(dataset_dir, 'train'), name='images', key_name=keys[0]['name'])
+        if (self.validation_x is not None):
+            ids = np.arange(len(self.validation_x))
+            save_image_files(self.validation_x, self.validation_y, ids,
+                             Path(dataset_dir, 'validation'), name='images', key_name=keys[0]['name'])
+        if (self.test_x is not None):
+            ids = np.arange(len(self.test_x))
+            save_image_files(self.test_x, self.test_y, ids,
+                             Path(dataset_dir, 'test'), name='images', key_name=keys[0]['name'])
+        
+        # --- create tfrecord ---
+        #class_map = {
+        #    '0': 0,
+        #    '1': 1,
+        #    '2': 2,
+        #    '3': 3,
+        #    '4': 4,
+        #    '5': 5,
+        #    '6': 6,
+        #    '7': 7,
+        #    '8': 8,
+        #    '9': 9,
+        #}
+
         return
     
 class DataLoaderCOCO2017(DataLoader):
