@@ -1,5 +1,6 @@
 
 import os
+import pickle
 import numpy as np
 import pandas as pd
 import fcntl
@@ -12,6 +13,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import to_categorical
+from machine_learning.lib.data_loader.data_loader import load_dataset_from_tfrecord
 
 class AI_Model_SDK():
     """AI Model SDK
@@ -57,16 +59,19 @@ class AI_Model_SDK():
             log_str += '({} = {})'.format(keys[-1], logs[keys[-1]])
             print("End epoch {}: {}".format(epoch, log_str))
 
-    def __init__(self, dataset_params, model_params, web_app_ctrl_fifo=None, trainer_ctrl_fifo=None):
+    def __init__(self, dataset_path, model_params, web_app_ctrl_fifo=None, trainer_ctrl_fifo=None):
         """Constructor
 
         Args:
-            dataset_params (dict) : dataset parameters
-                                      - 'meta': info.json path for meta data
-                                      - 'train': info.json path for train data
-                                      - 'val': info.json path for validation data
-                                      - 'test': info.json path for test data
-                                      - 'inference': info.json path for inference data that doesn't need to have target
+            dataset_path (string) : file path of dataset.pkl (is DataLoader object)
+                                      - attributes
+                                        - train_dataset (dict)
+                                        - validation_dataset (dict)
+                                        - test_dataset (dict)
+                                      - dict keys
+                                        - 'tfrecord_path': path to tfrecord file
+                                        - 'class_name_file_path': path to class name file
+                                        - 'model_input_size': model input size
             model_params (dict) : AI model parameters
                                     - 'model_path': path to save trained model
         """
@@ -104,8 +109,25 @@ class AI_Model_SDK():
 
             return x_train, y_train, x_val, y_val, x_test, y_test, x_inference, y_inference
         
+        @tf.function
+        def transform_targets(y_train):
+            print(y_train.shape)
+            print(type(y_train))
+            print(y_train)
+            print(tf.executing_eagerly())
+            #y_outs = tf.cast(to_categorical(np.reshape(y_train[:, 0, -1].numpy(), [len(y_train), -1]), num_classes=self.class_num), tf.int32)
+            y_outs = tf.cast(y_train[:, 0, -1], tf.int32)
+
+            return y_outs
+        
+        def transform_images(x_train, size):
+            x_train = tf.image.resize(x_train, (size, size))
+            x_train = x_train / 255
+            return x_train
+        
         # --- initialize parameters ---
         self.input_shape = [28, 28, 3]    # [H, W, C]
+        self.batch_size = 512
         self.class_num = 10
         self.model_path = model_params['model_path']
         self.trainer_ctrl_fifo = None
@@ -113,22 +135,61 @@ class AI_Model_SDK():
         self.trainer_ctrl_fifo = trainer_ctrl_fifo
 
         # --- load info.json ---
-        self.x_train_info, self.y_train_info, \
-        self.x_val_info, self.y_val_info, \
-        self.x_test_info, self.y_test_info, \
-        self.x_inference_info, self.y_inference_info \
-            = split_input_and_target(dataset_params)
+        #self.x_train_info, self.y_train_info, \
+        #self.x_val_info, self.y_val_info, \
+        #self.x_test_info, self.y_test_info, \
+        #self.x_inference_info, self.y_inference_info \
+        #    = split_input_and_target(dataset_params)
+#
+        ## --- replace path to absolute path ---
+        #if (self.x_train_info is not None):
+        #    self.x_train_info['img_file'] = self.x_train_info['img_file'].map(lambda x: Path(Path(dataset_params['train']).parent, x))
+        #if (self.x_val_info is not None):
+        #    self.x_val_info['img_file'] = self.x_val_info['img_file'].map(lambda x: Path(Path(dataset_params['val']).parent, x))
+        #if (self.x_test_info is not None):
+        #    self.x_test_info['img_file'] = self.x_test_info['img_file'].map(lambda x: Path(Path(dataset_params['test']).parent, x))
+        #if (self.x_inference_info is not None):
+        #    self.x_inference_info['img_file'] = self.x_inference_info['img_file'].map(lambda x: Path(Path(dataset_params['inference']).parent, x))
 
-        # --- replace path to absolute path ---
-        if (self.x_train_info is not None):
-            self.x_train_info['img_file'] = self.x_train_info['img_file'].map(lambda x: Path(Path(dataset_params['train']).parent, x))
-        if (self.x_val_info is not None):
-            self.x_val_info['img_file'] = self.x_val_info['img_file'].map(lambda x: Path(Path(dataset_params['val']).parent, x))
-        if (self.x_test_info is not None):
-            self.x_test_info['img_file'] = self.x_test_info['img_file'].map(lambda x: Path(Path(dataset_params['test']).parent, x))
-        if (self.x_inference_info is not None):
-            self.x_inference_info['img_file'] = self.x_inference_info['img_file'].map(lambda x: Path(Path(dataset_params['inference']).parent, x))
+        with open(dataset_path, 'rb') as f:
+            dataset = pickle.load(f)
 
+        self.train_dataset = load_dataset_from_tfrecord(
+            dataset.train_dataset['tfrecord_path'], 
+            dataset.train_dataset['class_name_file_path'],
+            dataset.train_dataset['model_input_size'])
+        self.train_dataset = self.train_dataset.shuffle(buffer_size=512)
+        self.train_dataset = self.train_dataset.batch(self.batch_size)
+        self.train_dataset = self.train_dataset.map(lambda x, y: (
+            transform_images(x, dataset.train_dataset['model_input_size']),
+            transform_targets(y)))
+        self.train_dataset = self.train_dataset.prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
+
+        self.validation_dataset = load_dataset_from_tfrecord(
+            dataset.validation_dataset['tfrecord_path'], 
+            dataset.validation_dataset['class_name_file_path'],
+            dataset.validation_dataset['model_input_size'])
+        self.validation_dataset = self.validation_dataset.shuffle(buffer_size=512)
+        self.validation_dataset = self.validation_dataset.batch(self.batch_size)
+        self.validation_dataset = self.validation_dataset.map(lambda x, y: (
+            transform_images(x, dataset.validation_dataset['model_input_size']),
+            transform_targets(y)))
+        self.validation_dataset = self.validation_dataset.prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
+        
+        self.test_dataset = load_dataset_from_tfrecord(
+            dataset.test_dataset['tfrecord_path'], 
+            dataset.test_dataset['class_name_file_path'],
+            dataset.test_dataset['model_input_size'])
+        self.test_dataset = self.test_dataset.shuffle(buffer_size=512)
+        self.test_dataset = self.test_dataset.batch(self.batch_size)
+        self.test_dataset = self.test_dataset.map(lambda x, y: (
+            transform_images(x, dataset.test_dataset['model_input_size']),
+            transform_targets(y)))
+        self.test_dataset = self.test_dataset.prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE)
+        
         # --- save config file ---
         configurable_parameters = []
         config_model = {
@@ -153,52 +214,52 @@ class AI_Model_SDK():
         Load dataset from info and preprocess each samples
         """
 
-        # --- input tensor ---
-        fn_img2ndarray = lambda x: np.array(Image.open(x))
-        if (self.x_train_info is None):
-            self.x_train = None
-        else:
-            self.x_train = np.array([fn_img2ndarray(x) for x in self.x_train_info['img_file']])
-            self.x_train = self.preprocess_data(self.x_train)
-
-        if (self.x_val_info is None):
-            self.x_val = None
-        else:
-            self.x_val = np.array([fn_img2ndarray(x) for x in self.x_val_info['img_file']])
-            self.x_val = self.preprocess_data(self.x_val)
-
-        if (self.x_test_info is None):
-            self.x_test = None
-        else:
-            self.x_test = np.array([fn_img2ndarray(x) for x in self.x_test_info['img_file']])
-            self.x_test = self.preprocess_data(self.x_test)
-
-        if (self.x_inference_info is None): 
-            self.x_inference = None
-        else:
-            self.x_inference = np.array([fn_img2ndarray(x) for x in self.x_inference_info['img_file']])
-            self.x_inference = self.preprocess_data(self.x_inference)
-
-        # --- target ---
-        if (self.y_train_info is None):
-            self.y_train = None
-        else:
-            self.y_train = to_categorical(self.y_train_info['target'], self.class_num)
-
-        if (self.y_val_info is None):
-            self.y_val = None
-        else:
-            self.y_val = to_categorical(self.y_val_info['target'], self.class_num)
-
-        if (self.y_test_info is None):
-            self.y_test = None
-        else:
-            self.y_test = to_categorical(self.y_test_info['target'], self.class_num)
-
-        if (self.y_inference_info is None):
-            self.y_inference = None
-        else:
-            self.y_inference = to_categorical(self.y_inference_info['target'], self.class_num)
+        ## --- input tensor ---
+        #fn_img2ndarray = lambda x: np.array(Image.open(x))
+        #if (self.x_train_info is None):
+        #    self.x_train = None
+        #else:
+        #    self.x_train = np.array([fn_img2ndarray(x) for x in self.x_train_info['img_file']])
+        #    self.x_train = self.preprocess_data(self.x_train)
+#
+        #if (self.x_val_info is None):
+        #    self.x_val = None
+        #else:
+        #    self.x_val = np.array([fn_img2ndarray(x) for x in self.x_val_info['img_file']])
+        #    self.x_val = self.preprocess_data(self.x_val)
+#
+        #if (self.x_test_info is None):
+        #    self.x_test = None
+        #else:
+        #    self.x_test = np.array([fn_img2ndarray(x) for x in self.x_test_info['img_file']])
+        #    self.x_test = self.preprocess_data(self.x_test)
+#
+        #if (self.x_inference_info is None): 
+        #    self.x_inference = None
+        #else:
+        #    self.x_inference = np.array([fn_img2ndarray(x) for x in self.x_inference_info['img_file']])
+        #    self.x_inference = self.preprocess_data(self.x_inference)
+#
+        ## --- target ---
+        #if (self.y_train_info is None):
+        #    self.y_train = None
+        #else:
+        #    self.y_train = to_categorical(self.y_train_info['target'], self.class_num)
+#
+        #if (self.y_val_info is None):
+        #    self.y_val = None
+        #else:
+        #    self.y_val = to_categorical(self.y_val_info['target'], self.class_num)
+#
+        #if (self.y_test_info is None):
+        #    self.y_test = None
+        #else:
+        #    self.y_test = to_categorical(self.y_test_info['target'], self.class_num)
+#
+        #if (self.y_inference_info is None):
+        #    self.y_inference = None
+        #else:
+        #    self.y_inference = to_categorical(self.y_inference_info['target'], self.class_num)
 
         return
 
@@ -293,7 +354,7 @@ class AI_Model_SDK():
         weight_decay = 0.004
         optimizer = tf.keras.optimizers.AdamW(learning_rate=learning_rate, weight_decay=weight_decay)
         metrics = ['accuracy']
-        loss = 'categorical_crossentropy'
+        loss = 'sparse_categorical_crossentropy'
         self.model.compile(
             optimizer=optimizer,
             loss=loss,
@@ -312,20 +373,23 @@ class AI_Model_SDK():
         callbacks = [cp_callback, custom_callback, tensorboard_callback]
 
         # --- data augmentation ---
-        datagen = ImageDataGenerator(
-            rotation_range=0.2,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            zoom_range=0.2,
-            channel_shift_range=0.2,
-            horizontal_flip=True)
-        datagen.fit(self.x_train)
+        #datagen = ImageDataGenerator(
+        #    rotation_range=0.2,
+        #    width_shift_range=0.2,
+        #    height_shift_range=0.2,
+        #    zoom_range=0.2,
+        #    channel_shift_range=0.2,
+        #    horizontal_flip=True)
+        #datagen.fit(self.x_train)
         
         # --- fit ---
-        batch_size = 512
         epochs = 100
-        history = self.model.fit(datagen.flow(self.x_train, self.y_train, batch_size=batch_size),
-                    steps_per_epoch=len(self.x_train)//batch_size, validation_data=(self.x_val, self.y_val),
+        #history = self.model.fit(datagen.flow(self.x_train, self.y_train, batch_size=batch_size),
+        #            steps_per_epoch=len(self.x_train)//batch_size, validation_data=(self.x_val, self.y_val),
+        #            epochs=epochs, callbacks=callbacks,
+        #            verbose=0)
+        history = self.model.fit(self.train_dataset,
+                    validation_data=self.validation_dataset,
                     epochs=epochs, callbacks=callbacks,
                     verbose=0)
         

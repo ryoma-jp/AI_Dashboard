@@ -746,7 +746,7 @@ class DataLoaderMNIST(DataLoader):
     DataLoader class for MNIST dataset
     """
     
-    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False):
+    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False, model_input_size=28):
         """Constructor
         
         Constructor
@@ -868,18 +868,134 @@ class DataLoaderMNIST(DataLoader):
                              Path(dataset_dir, 'test'), name='images', key_name=keys[0]['name'])
         
         # --- create tfrecord ---
-        #class_map = {
-        #    '0': 0,
-        #    '1': 1,
-        #    '2': 2,
-        #    '3': 3,
-        #    '4': 4,
-        #    '5': 5,
-        #    '6': 6,
-        #    '7': 7,
-        #    '8': 8,
-        #    '9': 9,
-        #}
+        class_list = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        class_map = {
+            '0': 0,
+            '1': 1,
+            '2': 2,
+            '3': 3,
+            '4': 4,
+            '5': 5,
+            '6': 6,
+            '7': 7,
+            '8': 8,
+            '9': 9,
+        }
+
+        with open(Path(dataset_dir, 'train', 'info.json'), 'r') as f:
+            train_info = json.load(f)
+        train_tfrecord_path = str(Path(dataset_dir, 'train.tfrecord'))
+        writer = tf.io.TFRecordWriter(train_tfrecord_path)
+        for train_info_ in train_info:
+            image = cv2.imread(str(Path(dataset_dir, 'train', train_info_['img_file'])))
+            height, width, depth = image.shape
+            annotation = {
+                'filename': train_info_['img_file'],
+                'size': {
+                    'width': width,
+                    'height': height,
+                    'depth': depth,
+                },
+                'object': [
+                    {
+                        'bndbox': {
+                            'xmin': 0,
+                            'ymin': 0,
+                            'xmax': width,
+                            'ymax': height,
+                        },
+                        'name': class_list[int(train_info_['target'])],
+                    }
+                ],
+            }
+            image_dir = Path(dataset_dir, 'train')
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+
+        with open(Path(dataset_dir, 'validation', 'info.json'), 'r') as f:
+            validation_info = json.load(f)
+        validation_tfrecord_path = str(Path(dataset_dir, 'validation.tfrecord'))
+        writer = tf.io.TFRecordWriter(validation_tfrecord_path)
+        for validation_info_ in validation_info:
+            image = cv2.imread(str(Path(dataset_dir, 'validation', validation_info_['img_file'])))
+            height, width, depth = image.shape
+            annotation = {
+                'filename': validation_info_['img_file'],
+                'size': {
+                    'width': width,
+                    'height': height,
+                    'depth': depth,
+                },
+                'object': [
+                    {
+                        'bndbox': {
+                            'xmin': 0,
+                            'ymin': 0,
+                            'xmax': width,
+                            'ymax': height,
+                        },
+                        'name': class_list[int(validation_info_['target'])],
+                    }
+                ],
+            }
+            image_dir = Path(dataset_dir, 'validation')
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+        
+        with open(Path(dataset_dir, 'test', 'info.json'), 'r') as f:
+            test_info = json.load(f)
+        test_tfrecord_path = str(Path(dataset_dir, 'test.tfrecord'))
+        writer = tf.io.TFRecordWriter(test_tfrecord_path)
+        for test_info_ in test_info:
+            image = cv2.imread(str(Path(dataset_dir, 'test', test_info_['img_file'])))
+            height, width, depth = image.shape
+            annotation = {
+                'filename': test_info_['img_file'],
+                'size': {
+                    'width': width,
+                    'height': height,
+                    'depth': depth,
+                },
+                'object': [
+                    {
+                        'bndbox': {
+                            'xmin': 0,
+                            'ymin': 0,
+                            'xmax': width,
+                            'ymax': height,
+                        },
+                        'name': class_list[int(test_info_['target'])],
+                    }
+                ],
+            }
+            image_dir = Path(dataset_dir, 'test')
+            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            writer.write(tf_example.SerializeToString())
+        writer.close()
+
+        # --- save class name ---
+        class_name_file_path = str(Path(dataset_dir, 'category_names.txt'))
+        with open(class_name_file_path, 'w') as f:
+            for class_name in class_map:
+                f.write(f'{class_name}\n')
+
+        self.train_dataset = {
+            'tfrecord_path': train_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        self.validation_dataset = {
+            'tfrecord_path': validation_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
+        self.test_dataset = {
+            'tfrecord_path': test_tfrecord_path,
+            'class_name_file_path': class_name_file_path,
+            'model_input_size': model_input_size,
+        }
 
         return
     
