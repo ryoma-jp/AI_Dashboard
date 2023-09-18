@@ -492,22 +492,7 @@ class AI_Model_SDK():
         #print(weight_names_yolo_conv2)
         output_2 = YoloOutput(128, len(yolo_anchor_masks[2]), self.class_num, name='yolo_output_2')(x)
 
-        if training:
-            self.model = keras.Model(inputs, (output_0, output_1, output_2), name='yolov3')
-        else:
-            boxes_0 = Lambda(lambda x: yolo_boxes(x, anchors[masks[0]], classes),
-                            name='yolo_boxes_0')(output_0)
-            boxes_1 = Lambda(lambda x: yolo_boxes(x, anchors[masks[1]], classes),
-                            name='yolo_boxes_1')(output_1)
-            boxes_2 = Lambda(lambda x: yolo_boxes(x, anchors[masks[2]], classes),
-                            name='yolo_boxes_2')(output_2)
-
-            outputs = Lambda(lambda x: yolo_nms(x, anchors, masks, classes),
-                            name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
-            
-            self.model = keras.layers.Model(inputs, outputs, name='yolov3')
-        
-
+        self.model = keras.Model(inputs, (output_0, output_1, output_2), name='yolov3')
 
 
         # --- Load Darknet pretrined weights ---
