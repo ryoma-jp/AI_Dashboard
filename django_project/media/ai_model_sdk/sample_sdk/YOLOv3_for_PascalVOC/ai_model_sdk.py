@@ -16,6 +16,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import to_categorical
 
 from machine_learning.lib.trainer.tf_models.yolov3 import models as yolov3_models
+from machine_learning.lib.trainer.tf_models.yolov3.models import DarknetConv, DarknetBlock
 from machine_learning.lib.trainer.tf_models.yolov3.utils import freeze_all as yolov3_freeze_all
 from machine_learning.lib.trainer.tf_models.yolov3.utils import load_darknet_weights as yolov3_load_darknet_weights
 from machine_learning.lib.utils.utils import download_file
@@ -411,19 +412,151 @@ class AI_Model_SDK():
         Load YOLOv3 model and load weights from darknet pretrained model
         """
         # --- Load model ---
-        self.model = yolov3_models.YoloV3(size=self.input_shape[0], classes=self.class_num, training=True)
+        def YoloConv(filters, name=None):
+            def yolo_conv(x_in):
+                if isinstance(x_in, tuple):
+                    x, x_skip = x_in
+
+                    # concat with skip connection
+                    x = DarknetConv(x, filters, 1)
+                    x = keras.layers.UpSampling2D(2)(x)
+                    x = keras.layers.Concatenate()([x, x_skip])
+                else:
+                    x = inputs = x_in
+
+                x = DarknetConv(x, filters, 1)
+                x = DarknetConv(x, filters * 2, 3)
+                x = DarknetConv(x, filters, 1)
+                x = DarknetConv(x, filters * 2, 3)
+                x = DarknetConv(x, filters, 1)
+                return x
+            return yolo_conv
         
+        def YoloOutput(filters, anchors, classes, name=None):
+            def yolo_output(x_in):
+                x = inputs = x_in
+                x = DarknetConv(x, filters * 2, 3)
+                x = DarknetConv(x, anchors * (classes + 5), 1, batch_norm=False)
+                x = keras.layers.Lambda(lambda x: tf.reshape(x, (-1, tf.shape(x)[1], tf.shape(x)[2],
+                                                    anchors, classes + 5)))(x)
+                return x
+            return yolo_output
+        
+        yolo_anchor_masks = np.array([[6, 7, 8], [3, 4, 5], [0, 1, 2]])
+        #self.model = yolov3_models.YoloV3(size=self.input_shape[0], classes=self.class_num, training=True)
+        
+        x = inputs = keras.layers.Input([self.input_shape[0], self.input_shape[0], 3], name='input')
+        training = True
+        #x_36, x_61, x = Darknet(name='yolo_darknet')(x)
+        x = DarknetConv(x, 32, 3)
+        x = DarknetBlock(x, 64, 1)
+        x = DarknetBlock(x, 128, 2)  # skip connection
+        x = x_36 = DarknetBlock(x, 256, 8)  # skip connection
+        x = x_61 = DarknetBlock(x, 512, 8)
+        x = DarknetBlock(x, 1024, 4)
+        #x_36, x_61, x = keras.Model(inputs, (x_36, x_61, x), name='yolo_darknet')
+
+        weight_names = []
+        for i, layer in enumerate(keras.Model(inputs, x).layers):
+            if (layer.name.startswith('conv2d') or layer.name.startswith('batch_norm')):
+                weight_names.append(layer.name)
+        print(weight_names)
+
+        #weight_names_darknet = []
+        #for i, layer in enumerate(keras.Model(inputs, x).layers):
+        #    if layer.name.startswith('conv2d'):
+        #        weight_names_darknet.append(layer.name)
+        #print(weight_names_darknet)
+
+        x = YoloConv(512, name='yolo_conv_0')(x)
+        #weight_names_yolo_conv0 = []
+        #for i, layer in enumerate(keras.Model(inputs, x).layers):
+        #    if layer.name.startswith('conv2d'):
+        #        weight_names_yolo_conv0.append(layer.name)
+        #print(weight_names_yolo_conv0)
+        output_0 = YoloOutput(512, len(yolo_anchor_masks[0]), self.class_num, name='yolo_output_0')(x)
+
+        x = YoloConv(256, name='yolo_conv_1')((x, x_61))
+        #weight_names_yolo_conv1 = []
+        #for i, layer in enumerate(keras.Model(inputs, x).layers):
+        #    if layer.name.startswith('conv2d'):
+        #        weight_names_yolo_conv1.append(layer.name)
+        #print(weight_names_yolo_conv1)
+        output_1 = YoloOutput(256, len(yolo_anchor_masks[1]), self.class_num, name='yolo_output_1')(x)
+
+        x = YoloConv(128, name='yolo_conv_2')((x, x_36))
+        #weight_names_yolo_conv2 = []
+        #for i, layer in enumerate(keras.Model(inputs, x).layers):
+        #    if layer.name.startswith('conv2d'):
+        #        weight_names_yolo_conv2.append(layer.name)
+        #print(weight_names_yolo_conv2)
+        output_2 = YoloOutput(128, len(yolo_anchor_masks[2]), self.class_num, name='yolo_output_2')(x)
+
+        if training:
+            self.model = keras.Model(inputs, (output_0, output_1, output_2), name='yolov3')
+        else:
+            boxes_0 = Lambda(lambda x: yolo_boxes(x, anchors[masks[0]], classes),
+                            name='yolo_boxes_0')(output_0)
+            boxes_1 = Lambda(lambda x: yolo_boxes(x, anchors[masks[1]], classes),
+                            name='yolo_boxes_1')(output_1)
+            boxes_2 = Lambda(lambda x: yolo_boxes(x, anchors[masks[2]], classes),
+                            name='yolo_boxes_2')(output_2)
+
+            outputs = Lambda(lambda x: yolo_nms(x, anchors, masks, classes),
+                            name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
+            
+            self.model = keras.layers.Model(inputs, outputs, name='yolov3')
+        
+
+
+
         # --- Load Darknet pretrined weights ---
         url = 'https://pjreddie.com/media/files/yolov3.weights'
         download_file(url, save_dir='/tmp')
         
-        pretrained_model = yolov3_models.YoloV3(size=self.input_shape[0], classes=80, training=True)
-        yolov3_load_darknet_weights(pretrained_model, '/tmp/yolov3.weights', False)
+        weights_file = open('/tmp/yolov3.weights', 'rb')
+        major, minor, revision, seen, _ = np.fromfile(weights_file, dtype=np.int32, count=5)    # dummy read (header)
+
+        for i, layer_name in enumerate(weight_names):
+            conv_layer = self.model.get_layer(layer_name)
+            if not conv_layer.name.startswith('conv2d'):
+                continue
+            batch_norm = None
+            if i + 1 < len(weight_names) and weight_names[i + 1].startswith('batch_norm'):
+                batch_norm = self.model.get_layer(weight_names[i + 1])
+
+            filters = conv_layer.filters
+            k_size = conv_layer.kernel_size[0]
+            in_dim = conv_layer.get_input_shape_at(0)[-1]
+
+            if (batch_norm is None):
+                conv_bias = np.ndarray(shape=(filters,), dtype='float32', buffer=weights_file.read(filters * 4))
+            else:
+                conv_bias = None
+                bn_weights = np.fromfile(weights_file, dtype=np.float32, count=4 * filters)
+                bn_weights = bn_weights.reshape((4, filters))[[1, 0, 2, 3]]
+
+            conv_shape = (filters, in_dim, k_size, k_size)
+            conv_weights = np.fromfile(weights_file, dtype=np.float32, count=np.product(conv_shape))
+            conv_weights = conv_weights.reshape(conv_shape).transpose([2, 3, 1, 0])
+
+            if (batch_norm is None):
+                conv_layer.set_weights([conv_weights, conv_bias])
+            else:
+                conv_layer.set_weights([conv_weights])
+                batch_norm.set_weights(bn_weights)
+            conv_layer.trainable = False
+            batch_norm.trainable = False
+        weights_file.close()
+
+        #pretrained_model = yolov3_models.YoloV3(size=self.input_shape[0], classes=80, training=True)
+        #yolov3_load_darknet_weights(pretrained_model, '/tmp/yolov3.weights', False)
         
-        self.model.get_layer('yolo_darknet').set_weights(
-            pretrained_model.get_layer('yolo_darknet').get_weights())
-        yolov3_freeze_all(self.model.get_layer('yolo_darknet'))
+        #self.model.get_layer('yolo_darknet').set_weights(
+        #    pretrained_model.get_layer('yolo_darknet').get_weights())
+        #yolov3_freeze_all(self.model.get_layer('yolo_darknet'))
         
+        #self.model.trainable = False
         self.model.summary()
 
         return
@@ -445,12 +578,12 @@ class AI_Model_SDK():
         self.model.save(save_path)
 
         # --- save custom object ---
-        #custom_objects = {
-        #    'YoloLoss': self.model.loss,
-        #}
-        #model_dir = Path(self.model_path, 'models')
-        #with open(Path(model_dir, 'custom_objects.pickle'), 'wb') as f:
-        #    pickle.dump(custom_objects, f)
+        custom_objects = {
+            'YoloLoss': self.model.loss,
+        }
+        model_dir = Path(self.model_path, 'models')
+        with open(Path(model_dir, 'custom_objects.pickle'), 'wb') as f:
+            pickle.dump(custom_objects, f)
 
         return
     
