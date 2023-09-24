@@ -112,8 +112,13 @@ def _get_model_for_inference(request, streaming_project_name, streaming_model_na
             dataset = Path(dataset_path, 'dataset.pkl')
             pretrained_model = AI_Model_SDK(dataset, model_params)
 
+            get_feature_map = True
+            if (request.session.get('show_features_enable_selected', 'False') == 'False'):
+                get_feature_map = False
+            feature_map_calc_range = request.session.get('show_features_calc_range_selected', 'Model-wise')
+
             trained_model = Path(streaming_model.model_dir, 'models')
-            pretrained_model.load_model(trained_model)
+            pretrained_model.load_model(trained_model, get_feature_map=get_feature_map, feature_map_calc_range=feature_map_calc_range)
             
         else:
             streaming_model_name = 'None'
@@ -233,6 +238,15 @@ def view_streaming(request):
             request.session['streaming_selected_project'] = request.POST.getlist('streaming_view_project_dropdown')[0]
         elif ('streaming_view_model_dropdown' in request.POST):
             request.session['streaming_selected_model'] = request.POST.getlist('streaming_view_model_dropdown')[0]
+        elif ('view_streaming_usbcam_apply' in request.POST):
+            tmp_val = request.POST.getlist('streaming_show_features_enable_selected_submit')[0]
+            if (tmp_val != ''):
+                request.session['show_features_enable_selected'] = tmp_val
+            
+            tmp_val = request.POST.getlist('streaming_show_features_calc_range_selected_submit')[0]
+            if (tmp_val != ''):
+                request.session['show_features_calc_range_selected'] = tmp_val
+            
         elif ('view_streaming_youtube_url_apply' in request.POST):
             request.session['streaming_youtube_url'] = request.POST.getlist('view_streaming_youtube_url')[0]
             

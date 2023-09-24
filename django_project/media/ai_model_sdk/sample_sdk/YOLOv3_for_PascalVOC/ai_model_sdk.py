@@ -1,5 +1,6 @@
 
 import os
+import logging
 import numpy as np
 import pandas as pd
 import cv2
@@ -203,6 +204,7 @@ class AI_Model_SDK():
         self.task = 'object_detection'
         self.decoded_preds = {}
         self.get_feature_map = False
+        self.feature_map_calc_range = 'Model-wise'
 
         self.batch_size = 32
         self.epochs = 100
@@ -575,7 +577,7 @@ class AI_Model_SDK():
 
         return
     
-    def load_model(self, trained_model_path):
+    def load_model(self, trained_model_path, get_feature_map=False, feature_map_calc_range='Model-wise'):
         """Load Model
 
         Load trained model
@@ -596,6 +598,37 @@ class AI_Model_SDK():
         trained_model_path = Path(trained_model_path, 'h5', 'model.h5')
         self.model = keras.models.load_model(trained_model_path, custom_objects=custom_objects)
         self.model.summary()
+
+        self.get_feature_map = get_feature_map
+        self.feature_map_calc_range = feature_map_calc_range
+        if (self.get_feature_map):
+            # --- If get feature map, re-define the model ---
+            #   * Functional layer that includes InputLayer is not supported
+            inputs = self.model.input
+            outputs = self.model.output
+            logging.info('-------------------------------------')
+            logging.info('[DEBUG]')
+            for i, layer in enumerate(self.model.layers):
+                logging.info(f'  * layer.__class__.__name__[#{i}]: {layer.__class__.__name__}')
+                if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
+                    outputs.append(layer.output)
+                elif (layer.__class__.__name__ in ['Functional']):
+                    layer_config = layer.get_config()
+                    #logging.info(f'  * functional_layer.layers: {layer.layers}')
+                    logging.info(f'  * config: {layer_config}')
+                    
+                    for j, func_layer in enumerate(layer_config['layers']):
+                        if (func_layer["class_name"] in ['Conv2D', 'Dense']):
+                            outputs.append(layer.layers[j].output)
+                            #logging.info(f'  * func_layer[#{j}]: {func_layer}')
+                            #logging.info(f'    * class_name: {func_layer["class_name"]}')
+                    
+            logging.info('-------------------------------------')
+            logging.info(f'  * outputs: {outputs}')
+            logging.info(f'  * inputs: {inputs}')
+            logging.info('-------------------------------------')
+            
+            self.model = keras.models.Model(inputs=inputs, outputs=outputs)
 
         return
     
@@ -761,6 +794,59 @@ class AI_Model_SDK():
         self.decoded_preds['detection_scores'] = np.array(scores[0][0:valid_detections[0]])
 
         return self.decoded_preds
+    
+    def create_feature_map(self):
+        """Create Freature Map
+        
+        This function converts ``self.prediction`` to the heatmap.
+        
+        """
+        
+        element_size = [5, 5]   # [H, W]
+        offset = 5
+        border = (2, 5)  # [H, W]
+        
+        # --- calculate min/max for normalization ---
+        if (self.feature_map_calc_range == 'Model-wise'):
+            feature_min = self.prediction[0].min()
+            feature_max = self.prediction[0].max()
+            feature_ch_max = self.prediction[0].shape[-1]
+            for feature in self.prediction[1:]:
+                feature_min = min(feature_min, feature.min())
+                feature_max = max(feature_max, feature.max())
+                feature_ch_max = max(feature_ch_max, feature.shape[-1])
+            layer_num = len(self.prediction)
+            
+            feature_min = [feature_min for _ in range(layer_num)]
+            feature_max = [feature_max for _ in range(layer_num)]
+        else:
+            feature_min = [self.prediction[0].min()]
+            feature_max = [self.prediction[0].max()]
+            feature_ch_max = self.prediction[0].shape[-1]
+            for feature in self.prediction[1:]:
+                feature_min.append(feature.min())
+                feature_max.append(feature.max())
+                feature_ch_max = max(feature_ch_max, feature.shape[-1])
+            layer_num = len(self.prediction)
+        
+        # --- calculate average and create feature map---
+        feature_map_height = element_size[0] * feature_ch_max + border[0] * (feature_ch_max-1) + offset * 2
+        feature_map_width = element_size[1] * layer_num + border[1] * (layer_num-1) + offset * 2
+        feature_map = np.full([feature_map_height, feature_map_width, 3], 255, dtype=np.uint8)
+        
+        for _layer_num, feature in enumerate(self.prediction):
+            feature_mean = feature.mean(axis=tuple(range(len(feature.shape)-1)))
+            feature_norm = (feature_mean - feature_min[_layer_num]) / (feature_max[_layer_num] - feature_min[_layer_num])
+            feature_map_vals = (feature_norm * 255).astype(int)
+            
+            for _ch, feature_map_val in enumerate(feature_map_vals):
+                pos_x = offset + _layer_num*(element_size[1]+border[1])
+                pos_y = offset + _ch*(element_size[0]+border[0])
+                
+                color = np.array([feature_map_val, feature_map_val, 0]).tolist()
+                cv2.rectangle(feature_map, (pos_x, pos_y), (pos_x+element_size[0], pos_y+element_size[1]), color, -1)
+        
+        return feature_map
     
     def eval_model(self, pred, target):
         """Evaluate Model
