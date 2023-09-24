@@ -71,19 +71,25 @@ def inference(request):
                 trained_model = Path(selected_model.model_dir, 'models')
                 ai_model_sdk.load_model(trained_model)
 
+                task_table = {
+                    'img_clf': 'classification',
+                }
                 with open(dataset, 'rb') as f:
                     dataset = pickle.load(f)
                 train_dataset = load_dataset_from_tfrecord(
+                    task_table[config_data['inference_parameter']['model']['task']['value']],
                     dataset.train_dataset['tfrecord_path'], 
                     dataset.train_dataset['class_name_file_path'],
                     dataset.train_dataset['model_input_size'])
                 #train_dataset = train_dataset.batch(ai_model_sdk.batch_size)
                 validation_dataset = load_dataset_from_tfrecord(
+                    task_table[config_data['inference_parameter']['model']['task']['value']],
                     dataset.validation_dataset['tfrecord_path'], 
                     dataset.validation_dataset['class_name_file_path'],
                     dataset.validation_dataset['model_input_size'])
                 #validation_dataset = validation_dataset.batch(ai_model_sdk.batch_size)
                 test_dataset = load_dataset_from_tfrecord(
+                    task_table[config_data['inference_parameter']['model']['task']['value']],
                     dataset.test_dataset['tfrecord_path'], 
                     dataset.test_dataset['class_name_file_path'],
                     dataset.test_dataset['model_input_size'])
@@ -94,7 +100,7 @@ def inference(request):
                 target_tensor = []
                 for train_batch in train_dataset:
                     input_tensor.append(train_batch[0].numpy().tolist())
-                    target_tensor.append(train_batch[1].numpy()[0, -1].tolist())
+                    target_tensor.append(train_batch[1].numpy().tolist())
                 input_tensor = np.array(input_tensor, dtype=np.float32)
                 target_tensor = to_categorical(np.array(target_tensor, dtype=int))
                 prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
@@ -124,7 +130,7 @@ def inference(request):
                 target_tensor = []
                 for validation_batch in validation_dataset:
                     input_tensor.append(validation_batch[0].numpy().tolist())
-                    target_tensor.append(validation_batch[1].numpy()[0, -1].tolist())
+                    target_tensor.append(validation_batch[1].numpy().tolist())
                 input_tensor = np.array(input_tensor, dtype=np.float32)
                 target_tensor = to_categorical(np.array(target_tensor, dtype=int))
                 prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
@@ -154,7 +160,7 @@ def inference(request):
                 target_tensor = []
                 for test_batch in test_dataset:
                     input_tensor.append(test_batch[0].numpy().tolist())
-                    target_tensor.append(test_batch[1].numpy()[0, -1].tolist())
+                    target_tensor.append(test_batch[1].numpy().tolist())
                 input_tensor = np.array(input_tensor, dtype=np.float32)
                 target_tensor = to_categorical(np.array(target_tensor, dtype=int))
                 prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)

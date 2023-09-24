@@ -115,8 +115,7 @@ class AI_Model_SDK():
             print(type(y_train))
             print(y_train)
             print(tf.executing_eagerly())
-            #y_outs = tf.cast(to_categorical(np.reshape(y_train[:, 0, -1].numpy(), [len(y_train), -1]), num_classes=self.class_num), tf.int32)
-            y_outs = tf.cast(y_train[:, 0, -1], tf.int32)
+            y_outs = tf.cast(y_train, tf.int32)
 
             return y_outs
         
@@ -155,6 +154,7 @@ class AI_Model_SDK():
             dataset = pickle.load(f)
 
         self.train_dataset = load_dataset_from_tfrecord(
+            'classification',
             dataset.train_dataset['tfrecord_path'], 
             dataset.train_dataset['class_name_file_path'],
             dataset.train_dataset['model_input_size'])
@@ -167,6 +167,7 @@ class AI_Model_SDK():
             buffer_size=tf.data.experimental.AUTOTUNE)
 
         self.validation_dataset = load_dataset_from_tfrecord(
+            'classification',
             dataset.validation_dataset['tfrecord_path'], 
             dataset.validation_dataset['class_name_file_path'],
             dataset.validation_dataset['model_input_size'])
@@ -179,6 +180,7 @@ class AI_Model_SDK():
             buffer_size=tf.data.experimental.AUTOTUNE)
         
         self.test_dataset = load_dataset_from_tfrecord(
+            'classification',
             dataset.test_dataset['tfrecord_path'], 
             dataset.test_dataset['class_name_file_path'],
             dataset.test_dataset['model_input_size'])

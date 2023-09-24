@@ -33,34 +33,48 @@ from machine_learning.lib.utils.preprocessor import image_preprocess
 #---------------------------------
 # Functions
 #---------------------------------
-def build_tf_example(annotation, class_map, imagefile_dir=''):
+def build_tf_example(task, annotation, class_map=None, imagefile_dir=''):
     """Build TensorFlow Examples
     
     Build TensorFlow examples
     
     Args:
+        task (str): task type('classification', 'detection' or 'regression')
         annotation (dict): annotations as dict object
-                           <dict format>
-                               {
-                                   'filename': <image file name>,
-                                   'size': {
-                                       'width': <image width>,
-                                       'height': <image height>,
-                                       'depth': <channels>,
-                                   },
-                                   'object': [
-                                       {
-                                           'bndbox': {
-                                               'xmin': <x pos of left top>,
-                                               'ymin': <y pos of left top>,
-                                               'xmax': <x pos of right bottom>,
-                                               'xmin': <x pos of right bottom>,
-                                           },
-                                           'name': <class name>,
-                                       },
-                                       ...
-                                   ]
-                               }
+                            if task is 'classification', annotation is below
+                            <dict format>
+                                {
+                                    'filename': <image file name>,
+                                    'size': {
+                                        'width': <image width>,
+                                        'height': <image height>,
+                                        'depth': <channels>,
+                                    },
+                                    'name': <class name>
+                                }
+                            if task is 'detection', annotation is below
+                            <dict format>
+                                {
+                                    'filename': <image file name>,
+                                    'size': {
+                                        'width': <image width>,
+                                        'height': <image height>,
+                                        'depth': <channels>,
+                                    },
+                                    'object': [
+                                        {
+                                            'bndbox': {
+                                                'xmin': <x pos of left top>,
+                                                'ymin': <y pos of left top>,
+                                                'xmax': <x pos of right bottom>,
+                                                'xmin': <x pos of right bottom>,
+                                            },
+                                            'name': <class name>,
+                                        },
+                                        ...
+                                    ]
+                                }
+                            if task is 'regression', annotation is below
         class_map (dict): mapping data between the class name and the class id as dict object
                           <dict format>
                               {
@@ -69,68 +83,103 @@ def build_tf_example(annotation, class_map, imagefile_dir=''):
                               }
         imagefile_dir (pathlib.Path): directory of image file
     """
-    img_path = Path(imagefile_dir, annotation['filename'])
-    img_raw = open(img_path, 'rb').read()
-    key = hashlib.sha256(img_raw).hexdigest()
+    if (task == 'classification'):
+        img_path = Path(imagefile_dir, annotation['filename'])
+        img_raw = open(img_path, 'rb').read()
+        key = hashlib.sha256(img_raw).hexdigest()
 
-    width = int(annotation['size']['width'])
-    height = int(annotation['size']['height'])
+        width = int(annotation['size']['width'])
+        height = int(annotation['size']['height'])
 
-    xmin = []
-    ymin = []
-    xmax = []
-    ymax = []
-    bbox_width = []
-    bbox_height = []
-    bbox = []
-    classes = []
-    classes_text = []
-    classes_name = []
-    if 'object' in annotation:
-        for obj in annotation['object']:
-            xmin.append(float(obj['bndbox']['xmin']) / width)
-            ymin.append(float(obj['bndbox']['ymin']) / height)
-            xmax.append(float(obj['bndbox']['xmax']) / width)
-            ymax.append(float(obj['bndbox']['ymax']) / height)
-            bbox_width.append(float(obj['bndbox']['xmax']) / width - float(obj['bndbox']['xmin']) / width)
-            bbox_height.append(float(obj['bndbox']['ymax']) / height - float(obj['bndbox']['ymin']) / height)
-            bbox.append([
-                float(obj['bndbox']['xmin']),
-                float(obj['bndbox']['ymin']),
-                float(obj['bndbox']['xmax']) - float(obj['bndbox']['xmin']),
-                float(obj['bndbox']['ymax']) - float(obj['bndbox']['ymin']),
-            ])
-            classes_text.append(obj['name'].encode('utf8'))
-            classes.append(class_map[obj['name']])
-            classes_name.append(obj['name'])
+        classes_text = annotation['name'].encode('utf8')
+        classes = class_map[annotation['name']]
+        classes_name = annotation['name']
 
-    example = tf.train.Example(features=tf.train.Features(feature={
-        'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
-        'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
-        'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
-        'source_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
-        'key/sha256': tf.train.Feature(bytes_list=tf.train.BytesList(value=[key.encode('utf8')])),
-        'encoded': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
-        'format': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_path.suffix.lstrip('.').encode('utf8')])),
-        'target/bbox/x': tf.train.Feature(float_list=tf.train.FloatList(value=xmin)),
-        'target/bbox/y': tf.train.Feature(float_list=tf.train.FloatList(value=ymin)),
-        'target/bbox/xmax': tf.train.Feature(float_list=tf.train.FloatList(value=xmax)),
-        'target/bbox/ymax': tf.train.Feature(float_list=tf.train.FloatList(value=ymax)),
-        'target/bbox/width': tf.train.Feature(float_list=tf.train.FloatList(value=bbox_width)),
-        'target/bbox/height': tf.train.Feature(float_list=tf.train.FloatList(value=bbox_height)),
-        'target/class_text': tf.train.Feature(bytes_list=tf.train.BytesList(value=classes_text)),
-        'target/class_id': tf.train.Feature(int64_list=tf.train.Int64List(value=classes)),
-    }))
+        example = tf.train.Example(features=tf.train.Features(feature={
+            'task': tf.train.Feature(bytes_list=tf.train.BytesList(value=[task.encode('utf8')])),
+            'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+            'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+            'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
+            'source_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
+            'key/sha256': tf.train.Feature(bytes_list=tf.train.BytesList(value=[key.encode('utf8')])),
+            'encoded': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
+            'format': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_path.suffix.lstrip('.').encode('utf8')])),
+            'target/class_text': tf.train.Feature(bytes_list=tf.train.BytesList(value=[classes_text])),
+            'target/class_id': tf.train.Feature(int64_list=tf.train.Int64List(value=[classes])),
+        }))
 
-    info_target = {
-        'class_id': classes,
-        'category_name': classes_name,
-        'bbox': bbox,
-    }
-    
+        info_target = {
+            'class_id': classes,
+            'category_name': classes_name,
+        }
+
+    elif (task == 'detection'):
+        img_path = Path(imagefile_dir, annotation['filename'])
+        img_raw = open(img_path, 'rb').read()
+        key = hashlib.sha256(img_raw).hexdigest()
+
+        width = int(annotation['size']['width'])
+        height = int(annotation['size']['height'])
+
+        xmin = []
+        ymin = []
+        xmax = []
+        ymax = []
+        bbox_width = []
+        bbox_height = []
+        bbox = []
+        classes = []
+        classes_text = []
+        classes_name = []
+        if 'object' in annotation:
+            for obj in annotation['object']:
+                xmin.append(float(obj['bndbox']['xmin']) / width)
+                ymin.append(float(obj['bndbox']['ymin']) / height)
+                xmax.append(float(obj['bndbox']['xmax']) / width)
+                ymax.append(float(obj['bndbox']['ymax']) / height)
+                bbox_width.append(float(obj['bndbox']['xmax']) / width - float(obj['bndbox']['xmin']) / width)
+                bbox_height.append(float(obj['bndbox']['ymax']) / height - float(obj['bndbox']['ymin']) / height)
+                bbox.append([
+                    float(obj['bndbox']['xmin']),
+                    float(obj['bndbox']['ymin']),
+                    float(obj['bndbox']['xmax']) - float(obj['bndbox']['xmin']),
+                    float(obj['bndbox']['ymax']) - float(obj['bndbox']['ymin']),
+                ])
+                classes_text.append(obj['name'].encode('utf8'))
+                classes.append(class_map[obj['name']])
+                classes_name.append(obj['name'])
+
+        example = tf.train.Example(features=tf.train.Features(feature={
+            'task': tf.train.Feature(bytes_list=tf.train.BytesList(value=[task.encode('utf8')])),
+            'height': tf.train.Feature(int64_list=tf.train.Int64List(value=[height])),
+            'width': tf.train.Feature(int64_list=tf.train.Int64List(value=[width])),
+            'filename': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
+            'source_id': tf.train.Feature(bytes_list=tf.train.BytesList(value=[annotation['filename'].encode('utf8')])),
+            'key/sha256': tf.train.Feature(bytes_list=tf.train.BytesList(value=[key.encode('utf8')])),
+            'encoded': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
+            'format': tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_path.suffix.lstrip('.').encode('utf8')])),
+            'target/bbox/x': tf.train.Feature(float_list=tf.train.FloatList(value=xmin)),
+            'target/bbox/y': tf.train.Feature(float_list=tf.train.FloatList(value=ymin)),
+            'target/bbox/xmax': tf.train.Feature(float_list=tf.train.FloatList(value=xmax)),
+            'target/bbox/ymax': tf.train.Feature(float_list=tf.train.FloatList(value=ymax)),
+            'target/bbox/width': tf.train.Feature(float_list=tf.train.FloatList(value=bbox_width)),
+            'target/bbox/height': tf.train.Feature(float_list=tf.train.FloatList(value=bbox_height)),
+            'target/class_text': tf.train.Feature(bytes_list=tf.train.BytesList(value=classes_text)),
+            'target/class_id': tf.train.Feature(int64_list=tf.train.Int64List(value=classes)),
+        }))
+
+        info_target = {
+            'class_id': classes,
+            'category_name': classes_name,
+            'bbox': bbox,
+        }
+    else:
+        # --- task is 'regression' ---
+        pass
+
     return example, info_target
 
-def load_dataset_from_tfrecord(tfrecord, class_name_file, img_size):
+def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
     """Load Dataset from TFRecord
     
     Load tfrecord and output dataset as TensorFlow dataset
@@ -144,32 +193,49 @@ def load_dataset_from_tfrecord(tfrecord, class_name_file, img_size):
         dataset (tensorflow.python.data.ops.dataset_ops.MapDataset)
     """
     
-    def _parse_tfrecord(tfrecord, class_table, size):
-        # --- parse and scaling ---
-        features = {
-            'encoded': tf.io.FixedLenFeature([], tf.string),
-            'target/bbox/x': tf.io.VarLenFeature(tf.float32),
-            'target/bbox/y': tf.io.VarLenFeature(tf.float32),
-            'target/bbox/xmax': tf.io.VarLenFeature(tf.float32),
-            'target/bbox/ymax': tf.io.VarLenFeature(tf.float32),
-            'target/class_text': tf.io.VarLenFeature(tf.string),
-        }
-        x = tf.io.parse_single_example(tfrecord, features)
-        x_train = tf.image.decode_jpeg(x['encoded'], channels=3)
-        x_train = tf.image.resize(x_train, (size, size))
-        
-        # --- parse annotations ---
-        class_names = tf.sparse.to_dense(x['target/class_text'], default_value='')
-        labels = tf.cast(class_table.lookup(class_names), tf.float32)
-        y_train = tf.stack([tf.sparse.to_dense(x['target/bbox/x']),
-                        tf.sparse.to_dense(x['target/bbox/y']),
-                        tf.sparse.to_dense(x['target/bbox/xmax']),
-                        tf.sparse.to_dense(x['target/bbox/ymax']),
-                        labels], axis=1)
-        paddings = [[0, 100 - tf.shape(y_train)[0]], [0, 0]]
-        print(paddings)
-        y_train = tf.pad(y_train, paddings)
-        
+    def _parse_tfrecord(task, tfrecord, class_table, size):
+        if (task == 'classification'):
+            # --- parse and scaling ---
+            features = {
+                'encoded': tf.io.FixedLenFeature([], tf.string),
+                'target/class_text': tf.io.VarLenFeature(tf.string),
+            }
+            x = tf.io.parse_single_example(tfrecord, features)
+            x_train = tf.image.decode_jpeg(x['encoded'], channels=3)
+            x_train = tf.image.resize(x_train, (size, size))
+            
+            # --- parse annotations ---
+            class_names = tf.sparse.to_dense(x['target/class_text'], default_value='')
+            y_train = tf.cast(class_table.lookup(class_names), tf.float32)
+
+        elif (task == 'detection'):
+            # --- parse and scaling ---
+            features = {
+                'encoded': tf.io.FixedLenFeature([], tf.string),
+                'target/bbox/x': tf.io.VarLenFeature(tf.float32),
+                'target/bbox/y': tf.io.VarLenFeature(tf.float32),
+                'target/bbox/xmax': tf.io.VarLenFeature(tf.float32),
+                'target/bbox/ymax': tf.io.VarLenFeature(tf.float32),
+                'target/class_text': tf.io.VarLenFeature(tf.string),
+            }
+            x = tf.io.parse_single_example(tfrecord, features)
+            x_train = tf.image.decode_jpeg(x['encoded'], channels=3)
+            x_train = tf.image.resize(x_train, (size, size))
+            
+            # --- parse annotations ---
+            class_names = tf.sparse.to_dense(x['target/class_text'], default_value='')
+            labels = tf.cast(class_table.lookup(class_names), tf.float32)
+            y_train = tf.stack([tf.sparse.to_dense(x['target/bbox/x']),
+                            tf.sparse.to_dense(x['target/bbox/y']),
+                            tf.sparse.to_dense(x['target/bbox/xmax']),
+                            tf.sparse.to_dense(x['target/bbox/ymax']),
+                            labels], axis=1)
+            paddings = [[0, 100 - tf.shape(y_train)[0]], [0, 0]]
+            y_train = tf.pad(y_train, paddings)
+        else:
+            # --- task is 'regression' ---
+            pass
+
         return x_train, y_train
     
     # --- load class table and tfrecord ---
@@ -178,7 +244,7 @@ def load_dataset_from_tfrecord(tfrecord, class_name_file, img_size):
     dataset = tf.data.Dataset.list_files(tfrecord).flat_map(tf.data.TFRecordDataset)
     
     # --- convert format to tf.data.Dataset and return---
-    return dataset.map(lambda x: _parse_tfrecord(x, class_table, img_size))
+    return dataset.map(lambda x: _parse_tfrecord(task, x, class_table, img_size))
         
 #---------------------------------
 # Class
@@ -637,20 +703,10 @@ class DataLoaderCIFAR10(DataLoader):
                     'height': height,
                     'depth': depth,
                 },
-                'object': [
-                    {
-                        'bndbox': {
-                            'xmin': 0,
-                            'ymin': 0,
-                            'xmax': width,
-                            'ymax': height,
-                        },
-                        'name': class_list[int(train_info_['target'])],
-                    }
-                ],
+                'name': class_list[int(train_info_['target'])],
             }
             image_dir = Path(dataset_dir, 'train')
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('classification', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
         writer.close()
 
@@ -668,20 +724,10 @@ class DataLoaderCIFAR10(DataLoader):
                     'height': height,
                     'depth': depth,
                 },
-                'object': [
-                    {
-                        'bndbox': {
-                            'xmin': 0,
-                            'ymin': 0,
-                            'xmax': width,
-                            'ymax': height,
-                        },
-                        'name': class_list[int(validation_info_['target'])],
-                    }
-                ],
+                'name': class_list[int(validation_info_['target'])],
             }
             image_dir = Path(dataset_dir, 'validation')
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('classification', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
         writer.close()
         
@@ -699,20 +745,10 @@ class DataLoaderCIFAR10(DataLoader):
                     'height': height,
                     'depth': depth,
                 },
-                'object': [
-                    {
-                        'bndbox': {
-                            'xmin': 0,
-                            'ymin': 0,
-                            'xmax': width,
-                            'ymax': height,
-                        },
-                        'name': class_list[int(test_info_['target'])],
-                    }
-                ],
+                'name': class_list[int(test_info_['target'])],
             }
             image_dir = Path(dataset_dir, 'test')
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('classification', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
         writer.close()
 
@@ -896,20 +932,10 @@ class DataLoaderMNIST(DataLoader):
                     'height': height,
                     'depth': depth,
                 },
-                'object': [
-                    {
-                        'bndbox': {
-                            'xmin': 0,
-                            'ymin': 0,
-                            'xmax': width,
-                            'ymax': height,
-                        },
-                        'name': class_list[int(train_info_['target'])],
-                    }
-                ],
+                'name': class_list[int(train_info_['target'])],
             }
             image_dir = Path(dataset_dir, 'train')
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('classification', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
         writer.close()
 
@@ -927,20 +953,10 @@ class DataLoaderMNIST(DataLoader):
                     'height': height,
                     'depth': depth,
                 },
-                'object': [
-                    {
-                        'bndbox': {
-                            'xmin': 0,
-                            'ymin': 0,
-                            'xmax': width,
-                            'ymax': height,
-                        },
-                        'name': class_list[int(validation_info_['target'])],
-                    }
-                ],
+                'name': class_list[int(validation_info_['target'])],
             }
             image_dir = Path(dataset_dir, 'validation')
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('classification', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
         writer.close()
         
@@ -958,20 +974,10 @@ class DataLoaderMNIST(DataLoader):
                     'height': height,
                     'depth': depth,
                 },
-                'object': [
-                    {
-                        'bndbox': {
-                            'xmin': 0,
-                            'ymin': 0,
-                            'xmax': width,
-                            'ymax': height,
-                        },
-                        'name': class_list[int(test_info_['target'])],
-                    }
-                ],
+                'name': class_list[int(test_info_['target'])],
             }
             image_dir = Path(dataset_dir, 'test')
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('classification', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
         writer.close()
 
@@ -1247,7 +1253,7 @@ class DataLoaderPascalVOC2012(DataLoader):
         for name in train_txt[0:n_train]:
             annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
             annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('detection', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
 
             # --- copy image file ---
@@ -1271,7 +1277,7 @@ class DataLoaderPascalVOC2012(DataLoader):
         for name in train_txt[n_train::]:
             annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
             annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('detection', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
 
             # --- copy image file ---
@@ -1296,7 +1302,7 @@ class DataLoaderPascalVOC2012(DataLoader):
         for name in test_txt:
             annotation_xml = lxml_etree.fromstring(open(Path(annotation_dir, f'{name}.xml'), 'r').read())
             annotation = parse_xml(annotation_xml, multi_tag=['object'])['annotation']
-            tf_example, info_target = build_tf_example(annotation, class_map, imagefile_dir=image_dir)
+            tf_example, info_target = build_tf_example('detection', annotation, class_map, imagefile_dir=image_dir)
             writer.write(tf_example.SerializeToString())
 
             # --- copy image file ---
