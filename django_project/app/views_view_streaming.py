@@ -198,7 +198,7 @@ def _create_frame(frame, overlay,
             if (width_sub > 0):
                 feature_map = cv2.hconcat([feature_map, np.full([feature_map.shape[0], abs(width_sub), 3], 255, dtype=np.uint8)])
             elif (width_sub < 0):
-                frame = cv2.hconcat([frame, np.zeros([frame.shape[1], abs(width_sub), 3], np.uint8)])
+                frame = cv2.hconcat([frame, np.zeros([frame.shape[0], abs(width_sub), 3], np.uint8)])
             
             frame = cv2.vconcat([frame, feature_map])
     

@@ -702,9 +702,9 @@ class AI_Model_SDK():
 
         if (preprocessing):
             x = self.preprocess_data(x)
-        y = self.model.predict(x)
+        self.prediction = self.model.predict(x)
         
-        return y
+        return self.prediction
     
     def decode_prediction(self, pred):
         """Decode Prediction
@@ -785,8 +785,7 @@ class AI_Model_SDK():
         boxes_1 = yolo_boxes(pred[1], yolo_anchors[yolo_anchor_masks[1]], 20)
         boxes_2 = yolo_boxes(pred[2], yolo_anchors[yolo_anchor_masks[2]], 20)
         
-        self.prediction = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
-        boxes, scores, classes, valid_detections = self.prediction
+        boxes, scores, classes, valid_detections = yolo_nms((boxes_0[:3], boxes_1[:3], boxes_2[:3]), yolo_anchors, yolo_anchor_masks, 20)
             
         self.decoded_preds['num_detections'] = valid_detections[0]
         self.decoded_preds['detection_boxes'] = np.array(boxes[0][0:valid_detections[0]])[:, [1, 0, 3, 2]]  # [x1, y1, x2, y2]->[y1, x1, y2, x1]
@@ -807,11 +806,12 @@ class AI_Model_SDK():
         border = (2, 5)  # [H, W]
         
         # --- calculate min/max for normalization ---
+        #   * self.prediction[0:2] : boxes
         if (self.feature_map_calc_range == 'Model-wise'):
-            feature_min = self.prediction[0].min()
-            feature_max = self.prediction[0].max()
-            feature_ch_max = self.prediction[0].shape[-1]
-            for feature in self.prediction[1:]:
+            feature_min = self.prediction[3].min()
+            feature_max = self.prediction[3].max()
+            feature_ch_max = self.prediction[3].shape[-1]
+            for feature in self.prediction[4:]:
                 feature_min = min(feature_min, feature.min())
                 feature_max = max(feature_max, feature.max())
                 feature_ch_max = max(feature_ch_max, feature.shape[-1])
@@ -820,10 +820,10 @@ class AI_Model_SDK():
             feature_min = [feature_min for _ in range(layer_num)]
             feature_max = [feature_max for _ in range(layer_num)]
         else:
-            feature_min = [self.prediction[0].min()]
-            feature_max = [self.prediction[0].max()]
-            feature_ch_max = self.prediction[0].shape[-1]
-            for feature in self.prediction[1:]:
+            feature_min = [self.prediction[3].min()]
+            feature_max = [self.prediction[3].max()]
+            feature_ch_max = self.prediction[3].shape[-1]
+            for feature in self.prediction[4:]:
                 feature_min.append(feature.min())
                 feature_max.append(feature.max())
                 feature_ch_max = max(feature_ch_max, feature.shape[-1])
@@ -834,7 +834,7 @@ class AI_Model_SDK():
         feature_map_width = element_size[1] * layer_num + border[1] * (layer_num-1) + offset * 2
         feature_map = np.full([feature_map_height, feature_map_width, 3], 255, dtype=np.uint8)
         
-        for _layer_num, feature in enumerate(self.prediction):
+        for _layer_num, feature in enumerate(self.prediction[3:]):
             feature_mean = feature.mean(axis=tuple(range(len(feature.shape)-1)))
             feature_norm = (feature_mean - feature_min[_layer_num]) / (feature_max[_layer_num] - feature_min[_layer_num])
             feature_map_vals = (feature_norm * 255).astype(int)
