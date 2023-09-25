@@ -9,7 +9,7 @@ pydot==1.4.2
 pydotplus==2.0.2
 graphviz==0.19.1
 numba==0.57.1
-opencv-python==4.5.5.64
+opencv-python==4.7.0.72
 scikit-learn==1.1.2
 lightgbm==3.3.5
 tensorflow-hub==0.12.0
@@ -21,6 +21,6 @@ torch==1.12.1+cu113
 torchvision==0.13.1+cu113
 torchaudio==0.12.1
 
-yt-dlp==2023.3.4
-cap-from-youtube==0.0.9
+yt-dlp==2023.9.24
+cap-from-youtube==0.0.10
 validators==0.20.0

@@ -498,18 +498,13 @@ def youtube(request):
             #logging.info('-------------------------------------')
             if (streaming_model_name in pretrained_model_list):
                 # --- Convert format ---
-                overlay_for_inference = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
-                overlay_for_inference = overlay_for_inference.resize(pretrained_model.input_shape[0:2])
-                overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
-                
-                # --- Infrerence ---
-                pretrained_model.predict(overlay_for_inference)
-                #logging.info('-------------------------------------')
-                #logging.info('[DEBUG]')
-                #logging.info(f'  * pretrained_model.prediction = {pretrained_model.prediction}')
-                #logging.info(f'  * pretrained_model.prediction[0] = {pretrained_model.prediction[0]}')
-                #logging.info(f'  * len(pretrained_model.prediction) = {len(pretrained_model.prediction)}')
-                #logging.info('-------------------------------------')
+                    overlay_for_inference = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
+                    #overlay_for_inference = overlay_for_inference.resize(pretrained_model.input_shape[0:2])
+                    #overlay_for_inference = np.expand_dims(np.asarray(overlay_for_inference), axis=0)
+                    
+                    # --- Infrerence ---
+                    pred = pretrained_model.predict(overlay_for_inference)
+                    pretrained_model.decode_prediction(pred)
                 
             # --- Put Text ---
             time_end = time.time()
