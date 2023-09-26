@@ -856,7 +856,8 @@ class AI_Model_SDK():
             # --- create feature map ---
             #   * self.prediction: [N, H, W, C]
 
-            feature = self.prediction[3]
+            feature_index = self.feature_name_list.index(self.feature_map_calc_range)
+            feature = self.prediction[3 + feature_index]    # 3: boxes
             element_size = [64, 64]   # [H, W]
             n_element_columns = 8
             border = (3, 3)  # [H, W]
