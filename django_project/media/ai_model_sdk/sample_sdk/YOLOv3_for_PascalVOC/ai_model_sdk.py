@@ -599,6 +599,12 @@ class AI_Model_SDK():
         self.model = keras.models.load_model(trained_model_path, custom_objects=custom_objects)
         self.model.summary()
 
+        # --- Get feature names ---
+        self.feature_name_list = []
+        for i, layer in enumerate(self.model.layers):
+            if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
+                self.feature_name_list.append(layer.name)
+
         self.get_feature_map = get_feature_map
         self.feature_map_calc_range = feature_map_calc_range
         if (self.get_feature_map):
@@ -609,7 +615,7 @@ class AI_Model_SDK():
             logging.info('-------------------------------------')
             logging.info('[DEBUG]')
             for i, layer in enumerate(self.model.layers):
-                logging.info(f'  * layer.__class__.__name__[#{i}]: {layer.__class__.__name__}')
+                logging.info(f'  * [#{i}]: {layer.__class__.__name__} ({layer.name})')
                 if (layer.__class__.__name__ in ['Conv2D', 'Dense']):
                     outputs.append(layer.output)
                 elif (layer.__class__.__name__ in ['Functional']):
@@ -801,51 +807,79 @@ class AI_Model_SDK():
         
         """
         
-        element_size = [5, 5]   # [H, W]
-        offset = 5
-        border = (2, 5)  # [H, W]
-        
-        # --- calculate min/max for normalization ---
-        #   * self.prediction[0:2] : boxes
-        if (self.feature_map_calc_range == 'Model-wise'):
-            feature_min = self.prediction[3].min()
-            feature_max = self.prediction[3].max()
-            feature_ch_max = self.prediction[3].shape[-1]
-            for feature in self.prediction[4:]:
-                feature_min = min(feature_min, feature.min())
-                feature_max = max(feature_max, feature.max())
-                feature_ch_max = max(feature_ch_max, feature.shape[-1])
-            layer_num = len(self.prediction)
+        if (self.feature_map_calc_range in ['Model-wise', 'Layer-wise']):
+            element_size = [5, 5]   # [H, W]
+            offset = 5
+            border = (2, 5)  # [H, W]
             
-            feature_min = [feature_min for _ in range(layer_num)]
-            feature_max = [feature_max for _ in range(layer_num)]
-        else:
-            feature_min = [self.prediction[3].min()]
-            feature_max = [self.prediction[3].max()]
-            feature_ch_max = self.prediction[3].shape[-1]
-            for feature in self.prediction[4:]:
-                feature_min.append(feature.min())
-                feature_max.append(feature.max())
-                feature_ch_max = max(feature_ch_max, feature.shape[-1])
-            layer_num = len(self.prediction)
-        
-        # --- calculate average and create feature map---
-        feature_map_height = element_size[0] * feature_ch_max + border[0] * (feature_ch_max-1) + offset * 2
-        feature_map_width = element_size[1] * layer_num + border[1] * (layer_num-1) + offset * 2
-        feature_map = np.full([feature_map_height, feature_map_width, 3], 255, dtype=np.uint8)
-        
-        for _layer_num, feature in enumerate(self.prediction[3:]):
-            feature_mean = feature.mean(axis=tuple(range(len(feature.shape)-1)))
-            feature_norm = (feature_mean - feature_min[_layer_num]) / (feature_max[_layer_num] - feature_min[_layer_num])
-            feature_map_vals = (feature_norm * 255).astype(int)
-            
-            for _ch, feature_map_val in enumerate(feature_map_vals):
-                pos_x = offset + _layer_num*(element_size[1]+border[1])
-                pos_y = offset + _ch*(element_size[0]+border[0])
+            # --- calculate min/max for normalization ---
+            #   * self.prediction[0:2] : boxes
+            if (self.feature_map_calc_range == 'Model-wise'):
+                feature_min = self.prediction[3].min()
+                feature_max = self.prediction[3].max()
+                feature_ch_max = self.prediction[3].shape[-1]
+                for feature in self.prediction[4:]:
+                    feature_min = min(feature_min, feature.min())
+                    feature_max = max(feature_max, feature.max())
+                    feature_ch_max = max(feature_ch_max, feature.shape[-1])
+                layer_num = len(self.prediction)
                 
-                color = np.array([feature_map_val, feature_map_val, 0]).tolist()
-                cv2.rectangle(feature_map, (pos_x, pos_y), (pos_x+element_size[0], pos_y+element_size[1]), color, -1)
-        
+                feature_min = [feature_min for _ in range(layer_num)]
+                feature_max = [feature_max for _ in range(layer_num)]
+            else:
+                feature_min = [self.prediction[3].min()]
+                feature_max = [self.prediction[3].max()]
+                feature_ch_max = self.prediction[3].shape[-1]
+                for feature in self.prediction[4:]:
+                    feature_min.append(feature.min())
+                    feature_max.append(feature.max())
+                    feature_ch_max = max(feature_ch_max, feature.shape[-1])
+                layer_num = len(self.prediction)
+            
+            # --- calculate average and create feature map---
+            feature_map_height = element_size[0] * feature_ch_max + border[0] * (feature_ch_max-1) + offset * 2
+            feature_map_width = element_size[1] * layer_num + border[1] * (layer_num-1) + offset * 2
+            feature_map = np.full([feature_map_height, feature_map_width, 3], 255, dtype=np.uint8)
+            
+            for _layer_num, feature in enumerate(self.prediction[3:]):
+                feature_mean = feature.mean(axis=tuple(range(len(feature.shape)-1)))
+                feature_norm = (feature_mean - feature_min[_layer_num]) / (feature_max[_layer_num] - feature_min[_layer_num])
+                feature_map_vals = (feature_norm * 255).astype(int)
+                
+                for _ch, feature_map_val in enumerate(feature_map_vals):
+                    pos_x = offset + _layer_num*(element_size[1]+border[1])
+                    pos_y = offset + _ch*(element_size[0]+border[0])
+                    
+                    color = np.array([feature_map_val, feature_map_val, 0]).tolist()
+                    cv2.rectangle(feature_map, (pos_x, pos_y), (pos_x+element_size[0], pos_y+element_size[1]), color, -1)
+        else:
+            # --- create feature map ---
+            #   * self.prediction: [N, H, W, C]
+
+            feature = self.prediction[3]
+            element_size = [64, 64]   # [H, W]
+            n_element_columns = 8
+            border = (3, 3)  # [H, W]
+            N, H, W, C = feature.shape
+
+            feature_map_width = element_size[1] * n_element_columns + border[1] * (n_element_columns-1)
+            feature_map_height = element_size[0] * (C//n_element_columns) + border[0] * ((C//n_element_columns)-1)
+            feature_map = np.full([feature_map_height, feature_map_width], 255, dtype=np.uint8)
+
+            feature_min = feature.min()
+            feature_max = feature.max()
+
+            for ch in range(C):
+                feature_element = feature[0, :, :, ch]
+                feature_element = (feature_element - feature_min) * (255 / (feature_max - feature_min)).astype(np.uint8)
+                feature_element = cv2.resize(feature_element, (element_size[1], element_size[0]), interpolation=cv2.INTER_AREA)
+
+                pos_x = (ch % n_element_columns) * (element_size[1] + border[1])
+                pos_y = (ch // n_element_columns) * (element_size[0] + border[0])
+                feature_map[pos_y:pos_y+element_size[0], pos_x:pos_x+element_size[1]] = feature_element
+
+            feature_map = cv2.cvtColor(feature_map, cv2.COLOR_GRAY2RGB)
+
         return feature_map
     
     def eval_model(self, pred, target):

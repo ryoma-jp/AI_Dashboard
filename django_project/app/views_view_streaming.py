@@ -349,6 +349,7 @@ def view_streaming(request):
         'show_features_enable_selected': show_features_enable_selected,
         'show_features_supported_model': show_features_supported_model,
         'show_features_calc_range_selected': show_features_calc_range_selected,
+        'show_features_name_list': pretrained_model.feature_name_list,
     }
     return render(request, 'view_streaming.html', context)
 

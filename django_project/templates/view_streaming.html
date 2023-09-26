@@ -158,6 +158,9 @@
               <ul class="dropdown-menu" area-labelledby="streaming_show_features_calc_range_selected" id="streaming_show_features_calc_range_selected_list">
                 <li><button type="button" class="dropdown-item" value="Model-wise">Model-wise</button></li>
                 <li><button type="button" class="dropdown-item" value="Layer-wise">Layer-wise</button></li>
+                {% for feature_name in show_features_name_list %}
+                  <li><button type="button" class="dropdown-item" value="{{ feature_name }}">{{ feature_name }}</button></li>
+                {% endfor %}
               </ul>
                 <script>
                   // id=streaming_show_features_calc_range_selected_listのdropdown-menu内のliタグに対してリスナにクリックイベントを追加する
@@ -319,6 +322,9 @@
               <ul class="dropdown-menu" area-labelledby="streaming_show_features_calc_range_selected" id="streaming_show_features_calc_range_selected_list">
                 <li><button type="button" class="dropdown-item" value="Model-wise">Model-wise</button></li>
                 <li><button type="button" class="dropdown-item" value="Layer-wise">Layer-wise</button></li>
+                {% for feature_name in show_features_name_list %}
+                  <li><button type="button" class="dropdown-item" value="{{ feature_name }}">{{ feature_name }}</button></li>
+                {% endfor %}
               </ul>
                 <script>
                   // id=streaming_show_features_calc_range_selected_listのdropdown-menu内のliタグに対してリスナにクリックイベントを追加する
