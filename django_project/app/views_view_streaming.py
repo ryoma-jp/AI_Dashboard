@@ -277,9 +277,13 @@ def view_streaming(request):
     show_features_enable_selected = request.session.get('show_features_enable_selected', 'False')
     show_features_calc_range_selected = request.session.get('show_features_calc_range_selected', 'Model-wise')
 
-    streaming_model_name, pretrained_model, category_names = None, None, None    
+    streaming_model_name, pretrained_model, category_names = None, None, None
     if (streaming_selected_project in [proj.name for proj in Project.objects.all()]):
         streaming_model_name, pretrained_model, category_names = _get_model_for_inference(request, streaming_selected_project, streaming_selected_model)
+    if (pretrained_model is not None):
+        feature_name_list = pretrained_model.feature_name_list
+    else:
+        feature_name_list = []
 
     get_feature_map = True
     if (show_features_enable_selected == 'False'):
@@ -349,7 +353,7 @@ def view_streaming(request):
         'show_features_enable_selected': show_features_enable_selected,
         'show_features_supported_model': show_features_supported_model,
         'show_features_calc_range_selected': show_features_calc_range_selected,
-        'show_features_name_list': pretrained_model.feature_name_list,
+        'show_features_name_list': feature_name_list,
     }
     return render(request, 'view_streaming.html', context)
 
