@@ -322,16 +322,18 @@ def view_streaming(request):
     default_url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
     youtube_url = request.session.get('streaming_youtube_url', default_url)
     if (not validators.url(youtube_url)):
+        logging.info('-------------------------------------')
+        logging.info('not validators.url(youtube_url) = True')
+        logging.info('-------------------------------------')
         # --- if got the invalid url, set default_url ---
         request.session['streaming_youtube_url'] = default_url
         youtube_url = default_url
-    else:
-        try:
-            cap_from_youtube(url, resolution)
-        except:
-            request.session['streaming_youtube_url'] = default_url
-            youtube_url = default_url
     
+    logging.info('-------------------------------------')
+    logging.info(f'default_url = {default_url}')
+    logging.info(f'youtube_url = {youtube_url}')
+    logging.info('-------------------------------------')
+
     sidebar_status = SidebarActiveStatus()
     sidebar_status.view_streaming = 'active'
         
@@ -464,6 +466,10 @@ def youtube(request):
         resolution = '240p'    # T.B.D
         default_url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
         url = request.session.get('streaming_youtube_url', default_url)
+        logging.info('-------------------------------------')
+        logging.info(f'default_url = {default_url}')
+        logging.info(f'url = {url}')
+        logging.info('-------------------------------------')
         
         cap = cap_from_youtube(url, resolution)
         
