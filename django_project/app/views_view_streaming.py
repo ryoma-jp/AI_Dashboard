@@ -463,7 +463,8 @@ def youtube(request):
         streaming_model_name = request.session.get('streaming_selected_model', 'None')
         pretrained_model_list = request.session.get('pretrained_model_list', [''])
         
-        resolution = '240p'    # T.B.D
+#        resolution = '240p'    # T.B.D
+        resolution = '360p'    # T.B.D
         default_url = 'https://www.youtube.com/watch?v=Ii8u5eywxgI'
         url = request.session.get('streaming_youtube_url', default_url)
         logging.info('-------------------------------------')
@@ -473,8 +474,13 @@ def youtube(request):
         
         cap = cap_from_youtube(url, resolution)
         
-        width = 427
-        height = 240
+        if (resolution == '360p'):
+            width = 640
+            height = 360
+        else:
+            # --- default: 240p ---
+            width = 427
+            height = 240
         fps = 30
         frame_duration = 1 / fps
         
