@@ -39,12 +39,14 @@ def inference(request):
     def _inference_run():
         selected_project, selected_model = _get_selected_object()
         if (selected_model):
-            logging.debug(selected_model)
+            logging.debug(f'selected_model: {selected_model}')
             
             # --- Load config ---
             config_path = Path(selected_model.model_dir, 'config.json')
             with open(config_path, 'r') as f:
                 config_data = json.load(f)
+                logging.info(config_path)
+                logging.info(config_data)
             
             # --- Predict ---
             if False:
@@ -58,10 +60,11 @@ def inference(request):
 
                 # --- import AI Model SDK ---
                 from ai_model_sdk import AI_Model_SDK
-                logging.info(AI_Model_SDK.__version__)
+                logging.info(f'AI_Model_SDK.__version__: {AI_Model_SDK.__version__}')
 
                 # --- Prepare inference ---
                 dataset = Path(config_data['dataset']['dataset_dir']['value'], 'dataset.pkl')
+                logging.info(f'{dataset =}')
                 model_params = {
                     'model_path': selected_model.model_dir,
                 }
@@ -73,48 +76,73 @@ def inference(request):
 
                 task_table = {
                     'img_clf': 'classification',
+                    'img_det': 'detection',
                 }
                 with open(dataset, 'rb') as f:
                     dataset = pickle.load(f)
+                logging.info(f'{dataset} loaded')
                 train_dataset = load_dataset_from_tfrecord(
                     task_table[config_data['inference_parameter']['model']['task']['value']],
                     dataset.train_dataset['tfrecord_path'], 
                     dataset.train_dataset['class_name_file_path'],
                     dataset.train_dataset['model_input_size'])
+                logging.info(f'{dataset.train_dataset["tfrecord_path"]} loaded')
                 #train_dataset = train_dataset.batch(ai_model_sdk.batch_size)
                 validation_dataset = load_dataset_from_tfrecord(
                     task_table[config_data['inference_parameter']['model']['task']['value']],
                     dataset.validation_dataset['tfrecord_path'], 
                     dataset.validation_dataset['class_name_file_path'],
                     dataset.validation_dataset['model_input_size'])
+                logging.info(f'{dataset.validation_dataset["tfrecord_path"]} loaded')
                 #validation_dataset = validation_dataset.batch(ai_model_sdk.batch_size)
                 test_dataset = load_dataset_from_tfrecord(
                     task_table[config_data['inference_parameter']['model']['task']['value']],
                     dataset.test_dataset['tfrecord_path'], 
                     dataset.test_dataset['class_name_file_path'],
                     dataset.test_dataset['model_input_size'])
+                logging.info(f'{dataset.test_dataset["tfrecord_path"]} loaded')
                 #test_dataset = test_dataset.batch(ai_model_sdk.batch_size)
                 dict_evaluations = {}
                 
+                # --- inference train data ---
                 input_tensor = []
-                target_tensor = []
-                for train_batch in train_dataset:
-                    input_tensor.append(train_batch[0].numpy().tolist())
-                    target_tensor.append(train_batch[1].numpy().tolist())
-                input_tensor = np.array(input_tensor, dtype=np.float32)
-                target_tensor = to_categorical(np.array(target_tensor, dtype=int))
-                prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
+                prediction = {}
+                target_tensor = {}
+                logging.info('get train batch and prediction start')
+                for id, train_batch in enumerate(train_dataset):
+                    input_tensor = train_batch[0].numpy().tolist()
+                    input_tensor = np.array(input_tensor, dtype=np.float32)[np.newaxis, ...]
+                    logging.info(f'input_tensor.shape = {input_tensor.shape}')
+                    
+                    target_tensor_ = train_batch[1].numpy().tolist()
+                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
+                    ai_model_sdk.decode_prediction(prediction_)
+
+                    """
+                    prediction[id] = {
+                        'class_name': [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']],
+                        'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
+                    }
+                    """
+                    prediction[id] = [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']]
+                    target_tensor[id] = [target[-1] for target in target_tensor_]
+                logging.info('get train batch and prediction end')
+                logging.info(f'prediction: {prediction}')
+                logging.info(f'target_tensor: {target_tensor}')
 
                 # --- save prediction ---
                 #  - np.argmax is tentative
                 json_data = []
                 logging.info(f'target_tensor: {target_tensor}')
-                for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
-                    json_data.append({
-                        'id': id,
-                        'prediction': np.argmax(pred),
-                        'target': np.argmax(target),
-                    })
+                if ('classification' in ai_model_sdk.task):
+                    for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                        json_data.append({
+                            'id': id,
+                            'prediction': np.argmax(pred),
+                            'target': np.argmax(target),
+                        })
+                elif ('object_detection' in ai_model_sdk.task):
+                    pass
                 evaluation_dir = Path(selected_model.model_dir, 'evaluations')
                 os.makedirs(evaluation_dir, exist_ok=True)
                 with open(Path(evaluation_dir, 'train_prediction.json'), 'w') as f:
@@ -126,25 +154,45 @@ def inference(request):
                 for key in scores.keys():
                     dict_evaluations[f'train {key}'] = scores[key]
 
+                # --- inference validation data ---
                 input_tensor = []
-                target_tensor = []
-                for validation_batch in validation_dataset:
-                    input_tensor.append(validation_batch[0].numpy().tolist())
-                    target_tensor.append(validation_batch[1].numpy().tolist())
-                input_tensor = np.array(input_tensor, dtype=np.float32)
-                target_tensor = to_categorical(np.array(target_tensor, dtype=int))
-                prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
+                prediction = {}
+                target_tensor = {}
+                logging.info('get validation batch and prediction start')
+                for id, validation_batch in enumerate(validation_dataset):
+                    input_tensor = validation_batch[0].numpy().tolist()
+                    input_tensor = np.array(input_tensor, dtype=np.float32)[np.newaxis, ...]
+                    logging.info(f'input_tensor.shape = {input_tensor.shape}')
+                    
+                    target_tensor_ = validation_batch[1].numpy().tolist()
+                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
+                    ai_model_sdk.decode_prediction(prediction_)
+
+                    """
+                    prediction[id] = {
+                        'class_name': [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']],
+                        'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
+                    }
+                    """
+                    prediction[id] = [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']]
+                    target_tensor[id] = [target[-1] for target in target_tensor_]
+                logging.info('get validation batch and prediction end')
+                logging.info(f'prediction: {prediction}')
+                logging.info(f'target_tensor: {target_tensor}')
 
                 # --- save prediction ---
                 #  - np.argmax is tentative
                 json_data = []
                 logging.info(f'target_tensor: {target_tensor}')
-                for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
-                    json_data.append({
-                        'id': id,
-                        'prediction': np.argmax(pred),
-                        'target': np.argmax(target),
-                    })
+                if ('classification' in ai_model_sdk.task):
+                    for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                        json_data.append({
+                            'id': id,
+                            'prediction': np.argmax(pred),
+                            'target': np.argmax(target),
+                        })
+                elif ('object_detection' in ai_model_sdk.task):
+                    pass
                 evaluation_dir = Path(selected_model.model_dir, 'evaluations')
                 os.makedirs(evaluation_dir, exist_ok=True)
                 with open(Path(evaluation_dir, 'validation_prediction.json'), 'w') as f:
@@ -156,25 +204,45 @@ def inference(request):
                 for key in scores.keys():
                     dict_evaluations[f'validation {key}'] = scores[key]
 
+                # --- inference test data ---
                 input_tensor = []
-                target_tensor = []
-                for test_batch in test_dataset:
-                    input_tensor.append(test_batch[0].numpy().tolist())
-                    target_tensor.append(test_batch[1].numpy().tolist())
-                input_tensor = np.array(input_tensor, dtype=np.float32)
-                target_tensor = to_categorical(np.array(target_tensor, dtype=int))
-                prediction = ai_model_sdk.predict(input_tensor, preprocessing=True)
+                prediction = {}
+                target_tensor = {}
+                logging.info('get train batch and prediction start')
+                for id, train_batch in enumerate(train_dataset):
+                    input_tensor = train_batch[0].numpy().tolist()
+                    input_tensor = np.array(input_tensor, dtype=np.float32)[np.newaxis, ...]
+                    logging.info(f'input_tensor.shape = {input_tensor.shape}')
+                    
+                    target_tensor_ = train_batch[1].numpy().tolist()
+                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
+                    ai_model_sdk.decode_prediction(prediction_)
+
+                    """
+                    prediction[id] = {
+                        'class_name': [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']],
+                        'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
+                    }
+                    """
+                    prediction[id] = [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']]
+                    target_tensor[id] = [target[-1] for target in target_tensor_]
+                logging.info('get train batch and prediction end')
+                logging.info(f'prediction: {prediction}')
+                logging.info(f'target_tensor: {target_tensor}')
 
                 # --- save prediction ---
                 #  - np.argmax is tentative
                 json_data = []
                 logging.info(f'target_tensor: {target_tensor}')
-                for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
-                    json_data.append({
-                        'id': id,
-                        'prediction': np.argmax(pred),
-                        'target': np.argmax(target),
-                    })
+                if ('classification' in ai_model_sdk.task):
+                    for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                        json_data.append({
+                            'id': id,
+                            'prediction': np.argmax(pred),
+                            'target': np.argmax(target),
+                        })
+                elif ('object_detection' in ai_model_sdk.task):
+                    pass
                 evaluation_dir = Path(selected_model.model_dir, 'evaluations')
                 os.makedirs(evaluation_dir, exist_ok=True)
                 with open(Path(evaluation_dir, 'test_prediction.json'), 'w') as f:

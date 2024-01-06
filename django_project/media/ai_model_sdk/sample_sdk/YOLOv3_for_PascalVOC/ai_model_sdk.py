@@ -680,6 +680,7 @@ class AI_Model_SDK():
         
         # --- fit ---
         epochs = 32
+        epochs = 1
         #history = self.model.fit(self.train_dataset,
         #            steps_per_epoch=len(self.x_train)//batch_size, validation_data=self.validation_dataset,
         #            epochs=epochs, callbacks=callbacks,
@@ -776,6 +777,11 @@ class AI_Model_SDK():
             
             final_boxes = cv2.dnn.NMSBoxes(bbox, scores, yolo_score_threshold, yolo_iou_threshold)
             num_valid_nms_boxes = len(final_boxes)
+            if (num_valid_nms_boxes > yolo_max_boxes):
+                final_boxes = final_boxes[:yolo_max_boxes]
+                num_valid_nms_boxes = yolo_max_boxes
+            logging.info(f'final_boxes: {final_boxes}')
+            logging.info(f'(num_valid_nms_boxes, yolo_max_boxes): {num_valid_nms_boxes}, {yolo_max_boxes}')
             selected_indices = np.concatenate([final_boxes, np.zeros(yolo_max_boxes - num_valid_nms_boxes)], 0).astype(np.int32)
             
             boxes = np.expand_dims(bbox[selected_indices], axis=0)
@@ -893,8 +899,14 @@ class AI_Model_SDK():
             target (numpy.ndarray): target
         """
 
-        accuracy = accuracy_score(np.argmax(target, axis=1), np.argmax(pred, axis=1))
+        #accuracy = accuracy_score(np.argmax(target, axis=1), np.argmax(pred, axis=1))
+        #accuracy_list = [accuracy_score(np.argmax(target_, axis=1), np.argmax(pred_, axis=1)) for target_, pred_ in zip(list(target.values()), list(pred.values()))]
+        accuracy_list = [accuracy_score(target_[:min(len(target_), len(pred_))], pred_[:min(len(target_), len(pred_))]) for target_, pred_ in zip(list(target.values()), list(pred.values()))]
+        logging.info(f'accuracy_list: {accuracy_list}')
+        accuracy = np.mean(accuracy_list)
+        logging.info(f'accuracy: {accuracy}')
         ret = {'accuracy': accuracy}
+        logging.info(f'ret: {ret}')
 
         return ret
     

@@ -313,6 +313,8 @@ def save_config(add_data, save_path):
         dict_config = json.load(f)
 
     dict_config.update(add_data)
+    print(save_path)
+    print(dict_config)
 
     with open(Path(save_path, 'config.json'), 'w') as f:
         json.dump(dict_config, f, ensure_ascii=False, indent=4)

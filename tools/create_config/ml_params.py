@@ -360,6 +360,7 @@ class MlParams_MNIST(MlParams):
         self.params['dataset']['dataset_name']['value'] = 'MNIST'
         self.params['dataset']['norm']['value'] = 'max'
         self.params['dataset']['image_data_augmentation']['horizontal_flip']['value'] = False
+        self.params['inference_parameter']['model']['task']['value'] = 'img_clf'
 
 class MlParams_CIFAR10(MlParams):
     """Class MlParams_CIFAR10
@@ -371,6 +372,7 @@ class MlParams_CIFAR10(MlParams):
         super().__init__()
         self.params['dataset']['dataset_name']['value'] = 'CIFAR-10'
         self.params['dataset']['norm']['value'] = 'z-score'
+        self.params['inference_parameter']['model']['task']['value'] = 'img_clf'
 
 class MlParams_CaliforniaHousing(MlParams):
     """Class MlParams_CaliforniaHousing
@@ -382,6 +384,7 @@ class MlParams_CaliforniaHousing(MlParams):
         super().__init__()
         self.params['model']['model_type']['value'] = 'LightGBM'
         self.params['dataset']['dataset_name']['value'] = 'CaliforniaHousing'
+        self.params['inference_parameter']['model']['task']['value'] = 'table_reg'
 
 class MlParams_COCO2017(MlParams):
     """Class MlParams_COCO2017
@@ -394,6 +397,7 @@ class MlParams_COCO2017(MlParams):
         self.params['model']['model_type']['value'] = 'YOLOv3'
         self.params['dataset']['dataset_name']['value'] = 'COCO2017'
         self.params['dataset']['norm']['value'] = 'z-score'
+        self.params['inference_parameter']['model']['task']['value'] = 'img_det'
 
 class MlParams_PascalVOC2012(MlParams):
     """Class MlParams_PascalVOC2012
@@ -410,4 +414,5 @@ class MlParams_PascalVOC2012(MlParams):
         self.params['dnn_training_parameter']['epochs']['value'] = 20
         self.params['dataset']['dataset_name']['value'] = 'PascalVOC2012'
         self.params['dataset']['norm']['value'] = 'z-score'
+        self.params['inference_parameter']['model']['task']['value'] = 'img_det'
 
