@@ -14,7 +14,6 @@ import argparse
 import numpy as np
 import pandas as pd
 import pickle
-import logging
 
 from tqdm import tqdm
 from pathlib import Path
@@ -23,7 +22,6 @@ from tensorflow.keras.models import Model
 
 from machine_learning.lib.trainer.trainer_keras import TrainerKerasMLP, TrainerKerasCNN, TrainerKerasResNet, TrainerKerasYOLOv3
 from machine_learning.lib.trainer.trainer_lgb import TrainerLightGBM
-
 
 #---------------------------------
 # Functions
@@ -124,17 +122,6 @@ def main():
     data_norm = config_data['dataset']['norm']['value']
     model_type = config_data['model']['model_type']['value']
     
-    # --- set console log path ---
-    console_log_path = Path(result_dir, 'console.log')
-    logger = logging.getLogger()
-    console_handler = logging.FileHandler(filename=console_log_path)
-    console_handler.setLevel(logging.DEBUG)
-    console_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(message)s"))
-    logger.addHandler(console_handler)
-
-    logging.debug('test')
-
-
     if (model_type in DNN_MODEL_LIST):
         loss_func = config_data['dnn_training_parameter']['loss_func']['value']
         if (loss_func == "sparse_categorical_crossentropy"):
@@ -193,7 +180,6 @@ def main():
         model_file = None
     
     category_list = []
-    logging.debug(f'model_type = {model_type}')
     if (model_type == 'MLP'):
         print('Create MLP')
         
@@ -247,7 +233,6 @@ def main():
         print('Create YOLOv3')
         model_input_shape = [dataset.train_dataset['model_input_size'], dataset.train_dataset['model_input_size'], 3]
         print(f'  * output_dims = {output_dims}')
-        epochs=1    # tentative
         trainer = TrainerKerasYOLOv3(model_input_shape, classes=output_dims,
             output_dir=result_dir, model_file=model_file, model_type='YOLOv3',
             web_app_ctrl_fifo=web_app_ctrl_fifo, trainer_ctrl_fifo=trainer_ctrl_fifo, 
@@ -308,8 +293,6 @@ def main():
             config_data['inference_parameter']['model']['task']['value'] = f'{dataset.dataset_type}_yolo'
         else:
             config_data['inference_parameter']['model']['task']['value'] = dataset.dataset_type
-        logging.debug(f'task = {config_data["inference_parameter"]["model"]["task"]["value"]}')
-        
         with open(args.config, 'w') as f:
             json.dump(config_data, f, ensure_ascii=False, indent=4)
 
