@@ -309,12 +309,19 @@ def save_config(add_data, save_path):
         add_data (dict): add data
         save_path (PosixPath): directory to save
     """
-    with open(Path(save_path, 'config.json'), 'r') as f:
-        dict_config = json.load(f)
-
-    dict_config.update(add_data)
     print(save_path)
-    print(dict_config)
+    if (Path(save_path, 'config.json').exists()):
+        with open(Path(save_path, 'config.json'), 'r') as f:
+            dict_config = json.load(f)
 
-    with open(Path(save_path, 'config.json'), 'w') as f:
-        json.dump(dict_config, f, ensure_ascii=False, indent=4)
+        dict_config.update(add_data)
+        print(f'{dict_config} =')
+
+        with open(Path(save_path, 'config.json'), 'w') as f:
+            json.dump(dict_config, f, ensure_ascii=False, indent=4)
+        
+        return True
+    else:
+        print(f'{Path(save_path, "config.json")} does not exist.')
+        return False
+    

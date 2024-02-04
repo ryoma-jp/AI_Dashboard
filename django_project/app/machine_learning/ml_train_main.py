@@ -9,6 +9,11 @@ Training model with AI Model SDK.
 import os
 import sys
 import argparse
+import pickle
+from pathlib import Path
+
+from machine_learning.lib.data_loader.data_loader import DataLoaderPascalVOC2012
+from machine_learning.lib.utils.utils import save_meta
 
 #---------------------------------
 # Functions
@@ -25,9 +30,17 @@ def ArgParser():
 
     parser.add_argument('--sdk_path', dest='sdk_path', type=str, default=None, required=True, \
             help='AI Model SDK path')
-    parser.add_argument('--dataset', dest='dataset', type=str, default=None, required=True, \
-            help='path to dataset.pkl')
-    parser.add_argument('--meta_json', dest='meta_json', type=str, default=None, required=True, \
+    parser.add_argument('--dataset', dest='dataset', type=str, default=None, required=False, \
+            help='path to dataset.pkl\n'
+                 '  - If set to None, load dataset to /tmp/dataset/dataset.pkl\n'
+                 '  - select dataset type with --dataset_type')
+    parser.add_argument('--dataset_type', dest='dataset_type', type=str, default='PascalVOC', required=False, \
+            choices=['CIFAR-10', 'MNIST', 'PascalVOC'],
+            help='Type of dataset\n'
+                 '  - CIFAR-10(T.B.D)\n'
+                 '  - MNIST(T.B.D)\n'
+                 '  - PascalVOC(default)')
+    parser.add_argument('--meta_json', dest='meta_json', type=str, default=None, required=False, \
             help='info.json for meta data')
     parser.add_argument('--train_json', dest='train_json', type=str, default=None, required=False, \
             help='info.json for train data')
@@ -56,6 +69,7 @@ def main():
     print('[INFO] Arguments')
     print(f'  * args.sdk_path = {args.sdk_path}')
     print(f'  * args.dataset = {args.dataset}')
+    print(f'  * args.dataset_type = {args.dataset_type}')
     print(f'  * args.meta_json = {args.meta_json}')
     print(f'  * args.train_json = {args.train_json}')
     print(f'  * args.val_json = {args.val_json}')
@@ -64,6 +78,31 @@ def main():
     print(f'  * args.web_app_ctrl_fifo = {args.web_app_ctrl_fifo}')
     print(f'  * args.trainer_ctrl_fifo = {args.trainer_ctrl_fifo}')
     
+    # --- Check args.dataset ---
+    if (args.dataset is None):
+        print('[INFO] Create dataset.pkl')
+        dataset_dir = '/tmp/dataset'
+        os.makedirs(dataset_dir, exist_ok=True)
+
+        if (args.dataset_type == 'PascalVOC'):
+            # --- Create dataloader object ---
+            dataloader = DataLoaderPascalVOC2012(dataset_dir, validation_split=0.2, download=True)
+
+            # --- Create meta data ---
+            meta_dir = Path(dataset_dir, 'meta')
+            keys = [{
+                    'name': 'img_file',
+                    'type': 'image_file',
+                    }]
+            dict_meta = save_meta(meta_dir, 'True', 'object_detection', 'image_data', keys)
+        
+        # --- save dataset object to pickle file ---
+        with open(Path(dataset_dir, 'dataset.pkl'), 'wb') as f:
+            pickle.dump(dataloader, f)
+
+        args.dataset = str(Path(dataset_dir, 'dataset.pkl'))
+        print(f'[INFO] Create dataset.pkl done: {args.dataset}')
+
     # --- add AI Model SDK path to Python path ---
     sys.path.append(args.sdk_path)
     
