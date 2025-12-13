@@ -178,6 +178,17 @@ class MlModel(models.Model):
     # --- for Training control ---
     training_pid = models.IntegerField('Training worker PID', null=True, default=None)
     tensorboard_pid = models.IntegerField('Tensorboard worker PID', null=True, default=None)
+
+    # --- Preset DNN model types (non-LightGBM) used in parameter edit view ---
+    PRESET_DNN_MODELS = [
+        'MLP',
+        'SimpleCNN',
+        'DeepCNN',
+        'SimpleResNet',
+        'DeepResNet',
+        'YOLOv3',
+        'YOLOv3_Tiny'
+    ]
     
     def __str__(self):
         return self.name

@@ -132,6 +132,8 @@ class AI_Model_SDK():
         self.trainer_ctrl_fifo = None
         self.web_app_ctrl_fifo = web_app_ctrl_fifo
         self.trainer_ctrl_fifo = trainer_ctrl_fifo
+        self.task = 'classification'
+        self.decoded_preds = {}
 
         ## --- load info.json ---
         #self.x_train_info, self.y_train_info, \
@@ -417,6 +419,10 @@ class AI_Model_SDK():
         y = self.model.predict(x)
         
         return y
+    
+    def decode_prediction(self, pred):
+        self.decoded_preds['detection_classes'] = np.argmax(pred, axis=1)
+        return pred
     
     def eval_model(self, pred, target):
         """Evaluate Model

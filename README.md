@@ -90,6 +90,7 @@ ToDoのメモ．思いついたら順次追加する．
     1. local_settings.py生成  
         ```
         $ source venv/bin/activate
+        (venv) $ pip3 install django
         (venv) $ python3 tools/create_local_settings/create_local_settings.py --output_file django_project/project/local_settings.py  --jupyter_nb_config django_project/env/jupyter_notebook_tf/jupyter_notebook_config.py
         (venv) $ deactivate
         ```
