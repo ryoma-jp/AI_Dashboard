@@ -150,14 +150,16 @@ def project_new(request):
                                    getattr(settings, 'MEDIA_ROOT', None),
                                    getattr(settings, 'AI_MODEL_SDK_DIR', None),
                                    'sample_sdk')
+            
+            # --- list structure; name, path, model_type ---
             sample_sdk_list = [
-                ['SimpleCNN for MNIST', 'SimpleCNN_for_MNIST'],
-                ['SimpleCNN for CIFAR-10', 'SimpleCNN_for_CIFAR-10'],
-                ['LightGBM for CaliforniaHousing', 'LightGBM_for_CaliforniaHousing'],
-                ['YOLOv3 for PascalVOC', 'YOLOv3_for_PascalVOC'],
+                ['SimpleCNN for MNIST', 'SimpleCNN_for_MNIST', 'SimpleCNN'],
+                ['SimpleCNN for CIFAR-10', 'SimpleCNN_for_CIFAR-10', 'SimpleCNN'],
+                ['LightGBM for CaliforniaHousing', 'LightGBM_for_CaliforniaHousing', 'LightGBM'],
+                ['YOLOv3 for PascalVOC', 'YOLOv3_for_PascalVOC', 'YOLOv3'],
             ]
-            for name, path in sample_sdk_list:
-                AIModelSDK.objects.create(name=name, project=project, ai_model_sdk_dir=Path(sample_sdk_path, path), ai_model_sdk_dir_offset=Path('sample_sdk', path))
+            for name, path, model_type in sample_sdk_list:
+                AIModelSDK.objects.create(name=name, project=project, model_type=model_type, ai_model_sdk_dir=Path(sample_sdk_path, path), ai_model_sdk_dir_offset=Path('sample_sdk', path))
             #AIModelSDK.objects.create(name='SimpleCNN for MNIST', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN_for_MNIST'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN_for_MNIST'))
             #AIModelSDK.objects.create(name='SimpleCNN for CIFAR-10', project=project, ai_model_sdk_dir=Path(sample_sdk_path, 'SimpleCNN_for_CIFAR-10'), ai_model_sdk_dir_offset=Path('sample_sdk', 'SimpleCNN_for_CIFAR-10'))
 
@@ -289,8 +291,9 @@ def model_new(request, project_id):
             dict_config['dataset']['dataset_dir']['value'] = str(Path(dataset_dir, f'dataset_{model.dataset.id}'))
             
             selected_model = request.POST.getlist('model_new_model_dropdown_submit')[0]
-            dict_config['model']['model_type']['value'] = selected_model
             model.ai_model_sdk = get_object_or_404(AIModelSDK.objects.filter(project=project, name=selected_model))
+            model.model_type = model.ai_model_sdk.model_type
+            dict_config['model']['model_type']['value'] = model.model_type
             
             # --- save config.json ---
             with open(Path(model.model_dir, 'config.json'), 'w') as f:

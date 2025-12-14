@@ -116,8 +116,11 @@ ToDoのメモ．思いついたら順次追加する．
 
 ## データベース初期化
 
-```docker-compose down -v```でコンテナ削除する際にボリュームも削除する．  
-```docker-compose down```ではコンテナは削除されるがボリュームは削除されない為，データベースは維持できる．
+```docker compose down --volumes --remove-orphans```でコンテナ削除する際にボリュームと孤立したコンテナも削除する．  
+```docker compose down --volumes```でコンテナ削除する際にボリュームも削除する．  
+```docker compose down```ではコンテナは削除されるがボリュームは削除されない為，データベースは維持できる．
+
+## その他仕様詳細
 
 ### ER図
 

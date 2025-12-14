@@ -117,6 +117,7 @@ def ai_model_sdk_path(instance, filename):
 class AIModelSDK(models.Model):
     name = models.CharField('AI Model SDK Name', max_length=128)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
+    model_type = models.CharField('Model Type', max_length=128, blank=True)
     
     ai_model_sdk_zip = models.FileField(upload_to=ai_model_sdk_path, max_length=512)
     ai_model_sdk_dir = models.CharField('', max_length=512, blank=True)
@@ -163,6 +164,7 @@ class MlModel(models.Model):
     name = models.CharField('ModelName', max_length=128)
     description = models.TextField('Description', blank=True)
     hash = models.CharField('Model hash', max_length=128)
+    model_type = models.CharField('Model Type', max_length=128, blank=True)
     project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE)
     dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.SET_NULL, null=True)
     dataset_pickle = models.CharField('Dataset Object (*.pkl)', max_length=512, blank=True)
