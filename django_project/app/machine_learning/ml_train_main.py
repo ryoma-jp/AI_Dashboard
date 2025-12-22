@@ -19,45 +19,67 @@ from machine_learning.lib.utils.utils import save_meta
 # Functions
 #---------------------------------
 def ArgParser():
-    """ArgParser
-    
-    Load arguments
-    
-    """
-    
-    parser = argparse.ArgumentParser(description='Training with AI Model SDK',
-                formatter_class=argparse.RawTextHelpFormatter)
+        """ArgParser
 
-    parser.add_argument('--sdk_path', dest='sdk_path', type=str, default=None, required=True, \
-            help='AI Model SDK path')
-    parser.add_argument('--dataset', dest='dataset', type=str, default=None, required=False, \
-            help='path to dataset.pkl\n'
-                 '  - If set to None, load dataset to /tmp/dataset/dataset.pkl\n'
-                 '  - select dataset type with --dataset_type')
-    parser.add_argument('--dataset_type', dest='dataset_type', type=str, default='PascalVOC', required=False, \
-            choices=['CIFAR-10', 'MNIST', 'PascalVOC'],
-            help='Type of dataset\n'
-                 '  - CIFAR-10(T.B.D)\n'
-                 '  - MNIST(T.B.D)\n'
-                 '  - PascalVOC(default)')
-    parser.add_argument('--meta_json', dest='meta_json', type=str, default=None, required=False, \
-            help='info.json for meta data')
-    parser.add_argument('--train_json', dest='train_json', type=str, default=None, required=False, \
-            help='info.json for train data')
-    parser.add_argument('--val_json', dest='val_json', type=str, default=None, required=False, \
-            help='info.json for val data')
-    parser.add_argument('--test_json', dest='test_json', type=str, default=None, required=False, \
-            help='info.json for test data')
-    parser.add_argument('--model_path', dest='model_path', type=str, default=None, required=True, \
-            help='AI Model Path')
-    parser.add_argument('--web_app_ctrl_fifo', dest='web_app_ctrl_fifo', type=str, default=None, required=False, \
-            help='FIFO path for Web App Control')
-    parser.add_argument('--trainer_ctrl_fifo', dest='trainer_ctrl_fifo', type=str, default=None, required=False, \
-            help='FIFO path for Trainer Control')
+        Load arguments
 
-    args = parser.parse_args()
+        """
 
-    return args
+        parser = argparse.ArgumentParser(
+                description='Training with AI Model SDK',
+                formatter_class=argparse.RawTextHelpFormatter,
+        )
+
+        parser.add_argument(
+                '--sdk_path', dest='sdk_path', type=str, default=None, required=True,
+                help='AI Model SDK path',
+        )
+        parser.add_argument(
+                '--dataset', dest='dataset', type=str, default=None, required=False,
+                help='path to dataset.pkl\n'
+                        '  - If set to None, load dataset to /tmp/dataset/dataset.pkl\n'
+                        '  - select dataset type with --dataset_type',
+        )
+        parser.add_argument(
+                '--dataset_type', dest='dataset_type', type=str, default='', required=False,
+                choices=['CIFAR-10', 'MNIST', 'PascalVOC'],
+                help='Type of dataset\n'
+                        '  - CIFAR-10\n'
+                        '  - MNIST\n'
+                        '  - PascalVOC',
+        )
+        parser.add_argument(
+                '--meta_json', dest='meta_json', type=str, default=None, required=False,
+                help='info.json for meta data',
+        )
+        parser.add_argument(
+                '--train_json', dest='train_json', type=str, default=None, required=False,
+                help='info.json for train data',
+        )
+        parser.add_argument(
+                '--val_json', dest='val_json', type=str, default=None, required=False,
+                help='info.json for val data',
+        )
+        parser.add_argument(
+                '--test_json', dest='test_json', type=str, default=None, required=False,
+                help='info.json for test data',
+        )
+        parser.add_argument(
+                '--model_path', dest='model_path', type=str, default=None, required=True,
+                help='AI Model Path',
+        )
+        parser.add_argument(
+                '--web_app_ctrl_fifo', dest='web_app_ctrl_fifo', type=str, default=None, required=False,
+                help='FIFO path for Web App Control',
+        )
+        parser.add_argument(
+                '--trainer_ctrl_fifo', dest='trainer_ctrl_fifo', type=str, default=None, required=False,
+                help='FIFO path for Trainer Control',
+        )
+
+        args = parser.parse_args()
+
+        return args
 
 def main():
     """main

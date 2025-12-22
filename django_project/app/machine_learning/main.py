@@ -71,7 +71,15 @@ def _predict_and_calc_accuracy(trainer, x, y=None, get_feature_map=False):
     
     if ((y is not None) and (not get_feature_map)):
         predictions_idx = np.argmax(predictions, axis=1)
-        y_idx = np.argmax(y, axis=1)
+
+        # Use sparse labels directly when they are 1-D; otherwise fall back to one-hot decoding
+        y_arr = np.asarray(y)
+        if y_arr.ndim == 1:
+            y_idx = y_arr
+        elif y_arr.ndim == 2 and y_arr.shape[1] == 1:
+            y_idx = y_arr.reshape(-1)
+        else:
+            y_idx = np.argmax(y_arr, axis=1)
         
         print('n_data : {}'.format(len(predictions_idx)))
         print('n_correct : {}'.format(len(predictions_idx[predictions_idx==y_idx])))

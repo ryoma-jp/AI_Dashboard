@@ -372,6 +372,9 @@ class MlParams_CIFAR10(MlParams):
         super().__init__()
         self.params['dataset']['dataset_name']['value'] = 'CIFAR-10'
         self.params['dataset']['norm']['value'] = 'z-score'
+        self.params['dnn_training_parameter']['batch_size']['value'] = 256
+        self.params['dnn_training_parameter']['learning_rate']['value'] = 0.001
+        self.params['dnn_training_parameter']['epochs']['value'] = 100
         self.params['inference_parameter']['model']['task']['value'] = 'img_clf'
 
 class MlParams_CaliforniaHousing(MlParams):
