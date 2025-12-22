@@ -144,15 +144,10 @@ class Trainer():
 
         # --- Sanity check for output_dir ---
         assert (self.output_dir is not None) and (str(self.output_dir) != ''), f"[ASSERT] output_dir is None or empty: {self.output_dir}"
-
-        # --- Debug log helper ---
-        self._debug_log_path = Path(self.output_dir, 'debug.log') if self.output_dir is not None else None
         
         # --- Create output directory ---
         if (self.output_dir is not None):
             os.makedirs(self.output_dir, exist_ok=True)
-            # touch debug log early so caller can tail it even if training exits early
-            Path(self._debug_log_path).touch(exist_ok=True)
         
         # --- Create model ---
         def _load_model(model_file):
@@ -167,16 +162,6 @@ class Trainer():
         
         return
 
-    def _debug_log(self, msg):
-        """Emit debug message to stdout (flush) and append to debug.log if available."""
-        print(msg, flush=True)
-        if self._debug_log_path is None:
-            return
-        # Ensure directory exists (defensive for callers that mutate output_dir)
-        Path(self._debug_log_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(self._debug_log_path, 'a') as f:
-            f.write(f"{msg}\n")
-    
     def _compile_model(self, optimizer='adam', loss='sparse_categorical_crossentropy', init_lr=0.001):
         """Compile model
         
@@ -241,40 +226,6 @@ class Trainer():
         
         return
 
-    def _debug_classification_labels(self, y, name):
-        """Print basic stats of classification labels for debugging."""
-        if y is None:
-            self._debug_log(f'[DEBUG] {name}: labels=None')
-            return
-        y_arr = np.asarray(y)
-        self._debug_log(f'[DEBUG] {name}: shape={y_arr.shape}, dtype={y_arr.dtype}')
-        self._debug_log(f'[DEBUG] {name}: min={np.min(y_arr)}, max={np.max(y_arr)}')
-
-        if (y_arr.ndim == 1) or (y_arr.ndim == 2 and y_arr.shape[1] == 1):
-            unique, counts = np.unique(y_arr.reshape(-1), return_counts=True)
-            self._debug_log(f'[DEBUG] {name}: unique classes={unique.tolist()}, counts={counts.tolist()}')
-        else:
-            row_sums = np.sum(y_arr, axis=1)
-            approx_onehot = np.mean(np.isclose(row_sums, 1.0, atol=1e-3))
-            self._debug_log(f'[DEBUG] {name}: one-hot row ratio≈{approx_onehot:.3f}, row sum min={row_sums.min():.4f}, max={row_sums.max():.4f}')
-
-    def _manual_accuracy(self, x, y, name, max_samples=512):
-        """Calculate manual accuracy on a limited subset for debugging."""
-        if x is None or y is None:
-            return None
-        n = min(len(x), max_samples)
-        preds = self.predict(x[:n])
-        pred_idx = np.argmax(preds, axis=1)
-
-        y_arr = np.asarray(y)
-        if (y_arr.ndim == 1) or (y_arr.ndim == 2 and y_arr.shape[1] == 1):
-            y_idx = y_arr[:n].reshape(-1)
-        else:
-            y_idx = np.argmax(y_arr[:n], axis=1)
-        acc = float(np.mean(pred_idx == y_idx))
-        self._debug_log(f'[DEBUG] Manual accuracy ({name}, first {n} samples): {acc:.4f}')
-        return acc
-    
     def fit(self, x_train, y_train,
             x_val=None, y_val=None, x_test=None, y_test=None,
             verbose=0):
@@ -293,12 +244,6 @@ class Trainer():
             
         
         """
-        # --- Label debug ---
-        if (self.dataset_type in ['img_clf', 'table_clf']):
-            self._debug_classification_labels(y_train, 'train')
-            self._debug_classification_labels(y_val, 'val')
-            self._debug_classification_labels(y_test, 'test')
-
         # --- Training ---
         os.makedirs(Path(self.output_dir, 'checkpoints'), exist_ok=True)
         checkpoint_path = Path(self.output_dir, 'checkpoints', 'model.ckpt')
@@ -367,13 +312,6 @@ class Trainer():
                 print('Test Loss: {}'.format(test_loss))
                 metrics['Test Accuracy'] = f'{test_acc:.03f}'
                 metrics['Test Loss'] = f'{test_loss:.03f}'
-
-            # --- Manual accuracy check on small subset for debugging ---
-            self._manual_accuracy(x_train, y_train, 'train')
-            if ((x_val is not None) and (y_val is not None)):
-                self._manual_accuracy(x_val, y_val, 'val')
-            if ((x_test is not None) and (y_test is not None)):
-                self._manual_accuracy(x_test, y_test, 'test')
         else:
             train_pred = self.predict(x_train)
             train_mae = mean_absolute_error(y_train, train_pred)

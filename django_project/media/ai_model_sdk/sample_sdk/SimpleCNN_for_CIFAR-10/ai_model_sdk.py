@@ -129,11 +129,7 @@ class AI_Model_SDK():
         self.trainer_ctrl_fifo = trainer_ctrl_fifo
         self.task = 'classification'
         self.decoded_preds = {}
-
-        # --- Debug log helper ---
         os.makedirs(self.model_path, exist_ok=True)
-        self._debug_log_path = Path(self.model_path, 'debug.log')
-        Path(self._debug_log_path).touch(exist_ok=True)
 
         ## --- load info.json ---
         #self.x_train_info, self.y_train_info, \
@@ -202,66 +198,6 @@ class AI_Model_SDK():
         save_config(config_model, self.model_path)
 
         return
-
-    def _debug_log(self, msg):
-        print(msg, flush=True)
-        if self._debug_log_path is not None:
-            with open(self._debug_log_path, 'a') as f:
-                f.write(f"{msg}\n")
-
-    def _debug_label_stats(self, y, name):
-        y_np = y.numpy()
-        self._debug_log(f'[DEBUG] {name}: shape={y_np.shape}, dtype={y_np.dtype}, min={y_np.min()}, max={y_np.max()}')
-        flat = y_np.reshape(-1)
-        unique, counts = np.unique(flat, return_counts=True)
-        # shorten if too many classes
-        max_items = 10
-        if len(unique) > max_items:
-            unique = unique[:max_items]
-            counts = counts[:max_items]
-            suffix = ' (truncated)'
-        else:
-            suffix = ''
-        self._debug_log(f'[DEBUG] {name}: classes={unique.tolist()}, counts={counts.tolist()}{suffix}')
-
-    def _debug_dataset_sample(self, dataset, name):
-        for x_b, y_b in dataset.take(1):
-            self._debug_log(f'[DEBUG] {name}: x_batch shape={x_b.shape}, y_batch shape={y_b.shape}')
-            try:
-                self._debug_label_stats(y_b, f'{name} labels')
-            except Exception as e:
-                self._debug_log(f'[DEBUG] {name}: label stats error: {e}')
-            break
-
-    def _manual_accuracy_dataset(self, dataset, name, max_batches=2):
-        total = 0
-        correct = 0
-        batches = 0
-        ds_iter = dataset if max_batches is None else dataset.take(max_batches)
-        for x_b, y_b in ds_iter:
-            preds = self.model.predict(x_b, verbose=0)
-            pred_idx = np.argmax(preds, axis=1)
-            y_np = y_b.numpy().reshape(-1)
-            # trim in case shapes mismatch due to padding
-            n = min(len(pred_idx), len(y_np))
-            pred_idx = pred_idx[:n]
-            y_np = y_np[:n]
-            correct += int(np.sum(pred_idx == y_np))
-            total += n
-            batches += 1
-        if total > 0:
-            acc = correct / total
-            self._debug_log(f'[DEBUG] Manual accuracy ({name}, {batches} batches, {total} samples): {acc:.4f}')
-    
-    def _debug_pred_vs_label(self, dataset, name, n_samples=8):
-        for x_b, y_b in dataset.take(1):
-            preds = self.model.predict(x_b, verbose=0)
-            pred_idx = np.argmax(preds, axis=1)
-            y_np = y_b.numpy().reshape(-1)
-            n = min(n_samples, len(pred_idx), len(y_np))
-            pairs = list(zip(pred_idx[:n].tolist(), y_np[:n].tolist()))
-            self._debug_log(f'[DEBUG] {name} pred/label pairs (pred, label): {pairs}')
-            break
     def preprocess_data(self, x):
         """Preprocess Data
         """
@@ -435,10 +371,6 @@ class AI_Model_SDK():
         #callbacks = [cp_callback, es_callback]
         callbacks = [cp_callback, custom_callback, tensorboard_callback]
 
-        # --- Debug dataset samples before training ---
-        self._debug_dataset_sample(self.train_dataset, 'train')
-        self._debug_dataset_sample(self.validation_dataset, 'val')
-
         # --- data augmentation ---
         #datagen = ImageDataGenerator(
         #    rotation_range=0.2,
@@ -455,39 +387,10 @@ class AI_Model_SDK():
         #            steps_per_epoch=len(self.x_train)//batch_size, validation_data=(self.x_val, self.y_val),
         #            epochs=epochs, callbacks=callbacks,
         #            verbose=0)
-        print(self.validation_dataset)
         history = self.model.fit(self.train_dataset,
                     validation_data=self.validation_dataset,
                     epochs=epochs, callbacks=callbacks,
                     verbose=0)
-
-        # --- Manual accuracy check on small subsets after training ---
-        self._manual_accuracy_dataset(self.train_dataset, 'train')
-        self._manual_accuracy_dataset(self.validation_dataset, 'val')
-
-        # --- Manual accuracy on full datasets ---
-        self._manual_accuracy_dataset(self.train_dataset, 'train_full', max_batches=None)
-        self._manual_accuracy_dataset(self.validation_dataset, 'val_full', max_batches=None)
-
-        # --- Sample prediction vs label pairs ---
-        self._debug_pred_vs_label(self.train_dataset, 'train')
-        self._debug_pred_vs_label(self.validation_dataset, 'val')
-
-        # --- Compare Keras evaluate vs manual accuracy on full datasets ---
-        try:
-            train_eval = self.model.evaluate(self.train_dataset, verbose=0)
-            val_eval = self.model.evaluate(self.validation_dataset, verbose=0)
-            # evaluate returns [loss, acc] when metrics=['accuracy']
-            if isinstance(train_eval, (list, tuple)) and len(train_eval) >= 2:
-                self._debug_log(f'[DEBUG] Keras evaluate train: loss={train_eval[0]:.4f}, acc={train_eval[1]:.4f}')
-            else:
-                self._debug_log(f'[DEBUG] Keras evaluate train: {train_eval}')
-            if isinstance(val_eval, (list, tuple)) and len(val_eval) >= 2:
-                self._debug_log(f'[DEBUG] Keras evaluate val: loss={val_eval[0]:.4f}, acc={val_eval[1]:.4f}')
-            else:
-                self._debug_log(f'[DEBUG] Keras evaluate val: {val_eval}')
-        except Exception as e:
-            self._debug_log(f'[DEBUG] Keras evaluate error: {e}')
         
         # --- Notice the finish training to Web app ---
         if (self.web_app_ctrl_fifo is not None):
