@@ -106,8 +106,8 @@ def inference(request):
                 
                 # --- inference train data ---
                 input_tensor = []
-                prediction = {}
-                target_tensor = {}
+                prediction = []
+                target_tensor = []
                 logging.info('get train batch and prediction start')
                 for id, train_batch in enumerate(train_dataset):
                     input_tensor = train_batch[0].numpy().tolist()
@@ -124,8 +124,9 @@ def inference(request):
                         'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
                     }
                     """
-                    prediction[id] = [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']]
-                    target_tensor[id] = [target[-1] for target in target_tensor_]
+                    prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
+                    #target_tensor.append([target[-1] for target in target_tensor_])
+                    target_tensor.append([target for target in target_tensor_])
                 logging.info('get train batch and prediction end')
                 logging.info(f'prediction: {prediction}')
                 logging.info(f'target_tensor: {target_tensor}')
@@ -135,11 +136,11 @@ def inference(request):
                 json_data = []
                 logging.info(f'target_tensor: {target_tensor}')
                 if ('classification' in ai_model_sdk.task):
-                    for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                    for id, (pred, target) in enumerate(zip(prediction, target_tensor)):
                         json_data.append({
                             'id': id,
-                            'prediction': np.argmax(pred),
-                            'target': np.argmax(target),
+                            'prediction': pred,
+                            'target': target,
                         })
                 elif ('object_detection' in ai_model_sdk.task):
                     pass
@@ -156,8 +157,8 @@ def inference(request):
 
                 # --- inference validation data ---
                 input_tensor = []
-                prediction = {}
-                target_tensor = {}
+                prediction = []
+                target_tensor = []
                 logging.info('get validation batch and prediction start')
                 for id, validation_batch in enumerate(validation_dataset):
                     input_tensor = validation_batch[0].numpy().tolist()
@@ -174,8 +175,9 @@ def inference(request):
                         'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
                     }
                     """
-                    prediction[id] = [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']]
-                    target_tensor[id] = [target[-1] for target in target_tensor_]
+                    prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
+                    #target_tensor.append([target[-1] for target in target_tensor_])
+                    target_tensor.append([target for target in target_tensor_])
                 logging.info('get validation batch and prediction end')
                 logging.info(f'prediction: {prediction}')
                 logging.info(f'target_tensor: {target_tensor}')
@@ -185,11 +187,11 @@ def inference(request):
                 json_data = []
                 logging.info(f'target_tensor: {target_tensor}')
                 if ('classification' in ai_model_sdk.task):
-                    for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                    for id, (pred, target) in enumerate(zip(prediction, target_tensor)):
                         json_data.append({
                             'id': id,
-                            'prediction': np.argmax(pred),
-                            'target': np.argmax(target),
+                            'prediction': pred,
+                            'target': target,
                         })
                 elif ('object_detection' in ai_model_sdk.task):
                     pass
@@ -206,8 +208,8 @@ def inference(request):
 
                 # --- inference test data ---
                 input_tensor = []
-                prediction = {}
-                target_tensor = {}
+                prediction = []
+                target_tensor = []
                 logging.info('get train batch and prediction start')
                 for id, train_batch in enumerate(train_dataset):
                     input_tensor = train_batch[0].numpy().tolist()
@@ -224,8 +226,10 @@ def inference(request):
                         'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
                     }
                     """
-                    prediction[id] = [class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']]
-                    target_tensor[id] = [target[-1] for target in target_tensor_]
+                    #prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
+                    prediction.append(ai_model_sdk.decoded_preds['detection_classes'])
+                    #target_tensor.append([target[-1] for target in target_tensor_])
+                    target_tensor.append([target for target in target_tensor_])
                 logging.info('get train batch and prediction end')
                 logging.info(f'prediction: {prediction}')
                 logging.info(f'target_tensor: {target_tensor}')
@@ -235,11 +239,11 @@ def inference(request):
                 json_data = []
                 logging.info(f'target_tensor: {target_tensor}')
                 if ('classification' in ai_model_sdk.task):
-                    for id, pred, target in zip(np.arange(0, len(target_tensor)), prediction, target_tensor):
+                    for id, (pred, target) in enumerate(zip(prediction, target_tensor)):
                         json_data.append({
                             'id': id,
-                            'prediction': np.argmax(pred),
-                            'target': np.argmax(target),
+                            'prediction': pred,
+                            'target': target,
                         })
                 elif ('object_detection' in ai_model_sdk.task):
                     pass

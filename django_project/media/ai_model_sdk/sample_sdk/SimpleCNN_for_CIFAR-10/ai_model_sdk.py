@@ -429,7 +429,7 @@ class AI_Model_SDK():
             target (numpy.ndarray): target
         """
 
-        accuracy = accuracy_score(np.argmax(target, axis=1), np.argmax(pred, axis=1))
+        accuracy = accuracy_score(target, pred)
         ret = {'accuracy': accuracy}
 
         return ret
