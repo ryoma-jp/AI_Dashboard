@@ -127,6 +127,10 @@ def inference(request):
                     prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
                     #target_tensor.append([target[-1] for target in target_tensor_])
                     target_tensor.append([target for target in target_tensor_])
+
+                prediction = np.array(prediction, dtype=int).flatten().tolist()
+                target_tensor = np.array(target_tensor, dtype=int).flatten().tolist()
+                
                 logging.info('get train batch and prediction end')
                 logging.info(f'prediction: {prediction}')
                 logging.info(f'target_tensor: {target_tensor}')
@@ -178,6 +182,10 @@ def inference(request):
                     prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
                     #target_tensor.append([target[-1] for target in target_tensor_])
                     target_tensor.append([target for target in target_tensor_])
+                
+                prediction = np.array(prediction, dtype=int).flatten().tolist()
+                target_tensor = np.array(target_tensor, dtype=int).flatten().tolist()
+                
                 logging.info('get validation batch and prediction end')
                 logging.info(f'prediction: {prediction}')
                 logging.info(f'target_tensor: {target_tensor}')
@@ -211,12 +219,12 @@ def inference(request):
                 prediction = []
                 target_tensor = []
                 logging.info('get train batch and prediction start')
-                for id, train_batch in enumerate(train_dataset):
-                    input_tensor = train_batch[0].numpy().tolist()
+                for id, test_batch in enumerate(test_dataset):
+                    input_tensor = test_batch[0].numpy().tolist()
                     input_tensor = np.array(input_tensor, dtype=np.float32)[np.newaxis, ...]
                     logging.info(f'input_tensor.shape = {input_tensor.shape}')
                     
-                    target_tensor_ = train_batch[1].numpy().tolist()
+                    target_tensor_ = test_batch[1].numpy().tolist()
                     prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
                     ai_model_sdk.decode_prediction(prediction_)
 
@@ -226,11 +234,14 @@ def inference(request):
                         'score': [score for score in ai_model_sdk.decoded_preds['detection_scores']]
                     }
                     """
-                    #prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
-                    prediction.append(ai_model_sdk.decoded_preds['detection_classes'])
+                    prediction.append([class_name for class_name in ai_model_sdk.decoded_preds['detection_classes']])
                     #target_tensor.append([target[-1] for target in target_tensor_])
                     target_tensor.append([target for target in target_tensor_])
-                logging.info('get train batch and prediction end')
+
+                prediction = np.array(prediction, dtype=int).flatten().tolist()
+                target_tensor = np.array(target_tensor, dtype=int).flatten().tolist()
+                
+                logging.info('get test batch and prediction end')
                 logging.info(f'prediction: {prediction}')
                 logging.info(f'target_tensor: {target_tensor}')
 
