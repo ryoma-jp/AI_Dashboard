@@ -26,6 +26,7 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 from PIL import Image
 from lxml import etree as lxml_etree
+import tensorflow_datasets as tfds
 
 from machine_learning.lib.utils.utils import zip_extract, download_file, safe_extract_tar, parse_xml, save_meta, save_image_files
 from machine_learning.lib.utils.preprocessor import image_preprocess
@@ -800,77 +801,42 @@ class DataLoaderMNIST(DataLoader):
         self.one_hot = one_hot
         self.verified = True
         
-        # --- download dataset and extract ---
-        if (download):
-            logging.info(f'[DataLoaderMNIST] {dataset_dir}')
-            os.makedirs(dataset_dir, exist_ok=True)
-            mnist_files = [
-                'train-images-idx3-ubyte.gz',
-                'train-labels-idx1-ubyte.gz',
-                't10k-images-idx3-ubyte.gz',
-                't10k-labels-idx1-ubyte.gz'
-            ]
-            
-            for mnist_file in mnist_files:
-                if (not Path(dataset_dir, mnist_file).exists()):
-                    url = 'http://yann.lecun.com/exdb/mnist/' + mnist_file
-                    save_file = download_file(url, dataset_dir)
-                    
-                    with gzip.open(save_file, 'rb') as gz:
-                        gz_content = gz.read()
-                    
-                    save_file = Path(dataset_dir, mnist_file[:-3])
-                    with open(save_file, 'wb') as f:
-                        f.write(gz_content)
-                    
-                else:
-                    logging.info(f'{mnist_file} is exists (Skip Download)')
-            
-        # --- load training data ---
-        f = open(Path(dataset_dir, 'train-images-idx3-ubyte'))
-        byte_data = np.fromfile(f, dtype=np.uint8)
-        
-        n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
-        img_h = (byte_data[8] << 24) | (byte_data[9] << 16) | (byte_data[10] << 8) | (byte_data[11])
-        img_w = (byte_data[12] << 24) | (byte_data[13] << 16) | (byte_data[14] << 8) | (byte_data[15])
-        
+        # --- load dataset via TensorFlow Datasets ---
+        tfds_data_dir = Path(dataset_dir, 'tfds')
+        tfds_data_dir.mkdir(parents=True, exist_ok=True)
+
+        def _to_numpy(ds):
+            """Convert TFDS dataset to numpy arrays (shape compatible with legacy loader)."""
+            images = []
+            labels = []
+            for image, label in tfds.as_numpy(ds):
+                if (image.ndim == 2):
+                    image = image[..., None]
+                images.append(image.astype(np.uint8))
+                labels.append(np.uint8(label))
+            return np.stack(images), np.array(labels, dtype=np.uint8)
+
+        ds_train, ds_test = tfds.load('mnist',
+                                      split=['train', 'test'],
+                                      as_supervised=True,
+                                      data_dir=str(tfds_data_dir),
+                                      download=download)
+
+        train_x, train_y = _to_numpy(ds_train)
+        test_x, test_y = _to_numpy(ds_test)
+
         if (flatten):
-            self.train_x = byte_data[16:].reshape(n_items, -1)
+            self.train_x = train_x.reshape(len(train_x), -1)
+            self.test_x = test_x.reshape(len(test_x), -1)
         else:
-            self.train_x = byte_data[16:].reshape(n_items, img_h, img_w, 1)
-        
-        # --- load training label ---
-        f = open(Path(dataset_dir, 'train-labels-idx1-ubyte'))
-        byte_data = np.fromfile(f, dtype=np.uint8)
-        
-        n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
-        
-        self.train_y = byte_data[8:]
+            self.train_x = train_x
+            self.test_x = test_x
+
+        self.train_y = train_y
+        self.test_y = test_y
         if (self.one_hot):
             identity = np.eye(10, dtype=np.int)
             self.train_y = np.array([identity[i] for i in self.train_y])
-        
-        # --- load test data ---
-        f = open(Path(dataset_dir, 't10k-images-idx3-ubyte'))
-        byte_data = np.fromfile(f, dtype=np.uint8)
-        
-        n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
-        img_h = (byte_data[8] << 24) | (byte_data[9] << 16) | (byte_data[10] << 8) | (byte_data[11])
-        img_w = (byte_data[12] << 24) | (byte_data[13] << 16) | (byte_data[14] << 8) | (byte_data[15])
-        
-        if (flatten):
-            self.test_x = byte_data[16:].reshape(n_items, -1)
-        else:
-            self.test_x = byte_data[16:].reshape(n_items, img_h, img_w, 1)
-        
-        # --- load test label ---
-        f = open(Path(dataset_dir, 't10k-labels-idx1-ubyte'))
-        byte_data = np.fromfile(f, dtype=np.uint8)
-        
-        n_items = (byte_data[4] << 24) | (byte_data[5] << 16) | (byte_data[6] << 8) | (byte_data[7])
-        
-        self.test_y = byte_data[8:]
-        if (self.one_hot):
             self.test_y = np.array([identity[i] for i in self.test_y])
         
         # --- split dataset training data and validation data ---

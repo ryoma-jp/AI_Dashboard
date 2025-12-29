@@ -109,14 +109,9 @@ class AI_Model_SDK():
 
             return x_train, y_train, x_val, y_val, x_test, y_test, x_inference, y_inference
         
-        @tf.function
         def transform_targets(y_train):
-            print(y_train.shape)
-            print(type(y_train))
-            print(y_train)
-            print(tf.executing_eagerly())
-            y_outs = tf.cast(y_train, tf.int32)
-
+            # Ensure labels are 1-D int tensors for sparse crossentropy
+            y_outs = tf.cast(tf.squeeze(y_train, axis=-1), tf.int32)
             return y_outs
         
         def transform_images(x_train, size):
@@ -134,6 +129,7 @@ class AI_Model_SDK():
         self.trainer_ctrl_fifo = trainer_ctrl_fifo
         self.task = 'classification'
         self.decoded_preds = {}
+        os.makedirs(self.model_path, exist_ok=True)
 
         # --- load info.json ---
         #self.x_train_info, self.y_train_info, \
@@ -161,7 +157,7 @@ class AI_Model_SDK():
             dataset.train_dataset['class_name_file_path'],
             dataset.train_dataset['model_input_size'])
         self.train_dataset = self.train_dataset.shuffle(buffer_size=512)
-        self.train_dataset = self.train_dataset.batch(self.batch_size)
+        self.train_dataset = self.train_dataset.batch(self.batch_size, drop_remainder=True)
         self.train_dataset = self.train_dataset.map(lambda x, y: (
             transform_images(x, dataset.train_dataset['model_input_size']),
             transform_targets(y)))
@@ -173,8 +169,7 @@ class AI_Model_SDK():
             dataset.validation_dataset['tfrecord_path'], 
             dataset.validation_dataset['class_name_file_path'],
             dataset.validation_dataset['model_input_size'])
-        self.validation_dataset = self.validation_dataset.shuffle(buffer_size=512)
-        self.validation_dataset = self.validation_dataset.batch(self.batch_size)
+        self.validation_dataset = self.validation_dataset.batch(self.batch_size, drop_remainder=True)
         self.validation_dataset = self.validation_dataset.map(lambda x, y: (
             transform_images(x, dataset.validation_dataset['model_input_size']),
             transform_targets(y)))
@@ -186,8 +181,7 @@ class AI_Model_SDK():
             dataset.test_dataset['tfrecord_path'], 
             dataset.test_dataset['class_name_file_path'],
             dataset.test_dataset['model_input_size'])
-        self.test_dataset = self.test_dataset.shuffle(buffer_size=512)
-        self.test_dataset = self.test_dataset.batch(self.batch_size)
+        self.test_dataset = self.test_dataset.batch(self.batch_size, drop_remainder=True)
         self.test_dataset = self.test_dataset.map(lambda x, y: (
             transform_images(x, dataset.test_dataset['model_input_size']),
             transform_targets(y)))
@@ -434,7 +428,7 @@ class AI_Model_SDK():
             target (numpy.ndarray): target
         """
 
-        accuracy = accuracy_score(np.argmax(target, axis=1), np.argmax(pred, axis=1))
+        accuracy = accuracy_score(target, pred)
         ret = {'accuracy': accuracy}
 
         return ret
