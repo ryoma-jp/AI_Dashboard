@@ -115,7 +115,7 @@ def inference(request):
                     logging.info(f'input_tensor.shape = {input_tensor.shape}')
                     
                     target_tensor_ = train_batch[1].numpy().tolist()
-                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
+                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=True)
                     ai_model_sdk.decode_prediction(prediction_)
 
                     """
@@ -170,7 +170,7 @@ def inference(request):
                     logging.info(f'input_tensor.shape = {input_tensor.shape}')
                     
                     target_tensor_ = validation_batch[1].numpy().tolist()
-                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
+                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=True)
                     ai_model_sdk.decode_prediction(prediction_)
 
                     """
@@ -225,7 +225,7 @@ def inference(request):
                     logging.info(f'input_tensor.shape = {input_tensor.shape}')
                     
                     target_tensor_ = test_batch[1].numpy().tolist()
-                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=False)
+                    prediction_ = ai_model_sdk.predict(input_tensor, preprocessing=True)
                     ai_model_sdk.decode_prediction(prediction_)
 
                     """
