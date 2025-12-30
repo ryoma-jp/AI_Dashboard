@@ -24,6 +24,75 @@ def inference(request):
     """ Function: inference
      * inference top
     """
+    def _build_id_to_name(dataset_obj, dataloader_obj):
+        """Build mapping from category id to name using available metadata."""
+        id_to_name = {}
+
+        dataset_dir = Path(settings.MEDIA_ROOT, settings.DATASET_DIR, dataset_obj.project.hash, f'dataset_{dataset_obj.id}')
+
+        # Prefer explicit class name files recorded in the dataloader.
+        candidate_paths = []
+        if dataloader_obj:
+            for split_key in ('train_dataset', 'validation_dataset', 'test_dataset'):
+                split_info = getattr(dataloader_obj, split_key, None)
+                if isinstance(split_info, dict):
+                    class_name_path = split_info.get('class_name_file_path')
+                    if class_name_path:
+                        candidate_paths.append(Path(class_name_path))
+
+        # Fallback: common filename alongside dataset contents.
+        candidate_paths.append(Path(dataset_dir, 'category_names.txt'))
+
+        for path in candidate_paths:
+            if path.exists():
+                with open(path, 'r') as f:
+                    names = [line.strip() for line in f if line.strip()]
+                if names:
+                    id_to_name = {idx: name for idx, name in enumerate(names)}
+                    break
+
+        # Final fallback: mine info.json for (category_id, category_name) pairs (detection datasets).
+        if not id_to_name:
+            for split in ('train', 'validation', 'test'):
+                info_path = Path(dataset_dir, split, 'info.json')
+                if not info_path.exists():
+                    continue
+
+                try:
+                    with open(info_path, 'r') as f:
+                        info_data = json.load(f)
+                except Exception:
+                    continue
+
+                for entry in info_data:
+                    target = entry.get('target')
+                    if not isinstance(target, dict):
+                        continue
+
+                    class_ids = target.get('class_id')
+                    category_names = target.get('category_name')
+
+                    if isinstance(class_ids, list) and isinstance(category_names, list):
+                        for cid, cname in zip(class_ids, category_names):
+                            try:
+                                cid_key = int(cid)
+                            except Exception:
+                                continue
+                            if cname is not None and cid_key not in id_to_name:
+                                id_to_name[cid_key] = cname
+                    elif class_ids is not None and category_names is not None:
+                        try:
+                            cid_key = int(class_ids)
+                        except Exception:
+                            continue
+                        if cid_key not in id_to_name:
+                            id_to_name[cid_key] = category_names
+
+                if id_to_name:
+                    break
+
+        return id_to_name
+
     def _get_selected_object():
         project_name = request.session.get('inference_view_selected_project', None)
         selected_project = Project.objects.get(name=project_name)
@@ -164,6 +233,7 @@ def inference(request):
         if (dataset_dropdown_selected is not None):
             # --- get DataLoader object ---
             dataloader_obj = get_dataloader_obj(dataset_dropdown_selected)
+            id_to_name = _build_id_to_name(dataset_dropdown_selected, dataloader_obj)
             
             # --- get prediction ---
             prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')
@@ -190,6 +260,12 @@ def inference(request):
 
                     record_with_thumbnail = dict(record)
                     record_with_thumbnail['thumbnail_url'] = thumbnail_url
+
+                    # Attach human-readable class names when available.
+                    pred_id = record.get('prediction')
+                    tgt_id = record.get('target')
+                    record_with_thumbnail['prediction_name'] = id_to_name.get(pred_id)
+                    record_with_thumbnail['target_name'] = id_to_name.get(tgt_id)
                     prediction.append(record_with_thumbnail)
             else:
                 prediction = None

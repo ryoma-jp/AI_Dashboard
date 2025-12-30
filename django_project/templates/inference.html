@@ -216,16 +216,16 @@
                   <tr>
                     <td>{{ prediction_.id }}</td>
                     <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                    <td>{{ prediction_.prediction }}</td>
-                    <td>{{ prediction_.target }}</td>
+                    <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                    <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
                   </tr>
                 {% elif prediction_filter_selected|stringformat:'s' == 'Correct' %}
                   {% if prediction_.prediction == prediction_.target %}
                     <tr>
                       <td>{{ prediction_.id }}</td>
                       <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                      <td>{{ prediction_.prediction }}</td>
-                      <td>{{ prediction_.target }}</td>
+                      <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                      <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
                     </tr>
                   {% endif %}
                 {% elif prediction_filter_selected|stringformat:'s' == 'Wrong' %}
@@ -233,8 +233,8 @@
                     <tr>
                       <td>{{ prediction_.id }}</td>
                       <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                      <td>{{ prediction_.prediction }}</td>
-                      <td>{{ prediction_.target }}</td>
+                      <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                      <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
                     </tr>
                   {% endif %}
                 {% else %}
@@ -251,8 +251,8 @@
                 <tr>
                   <td>{{ prediction_.id }}</td>
                   <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                  <td>{{ prediction_.prediction }}</td>
-                  <td>{{ prediction_.target }}</td>
+                  <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                  <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
                 </tr>
               {% endfor %}
             {% endif %}
