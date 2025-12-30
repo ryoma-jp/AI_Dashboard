@@ -204,6 +204,7 @@
             <thead class="table-dark">
               <tr>
                 <th scope="col">ID</th>
+                <th scope="col">Thumbnail</th>
                 <th scope="col">Prediction</th>
                 <th scope="col">Target</th>
               </tr>
@@ -214,6 +215,7 @@
                 {% if prediction_filter_selected|stringformat:'s' == 'All' %}
                   <tr>
                     <td>{{ prediction_.id }}</td>
+                    <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
                     <td>{{ prediction_.prediction }}</td>
                     <td>{{ prediction_.target }}</td>
                   </tr>
@@ -221,6 +223,7 @@
                   {% if prediction_.prediction == prediction_.target %}
                     <tr>
                       <td>{{ prediction_.id }}</td>
+                      <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
                       <td>{{ prediction_.prediction }}</td>
                       <td>{{ prediction_.target }}</td>
                     </tr>
@@ -229,12 +232,14 @@
                   {% if prediction_.prediction != prediction_.target %}
                     <tr>
                       <td>{{ prediction_.id }}</td>
+                      <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
                       <td>{{ prediction_.prediction }}</td>
                       <td>{{ prediction_.target }}</td>
                     </tr>
                   {% endif %}
                 {% else %}
                   <tr>
+                    <td>---</td>
                     <td>---</td>
                     <td>---</td>
                     <td>---</td>
@@ -245,6 +250,7 @@
               {% for prediction_ in prediction %}
                 <tr>
                   <td>{{ prediction_.id }}</td>
+                  <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
                   <td>{{ prediction_.prediction }}</td>
                   <td>{{ prediction_.target }}</td>
                 </tr>

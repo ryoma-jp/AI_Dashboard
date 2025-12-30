@@ -34,10 +34,13 @@ def parse_args():
     return parser.parse_args()
 
 
-def save_predictions(split_name, predictions, targets, evaluation_dir):
+def save_predictions(split_name, predictions, targets, filenames, evaluation_dir):
     json_data = []
     for idx, (pred, target) in enumerate(zip(predictions, targets)):
-        json_data.append({"id": idx, "prediction": int(pred), "target": int(target)})
+        row = {"id": idx, "prediction": int(pred), "target": int(target)}
+        if filenames:
+            row["filename"] = filenames[idx]
+        json_data.append(row)
 
     evaluation_dir.mkdir(parents=True, exist_ok=True)
     json_path = evaluation_dir / f"{split_name}_prediction.json"
@@ -51,21 +54,35 @@ def save_predictions(split_name, predictions, targets, evaluation_dir):
 def run_split(ai_model_sdk, dataset_iter, split_name, evaluation_dir):
     predictions = []
     targets = []
+    filenames = []
     logging.info("start inference: %s", split_name)
 
     for batch_id, batch in enumerate(dataset_iter):
-        inputs = batch[0].numpy()
-        batch_targets = batch[1].numpy()
+        if len(batch) == 3:
+            inputs, batch_targets, batch_filenames = batch
+        else:
+            inputs, batch_targets = batch
+            batch_filenames = None
+
+        inputs = inputs.numpy()
+        batch_targets = batch_targets.numpy()
 
         pred_raw = ai_model_sdk.predict(inputs, preprocessing=True)
         ai_model_sdk.decode_prediction(pred_raw)
 
-        predictions.extend([int(cls) for cls in ai_model_sdk.decoded_preds["detection_classes"]])
-        targets.extend([int(t) for t in batch_targets.reshape(-1)])
+        batch_predictions = [int(cls) for cls in ai_model_sdk.decoded_preds["detection_classes"]]
+        batch_targets_list = [int(t) for t in batch_targets.reshape(-1)]
+
+        predictions.extend(batch_predictions)
+        targets.extend(batch_targets_list)
+
+        if batch_filenames is not None:
+            filenames.extend([fname.decode("utf-8") for fname in batch_filenames.numpy()])
 
         logging.debug("%s batch %d: inputs=%s preds=%s", split_name, batch_id, inputs.shape, ai_model_sdk.decoded_preds["detection_classes"])
 
-    save_predictions(split_name, predictions, targets, evaluation_dir)
+    filenames_out = filenames if filenames else None
+    save_predictions(split_name, predictions, targets, filenames_out, evaluation_dir)
 
     scores = ai_model_sdk.eval_model(np.array(predictions), np.array(targets))
     logging.info("%s scores: %s", split_name, scores)
@@ -103,18 +120,21 @@ def main():
         dataset_obj.train_dataset["tfrecord_path"],
         dataset_obj.train_dataset["class_name_file_path"],
         dataset_obj.train_dataset["model_input_size"],
+        return_filename=True,
     )
     val_ds = load_dataset_from_tfrecord(
         task_name,
         dataset_obj.validation_dataset["tfrecord_path"],
         dataset_obj.validation_dataset["class_name_file_path"],
         dataset_obj.validation_dataset["model_input_size"],
+        return_filename=True,
     )
     test_ds = load_dataset_from_tfrecord(
         task_name,
         dataset_obj.test_dataset["tfrecord_path"],
         dataset_obj.test_dataset["class_name_file_path"],
         dataset_obj.test_dataset["model_input_size"],
+        return_filename=True,
     )
 
     # Use AI Model SDK batching config when available

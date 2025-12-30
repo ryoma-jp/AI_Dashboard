@@ -180,7 +180,7 @@ def build_tf_example(task, annotation, class_map=None, imagefile_dir=''):
 
     return example, info_target
 
-def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
+def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size, return_filename=False):
     """Load Dataset from TFRecord
     
     Load tfrecord and output dataset as TensorFlow dataset
@@ -189,17 +189,19 @@ def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
         tfrecord: dataset as tfrecord format
         class_name_file: class name file path
         img_size: image size [img_size, img_size]
+        return_filename (bool): when True, each sample includes its original filename
     
     Returns:
         dataset (tensorflow.python.data.ops.dataset_ops.MapDataset)
     """
     
-    def _parse_tfrecord(task, tfrecord, class_table, size):
+    def _parse_tfrecord(task, tfrecord, class_table, size, include_filename=False):
         if (task == 'classification'):
             # --- parse and scaling ---
             features = {
                 'encoded': tf.io.FixedLenFeature([], tf.string),
                 'target/class_text': tf.io.VarLenFeature(tf.string),
+                'filename': tf.io.FixedLenFeature([], tf.string),
             }
             x = tf.io.parse_single_example(tfrecord, features)
             x_train = tf.image.decode_jpeg(x['encoded'], channels=3)
@@ -208,6 +210,7 @@ def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
             # --- parse annotations ---
             class_names = tf.sparse.to_dense(x['target/class_text'], default_value='')
             y_train = tf.cast(class_table.lookup(class_names), tf.float32)
+            filename = x['filename']
 
         elif (task == 'detection'):
             # --- parse and scaling ---
@@ -218,6 +221,7 @@ def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
                 'target/bbox/xmax': tf.io.VarLenFeature(tf.float32),
                 'target/bbox/ymax': tf.io.VarLenFeature(tf.float32),
                 'target/class_text': tf.io.VarLenFeature(tf.string),
+                'filename': tf.io.FixedLenFeature([], tf.string),
             }
             x = tf.io.parse_single_example(tfrecord, features)
             x_train = tf.image.decode_jpeg(x['encoded'], channels=3)
@@ -233,10 +237,15 @@ def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
                             labels], axis=1)
             paddings = [[0, 100 - tf.shape(y_train)[0]], [0, 0]]
             y_train = tf.pad(y_train, paddings)
+            filename = x['filename']
         else:
             # --- task is 'regression' ---
-            pass
+            x_train = None
+            y_train = None
+            filename = None
 
+        if include_filename:
+            return x_train, y_train, filename
         return x_train, y_train
     
     # --- load class table and tfrecord ---
@@ -245,7 +254,7 @@ def load_dataset_from_tfrecord(task, tfrecord, class_name_file, img_size):
     dataset = tf.data.Dataset.list_files(tfrecord).flat_map(tf.data.TFRecordDataset)
     
     # --- convert format to tf.data.Dataset and return---
-    return dataset.map(lambda x: _parse_tfrecord(task, x, class_table, img_size))
+    return dataset.map(lambda x: _parse_tfrecord(task, x, class_table, img_size, return_filename))
         
 #---------------------------------
 # Class

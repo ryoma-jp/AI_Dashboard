@@ -5,10 +5,12 @@ import json
 import subprocess
 import logging
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from collections import OrderedDict
+from urllib.parse import quote
 
 from django.shortcuts import render, redirect
+from django.conf import settings
 
 from app.models import Project, MlModel, Dataset
 from machine_learning.lib.utils.utils import JsonEncoder
@@ -167,7 +169,28 @@ def inference(request):
             prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')
             if (prediction_json.exists()):
                 with open(prediction_json, 'r') as f:
-                    prediction = json.load(f)
+                    prediction_raw = json.load(f)
+
+                prediction = []
+                for record in prediction_raw:
+                    filename = record.get('filename')
+                    thumbnail_url = None
+
+                    if filename:
+                        filename_path = Path(filename)
+                        if '..' not in filename_path.parts:
+                            rel_path = PurePosixPath(
+                                settings.DATASET_DIR,
+                                dataset_dropdown_selected.project.hash,
+                                f'dataset_{dataset_dropdown_selected.id}',
+                                prediction_data_type_selected.lower(),
+                                filename_path.as_posix(),
+                            )
+                            thumbnail_url = f"{settings.MEDIA_URL.rstrip('/')}/{quote(str(rel_path), safe='/')}"
+
+                    record_with_thumbnail = dict(record)
+                    record_with_thumbnail['thumbnail_url'] = thumbnail_url
+                    prediction.append(record_with_thumbnail)
             else:
                 prediction = None
         else:
