@@ -12,7 +12,7 @@ import argparse
 import pickle
 from pathlib import Path
 
-from machine_learning.lib.data_loader.data_loader import DataLoaderPascalVOC2012
+from machine_learning.lib.data_loader.data_loader import DataLoaderCOCO2017
 from machine_learning.lib.utils.utils import save_meta
 
 #---------------------------------
@@ -42,11 +42,11 @@ def ArgParser():
         )
         parser.add_argument(
                 '--dataset_type', dest='dataset_type', type=str, default='', required=False,
-                choices=['CIFAR-10', 'MNIST', 'PascalVOC'],
+                choices=['CIFAR-10', 'MNIST', 'COCO2017'],
                 help='Type of dataset\n'
                         '  - CIFAR-10\n'
                         '  - MNIST\n'
-                        '  - PascalVOC',
+                        '  - COCO2017',
         )
         parser.add_argument(
                 '--meta_json', dest='meta_json', type=str, default=None, required=False,
@@ -83,9 +83,9 @@ def ArgParser():
 
 def main():
     """main
-    
+
     Main function
-    
+
     """
     args = ArgParser()
     print('[INFO] Arguments')
@@ -107,16 +107,21 @@ def main():
         os.makedirs(dataset_dir, exist_ok=True)
 
         if (args.dataset_type == 'PascalVOC'):
-            # --- Create dataloader object ---
-            dataloader = DataLoaderPascalVOC2012(dataset_dir, validation_split=0.2, download=True)
+            # Backward-compat: accept old PascalVOC value, but use COCO2017.
+            args.dataset_type = 'COCO2017'
 
-            # --- Create meta data ---
-            meta_dir = Path(dataset_dir, 'meta')
-            keys = [{
-                    'name': 'img_file',
-                    'type': 'image_file',
-                    }]
-            dict_meta = save_meta(meta_dir, 'True', 'object_detection', 'image_data', keys)
+        if (args.dataset_type != 'COCO2017'):
+            raise ValueError(f'Unsupported dataset_type for this script: {args.dataset_type}')
+
+        dataloader = DataLoaderCOCO2017(dataset_dir, validation_split=0.2, download=True, model_input_size=416)
+
+        # --- Create meta data ---
+        meta_dir = Path(dataset_dir, 'meta')
+        keys = [{
+                'name': 'img_file',
+                'type': 'image_file',
+                }]
+        dict_meta = save_meta(meta_dir, 'True', 'object_detection', 'image_data', keys)
         
         # --- save dataset object to pickle file ---
         with open(Path(dataset_dir, 'dataset.pkl'), 'wb') as f:

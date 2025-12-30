@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+*.pyo
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.ipynb_checkpoints/
+
+# Local env/runtime artifacts
+*.log
+
+# Jupyter config in docker env (contains local token)
+django_project/env/**/jupyter_notebook_config.py
+
+# Local ad-hoc SDK test runner scripts (paths are environment-specific)
+django_project/media/ai_model_sdk/sample_sdk/**/test.sh

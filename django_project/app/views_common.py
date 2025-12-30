@@ -17,7 +17,6 @@ from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
 from machine_learning.lib.data_loader.data_loader import DataLoaderCaliforniaHousing
 from machine_learning.lib.data_loader.data_loader import DataLoaderCOCO2017
-from machine_learning.lib.data_loader.data_loader import DataLoaderPascalVOC2012
 from machine_learning.lib.data_loader.data_loader import DataLoaderCustom
 from machine_learning.lib.utils.utils import save_meta, save_image_info, save_image_files, save_table_info
 
@@ -225,10 +224,10 @@ def load_dataset(dataset):
         save_image_info(dict_image_file, Path(download_dir, 'test'))
         
     elif (dataset.name == 'PascalVOC2012'):
-        # --- Create dataloader object ---
-        dataloader = DataLoaderPascalVOC2012(download_dir, validation_split=0.2, download=download)
-        
-        # --- Create meta data ---
+        # PascalVOC2012 official hosting is unreliable; treat this dataset as COCO2017 for Object Detection.
+        # (Keeps older DB records usable while new projects no longer create PascalVOC2012.)
+        dataloader = DataLoaderCOCO2017(download_dir, validation_split=0.2, download=download, model_input_size=416)
+
         meta_dir = Path(download_dir, 'meta')
         keys = [{
                     'name': 'img_file',

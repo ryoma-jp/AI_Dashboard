@@ -987,7 +987,15 @@ class DataLoaderCOCO2017(DataLoader):
     In this sample code, the validation data is used as the test data, and the training data is split the training data and validation data.
     """
     
-    def __init__(self, dataset_dir, validation_split=0.0, flatten=False, one_hot=False, download=False, model_input_size=224):
+    def __init__(
+        self,
+        dataset_dir,
+        validation_split=0.0,
+        flatten=False,
+        one_hot=False,
+        download=False,
+        model_input_size=416,
+    ):
         """Constructor
         
         Constructor
@@ -1115,13 +1123,127 @@ class DataLoaderCOCO2017(DataLoader):
         
         # --- set task to image classification ---
         self.dataset_type = 'img_det'
+
+        # --- Create TFRecords + info.json for Object Detection (YOLOv3 SDK expects these) ---
+        # Build once and skip if already generated.
+        train_tfrecord_path = Path(dataset_dir, 'train.tfrecord')
+        validation_tfrecord_path = Path(dataset_dir, 'validation.tfrecord')
+        test_tfrecord_path = Path(dataset_dir, 'test.tfrecord')
+        class_name_file_path = Path(dataset_dir, 'category_names.txt')
+
+        def _write_class_names_and_map(df_instances_any):
+            df_cat = df_instances_any[['category_id', 'category_name']].drop_duplicates().sort_values('category_id')
+            class_names = df_cat['category_name'].tolist()
+            class_map = {name: idx for idx, name in enumerate(class_names)}
+            if (not class_name_file_path.exists()):
+                with open(class_name_file_path, 'w') as f:
+                    for name in class_names:
+                        f.write(f'{name}\n')
+            return class_map
+
+        def _build_split(df_instances, src_dir, split_name, tfrecord_path):
+            split_dir = Path(dataset_dir, split_name)
+            images_dir = Path(split_dir, 'images')
+            os.makedirs(images_dir, exist_ok=True)
+
+            # class map is global across splits; derive from the full training split.
+            class_map = _write_class_names_and_map(self.df_instances_train)
+
+            info_json = []
+            writer = tf.io.TFRecordWriter(str(tfrecord_path))
+
+            # group by image_id to emit one TFExample per image
+            for image_id, group in df_instances.groupby('image_id', sort=False):
+                file_name = group['file_name'].iloc[0]
+                width = int(group['width'].iloc[0])
+                height = int(group['height'].iloc[0])
+
+                src_file = Path(src_dir, file_name)
+                dst_rel = Path('images', file_name)
+                dst_file = Path(split_dir, dst_rel)
+                if (not dst_file.exists()):
+                    if (src_file.exists()):
+                        shutil.move(str(src_file), str(dst_file))
+                    else:
+                        # If images were already moved by another process, keep going.
+                        pass
+
+                objects = []
+                for _, row in group.iterrows():
+                    bbox = row['bbox']
+                    if (bbox is None) or (len(bbox) != 4):
+                        continue
+                    x, y, w, h = bbox
+                    objects.append({
+                        'bndbox': {
+                            'xmin': float(x),
+                            'ymin': float(y),
+                            'xmax': float(x) + float(w),
+                            'ymax': float(y) + float(h),
+                        },
+                        'name': row['category_name'],
+                    })
+
+                annotation = {
+                    'filename': str(dst_rel),
+                    'size': {
+                        'width': width,
+                        'height': height,
+                        'depth': 3,
+                    },
+                    'object': objects,
+                }
+                tf_example, info_target = build_tf_example('detection', annotation, class_map, imagefile_dir=split_dir)
+                writer.write(tf_example.SerializeToString())
+
+                info_json.append({
+                    'id': str(image_id),
+                    'img_file': str(dst_rel),
+                    'target': info_target,
+                })
+
+            writer.close()
+            with open(Path(split_dir, 'info.json'), 'w') as f:
+                json.dump(info_json, f, ensure_ascii=False, indent=4)
+
+        if (not train_tfrecord_path.exists()) or (not test_tfrecord_path.exists()) or (not class_name_file_path.exists()):
+            # Train and Validation originate from train2017; Test originates from val2017.
+            _build_split(self.df_instances_train, Path(dataset_dir, 'train2017'), 'train', train_tfrecord_path)
+            if (self.df_instances_validation is not None):
+                _build_split(self.df_instances_validation, Path(dataset_dir, 'train2017'), 'validation', validation_tfrecord_path)
+            else:
+                # If no explicit validation split, create an empty validation set to keep downstream code stable.
+                os.makedirs(Path(dataset_dir, 'validation', 'images'), exist_ok=True)
+                with open(Path(dataset_dir, 'validation', 'info.json'), 'w') as f:
+                    json.dump([], f, ensure_ascii=False, indent=4)
+                tf.io.TFRecordWriter(str(validation_tfrecord_path)).close()
+            _build_split(self.df_instances_test, Path(dataset_dir, 'val2017'), 'test', test_tfrecord_path)
+
+        self.train_dataset = {
+            'tfrecord_path': str(train_tfrecord_path),
+            'class_name_file_path': str(class_name_file_path),
+            'model_input_size': model_input_size,
+        }
+        self.validation_dataset = {
+            'tfrecord_path': str(validation_tfrecord_path),
+            'class_name_file_path': str(class_name_file_path),
+            'model_input_size': model_input_size,
+        }
+        self.test_dataset = {
+            'tfrecord_path': str(test_tfrecord_path),
+            'class_name_file_path': str(class_name_file_path),
+            'model_input_size': model_input_size,
+        }
         
         # --- T.B.D ---
         #   * too many the memory necessary
         train_x = []
         train_file_names = self.df_instances_train['file_name'].unique()
         for file_name in train_file_names[0:min(len(train_file_names), 100)]:
-            img = Image.open(Path(dataset_dir, 'train2017', file_name)).convert('RGB')
+            img_path = Path(dataset_dir, 'train2017', file_name)
+            if (not img_path.exists()):
+                img_path = Path(dataset_dir, 'train', 'images', file_name)
+            img = Image.open(img_path).convert('RGB')
             img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
             train_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
             
@@ -1129,18 +1251,25 @@ class DataLoaderCOCO2017(DataLoader):
         self.train_y = None
         
         validation_x = []
-        validation_file_names = self.df_instances_validation['file_name'].unique()
-        for file_name in validation_file_names[0:min(len(validation_file_names), 20)]:
-            img = Image.open(Path(dataset_dir, 'train2017', file_name)).convert('RGB')
-            img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
-            validation_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
+        if (self.df_instances_validation is not None):
+            validation_file_names = self.df_instances_validation['file_name'].unique()
+            for file_name in validation_file_names[0:min(len(validation_file_names), 20)]:
+                img_path = Path(dataset_dir, 'train2017', file_name)
+                if (not img_path.exists()):
+                    img_path = Path(dataset_dir, 'validation', 'images', file_name)
+                img = Image.open(img_path).convert('RGB')
+                img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
+                validation_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
         self.validation_x = np.array(validation_x)
         self.validation_y = None
         
         test_x = []
         test_file_names = self.df_instances_test['file_name'].unique()
         for file_name in test_file_names[0:min(len(test_file_names), 20)]:
-            img = Image.open(Path(dataset_dir, 'val2017', file_name)).convert('RGB')
+            img_path = Path(dataset_dir, 'val2017', file_name)
+            if (not img_path.exists()):
+                img_path = Path(dataset_dir, 'test', 'images', file_name)
+            img = Image.open(img_path).convert('RGB')
             img = img.resize([model_input_size, model_input_size], Image.BILINEAR)
             test_x.append(np.array(img.getdata()).reshape(model_input_size, model_input_size, 3).tolist())
         self.test_x = np.array(test_x)

@@ -142,7 +142,6 @@ def project_new(request):
             Dataset.objects.create(name='MNIST', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
             Dataset.objects.create(name='CIFAR-10', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
             Dataset.objects.create(name='COCO2017', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
-            Dataset.objects.create(name='PascalVOC2012', project=project, dataset_type=Dataset.DATASET_TYPE_IMAGE)
             Dataset.objects.create(name='CaliforniaHousing', project=project, dataset_type=Dataset.DATASET_TYPE_TABLE)
             
             # --- create sample SDK ---
@@ -156,7 +155,7 @@ def project_new(request):
                 ['SimpleCNN for MNIST', 'SimpleCNN_for_MNIST', 'SimpleCNN'],
                 ['SimpleCNN for CIFAR-10', 'SimpleCNN_for_CIFAR-10', 'SimpleCNN'],
                 ['LightGBM for CaliforniaHousing', 'LightGBM_for_CaliforniaHousing', 'LightGBM'],
-                ['YOLOv3 for PascalVOC', 'YOLOv3_for_PascalVOC', 'YOLOv3'],
+                ['YOLOv3 for COCO2017', 'YOLOv3_for_COCO2017', 'YOLOv3'],
             ]
             for name, path, model_type in sample_sdk_list:
                 AIModelSDK.objects.create(name=name, project=project, model_type=model_type, ai_model_sdk_dir=Path(sample_sdk_path, path), ai_model_sdk_dir_offset=Path('sample_sdk', path))
@@ -274,8 +273,6 @@ def model_new(request, project_id):
                 config_file = 'config_cifar10.json'
             elif (model.dataset.name == 'COCO2017'):
                 config_file = 'config_coco2017.json'
-            elif (model.dataset.name == 'PascalVOC2012'):
-                config_file = 'config_pascal_voc2012.json'
             elif (model.dataset.name == 'CaliforniaHousing'):
                 config_file = 'config_california_housing.json'
             else:
