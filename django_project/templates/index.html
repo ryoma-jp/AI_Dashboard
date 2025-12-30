@@ -13,7 +13,7 @@
           <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
             <h1 class="h2">Home</h1>
           </div>
-          
+
           <h1 class="h3">Projects and Models</h1>
           <a class="btn btn-primary" href="{% url 'project_new' %}">New Project</a>
           {% if projects %}
@@ -80,9 +80,138 @@
               </tr>
             {% endfor %}
           </table>
+
+          <h1 class="h3">Recent Jobs</h1>
+          <div class="card my-3" id="recent-jobs">
+            <div class="card-body">
+              {% if recent_jobs %}
+                {% for job in recent_jobs %}
+                  <div class="card my-2 progress-job-card" data-job-id="{{ job.id }}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <div>
+                        <span class="fw-bold">{{ job.job_type }}</span>
+                        <span class="text-muted">#{{ job.id }}</span>
+                      </div>
+                      <span class="text-muted small job-status">{{ job.status }}</span>
+                    </div>
+                    <ul class="list-group list-group-flush job-steps">
+                      <li class="list-group-item text-muted">Loading...</li>
+                    </ul>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <p class="text-muted">No jobs.</p>
+              {% endif %}
+            </div>
+          </div>
         </div>
         
   </div>
 </div>
+
+<script>
+(function() {
+  const cards = Array.from(document.querySelectorAll('.progress-job-card'));
+  if (!cards.length) { return; }
+
+  const badgeHtml = (status) => {
+    const tone = {
+      'PENDING': 'secondary',
+      'RUNNING': 'info',
+      'DONE': 'success',
+      'ERROR': 'danger',
+      'CANCELED': 'warning',
+    }[status] || 'secondary';
+    return '<span class="badge bg-' + tone + '">' + status + '</span>';
+  };
+
+  const renderJob = (card, job) => {
+    const statusEl = card.querySelector('.job-status');
+    const listEl = card.querySelector('.job-steps');
+    if (statusEl) {
+      statusEl.innerHTML = badgeHtml(job.status);
+    }
+    if (!listEl) { return; }
+
+    listEl.innerHTML = '';
+    const steps = (job.steps || []).slice().sort((a, b) => a.order - b.order);
+    if (!steps.length) {
+      listEl.innerHTML = '<li class="list-group-item text-muted">No steps.</li>';
+      return;
+    }
+
+    steps.forEach((step) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex align-items-center gap-2';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.disabled = true;
+      checkbox.className = 'form-check-input';
+      checkbox.checked = step.status === 'DONE';
+      li.appendChild(checkbox);
+
+      const label = document.createElement('span');
+      label.className = 'flex-grow-1';
+      label.textContent = step.label;
+      li.appendChild(label);
+
+      if (step.status === 'RUNNING') {
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner-border spinner-border-sm text-primary';
+        spinner.setAttribute('role', 'status');
+        spinner.innerHTML = '<span class="visually-hidden">Loading...</span>';
+        li.appendChild(spinner);
+      }
+
+      const state = document.createElement('span');
+      state.innerHTML = badgeHtml(step.status);
+      li.appendChild(state);
+
+      listEl.appendChild(li);
+
+      if (step.detail) {
+        const detailLi = document.createElement('li');
+        detailLi.className = 'list-group-item small text-muted';
+        detailLi.textContent = step.detail;
+        listEl.appendChild(detailLi);
+      }
+    });
+  };
+
+  const fetchJob = async (card) => {
+    const jobId = card.dataset.jobId;
+    if (!jobId) { return; }
+    const res = await fetch('/api/jobs/' + jobId + '/');
+    if (!res.ok) {
+      throw new Error('Failed to fetch job ' + jobId);
+    }
+    const data = await res.json();
+    renderJob(card, data);
+    return data;
+  };
+
+  let timerId = null;
+  const tick = async () => {
+    try {
+      const results = await Promise.all(cards.map((c) => fetchJob(c)));
+      const anyRunning = results.some((j) => j && !['DONE', 'ERROR', 'CANCELED'].includes(j.status));
+      if (!anyRunning && timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+    } catch (e) {
+      if (timerId !== null) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+      console.error(e);
+    }
+  };
+
+  tick();
+  timerId = setInterval(tick, 1000);
+})();
+</script>
 {% endblock %}
 

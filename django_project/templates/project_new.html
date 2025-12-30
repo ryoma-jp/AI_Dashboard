@@ -4,12 +4,167 @@
 {% block main %}
 <div class="container-fluid">
   <h2> New Project</h2>
-  <form method="post">
+  <form method="post" id="project-new-form">
     {% csrf_token %}
     {% bootstrap_form form %}
     {% bootstrap_button button_type="submit" content="Add Project" %}
     <a class="btn btn-primary" href="{% url 'index' %}" role="button">Cancel</a>
   </form>
+
+  <div class="card my-4 progress-checklist" id="project-create-progress" data-job-id="{{ job_id|default:'' }}">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-bold">Progress</span>
+      <span class="text-muted small" id="project-create-status"></span>
+    </div>
+    <ul class="list-group list-group-flush" id="project-create-steps">
+      <li class="list-group-item text-muted">No job.</li>
+    </ul>
+  </div>
 </div>
+
+<script>
+(function() {
+  const card = document.getElementById('project-create-progress');
+  const form = document.getElementById('project-new-form');
+  if (!card || !form) { return; }
+
+  const listEl = document.getElementById('project-create-steps');
+  const statusEl = document.getElementById('project-create-status');
+
+  const stepsPreset = [
+    'Save project record',
+    'Create default datasets',
+    'Register sample SDKs',
+    'Create project directories',
+    'Done',
+  ];
+
+  const badge = (status) => {
+    const tone = {
+      'PENDING': 'secondary',
+      'RUNNING': 'info',
+      'DONE': 'success',
+      'ERROR': 'danger',
+      'CANCELED': 'warning',
+    }[status] || 'secondary';
+    return '<span class="badge bg-' + tone + '">' + status + '</span>';
+  };
+
+  const renderLocalPreset = () => {
+    statusEl.textContent = 'Starting...';
+    listEl.innerHTML = '';
+    stepsPreset.forEach((label) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex align-items-center gap-2';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.disabled = true;
+      cb.className = 'form-check-input';
+      li.appendChild(cb);
+      const span = document.createElement('span');
+      span.className = 'flex-grow-1';
+      span.textContent = label;
+      li.appendChild(span);
+      listEl.appendChild(li);
+    });
+  };
+
+  const render = (job) => {
+    statusEl.innerHTML = badge(job.status);
+    listEl.innerHTML = '';
+    (job.steps || []).slice().sort((a,b)=>a.order-b.order).forEach((s) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex align-items-center gap-2';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.disabled = true;
+      cb.className = 'form-check-input';
+      cb.checked = s.status === 'DONE';
+      li.appendChild(cb);
+      const label = document.createElement('span');
+      label.className = 'flex-grow-1';
+      label.textContent = s.label;
+      li.appendChild(label);
+      if (s.status === 'RUNNING') {
+        const sp = document.createElement('div');
+        sp.className = 'spinner-border spinner-border-sm text-primary';
+        sp.setAttribute('role','status');
+        sp.innerHTML = '<span class="visually-hidden">Loading...</span>';
+        li.appendChild(sp);
+      }
+      const st = document.createElement('span');
+      st.innerHTML = badge(s.status);
+      li.appendChild(st);
+      listEl.appendChild(li);
+      if (s.detail) {
+        const d = document.createElement('li');
+        d.className = 'list-group-item small text-muted';
+        d.textContent = s.detail;
+        listEl.appendChild(d);
+      }
+    });
+  };
+
+  let timer = null;
+  const stopTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+  const startPolling = (jobId) => {
+    const tick = async () => {
+      const res = await fetch('/api/jobs/' + jobId + '/');
+      if (!res.ok) { throw new Error('Failed to fetch job'); }
+      const data = await res.json();
+      render(data);
+      if (['DONE','ERROR','CANCELED'].includes(data.status)) {
+        stopTimer();
+        if (data.status === 'DONE') {
+          setTimeout(() => { window.location.href = '/'; }, 300);
+        }
+      }
+    };
+    tick().catch(console.error);
+    timer = setInterval(() => tick().catch(console.error), 1000);
+  };
+
+  const getCsrf = () => {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  };
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    renderLocalPreset();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; }
+    const fd = new FormData(form);
+    fetch(form.getAttribute('action') || window.location.pathname, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrf(),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: fd,
+    }).then(async (res) => {
+      if (!res.ok) {
+        throw new Error('Request failed');
+      }
+      const data = await res.json();
+      if (data.job_id) {
+        card.dataset.jobId = data.job_id;
+        startPolling(data.job_id);
+      }
+    }).catch((err) => {
+      console.error(err);
+      statusEl.textContent = 'Error';
+    }).finally(() => {
+      if (submitBtn) { submitBtn.disabled = false; }
+    });
+  });
+
+  // If job id already exists (e.g., redirected with ?job=...), start polling.
+  if (card.dataset.jobId) {
+    startPolling(card.dataset.jobId);
+  }
+})();
+</script>
 {% endblock %}
 

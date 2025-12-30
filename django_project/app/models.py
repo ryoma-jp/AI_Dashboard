@@ -196,3 +196,70 @@ class MlModel(models.Model):
         return self.name
 
 
+#---------------------------------------
+# クラス：ジョブ管理（進捗表示用）
+#---------------------------------------
+class OperationJob(models.Model):
+    JOB_TYPE_TRAINING_RUN = 'TRAINING_RUN'
+    JOB_TYPE_PROJECT_CREATE = 'PROJECT_CREATE'
+    JOB_TYPE_MODEL_CREATE = 'MODEL_CREATE'
+    JOB_TYPE_CHOICES = (
+        (JOB_TYPE_TRAINING_RUN, JOB_TYPE_TRAINING_RUN),
+        (JOB_TYPE_PROJECT_CREATE, JOB_TYPE_PROJECT_CREATE),
+        (JOB_TYPE_MODEL_CREATE, JOB_TYPE_MODEL_CREATE),
+    )
+
+    STATUS_PENDING = 'PENDING'
+    STATUS_RUNNING = 'RUNNING'
+    STATUS_DONE = 'DONE'
+    STATUS_ERROR = 'ERROR'
+    STATUS_CANCELED = 'CANCELED'
+    STATUS_CHOICES = (
+        (STATUS_PENDING, STATUS_PENDING),
+        (STATUS_RUNNING, STATUS_RUNNING),
+        (STATUS_DONE, STATUS_DONE),
+        (STATUS_ERROR, STATUS_ERROR),
+        (STATUS_CANCELED, STATUS_CANCELED),
+    )
+
+    job_type = models.CharField(max_length=64, choices=JOB_TYPE_CHOICES)
+    project = models.ForeignKey(Project, verbose_name='Project', on_delete=models.CASCADE, null=True, blank=True, related_name='jobs')
+    model = models.ForeignKey(MlModel, verbose_name='Model', on_delete=models.CASCADE, null=True, blank=True, related_name='jobs')
+    dataset = models.ForeignKey(Dataset, verbose_name='Dataset', on_delete=models.CASCADE, null=True, blank=True, related_name='jobs')
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    message = models.TextField(blank=True)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'{self.job_type} ({self.id})'
+
+
+class OperationStep(models.Model):
+    STATUS_PENDING = 'PENDING'
+    STATUS_RUNNING = 'RUNNING'
+    STATUS_DONE = 'DONE'
+    STATUS_ERROR = 'ERROR'
+    STATUS_CHOICES = (
+        (STATUS_PENDING, STATUS_PENDING),
+        (STATUS_RUNNING, STATUS_RUNNING),
+        (STATUS_DONE, STATUS_DONE),
+        (STATUS_ERROR, STATUS_ERROR),
+    )
+
+    job = models.ForeignKey(OperationJob, on_delete=models.CASCADE, related_name='steps')
+    order = models.PositiveIntegerField()
+    label = models.CharField(max_length=256)
+    status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    detail = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.job_id}: {self.label}'
+
+

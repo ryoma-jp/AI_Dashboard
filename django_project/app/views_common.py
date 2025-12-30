@@ -11,7 +11,7 @@ from pathlib import Path
 
 from django.conf import settings
 
-from app.models import Project, MlModel
+from app.models import Project, MlModel, OperationJob, OperationStep
 
 from machine_learning.lib.data_loader.data_loader import DataLoaderCIFAR10
 from machine_learning.lib.data_loader.data_loader import DataLoaderMNIST
@@ -89,8 +89,32 @@ def get_all_fifo_command():
                     model.training_pid = None
                     model.status = model.STAT_DONE
                     model.save()
+                    _set_training_job_done(model)
                 else:
                     break
+
+
+def _set_training_job_done(model):
+    """Mark the latest training job for the model as DONE."""
+    job = OperationJob.objects.filter(
+        model=model,
+        job_type=OperationJob.JOB_TYPE_TRAINING_RUN,
+    ).order_by('-created_at').first()
+
+    if not job:
+        return
+
+    if job.status in [OperationJob.STATUS_DONE, OperationJob.STATUS_ERROR, OperationJob.STATUS_CANCELED]:
+        return
+
+    final_step = job.steps.order_by('order').last()
+    if final_step and final_step.status != OperationStep.STATUS_DONE:
+        final_step.status = OperationStep.STATUS_DONE
+        final_step.save()
+
+    job.status = OperationJob.STATUS_DONE
+    job.message = 'Training completed'
+    job.save()
 
 def load_dataset(dataset):
     """Load Dataset

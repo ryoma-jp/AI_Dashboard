@@ -1,8 +1,9 @@
 """Web APIs
 """
-from app.models import Project, Dataset
-from rest_framework.generics import ListCreateAPIView
-from serializers import ProjectSerializer, DatasetSerializer
+from app.models import Project, Dataset, OperationJob
+from rest_framework.generics import ListCreateAPIView, RetrieveAPIView
+from serializers import ProjectSerializer, DatasetSerializer, OperationJobSerializer
+from views_common import get_all_fifo_command
 
 class get_project_list(ListCreateAPIView):
     """get_project_list
@@ -37,4 +38,20 @@ class get_dataset_list(ListCreateAPIView):
     
     # HTTPリクエストメソッドを制限
     http_method_names = ['get']
+
+
+class get_job_detail(RetrieveAPIView):
+    """get_job_detail
+    
+    ジョブの進捗（ステップ一覧）を取得する
+    """
+    queryset = OperationJob.objects.prefetch_related('steps').all()
+    serializer_class = OperationJobSerializer
+    permission_classes = []
+    http_method_names = ['get']
+
+    def get(self, request, *args, **kwargs):
+        # FIFOの完了通知を定期ポーリングで拾い、ジョブ状態を更新する
+        get_all_fifo_command()
+        return super().get(request, *args, **kwargs)
 

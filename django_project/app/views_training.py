@@ -10,7 +10,7 @@ from pathlib import Path
 
 from django.shortcuts import render, redirect
 
-from app.models import Project, MlModel
+from app.models import Project, MlModel, OperationJob, OperationStep
 
 from views_common import SidebarActiveStatus, get_version, get_all_fifo_command, get_dataloader_obj, get_jupyter_nb_url
 
@@ -29,64 +29,106 @@ def training(request):
         
         return selected_project, selected_model
     
+    def _create_training_job(project_obj, model_obj):
+        job = OperationJob.objects.create(
+            job_type=OperationJob.JOB_TYPE_TRAINING_RUN,
+            project=project_obj,
+            model=model_obj,
+            status=OperationJob.STATUS_RUNNING,
+        )
+
+        step_labels = [
+            'Validate selection',
+            'Clean model and log directories',
+            'Load training config',
+            'Launch trainer process',
+            'Training finished',
+        ]
+        for idx, label in enumerate(step_labels, start=1):
+            OperationStep.objects.create(job=job, order=idx, label=label, status=OperationStep.STATUS_PENDING)
+
+        return job
+
+    def _update_step(job, order, status, detail=''):
+        OperationStep.objects.filter(job=job, order=order).update(status=status, detail=detail)
+
     def _training_run():
         selected_project, selected_model = _get_selected_object()
         if (selected_model):
             logging.debug(selected_model)
-            
-            # --- Delete model and logs directory ---
-            if (Path(selected_model.model_dir, 'models').exists()):
-                shutil.rmtree(Path(selected_model.model_dir, 'models'))
-            if (Path(selected_model.model_dir, 'logs').exists()):
-                shutil.rmtree(Path(selected_model.model_dir, 'logs'))
-            
-            # --- Load config ---
-            config_path = Path(selected_model.model_dir, 'config.json')
-            with open(config_path, 'r') as f:
-                config_data = json.load(f)
-            
-            # --- Training Model ---
-            if False:
-                # --- main.py ---
-                main_path = Path('./app/machine_learning/main.py').resolve()
-                logging.info('-------------------------------------')
-                logging.info(f'main_path: {main_path}')
-                logging.info(f'current working directory: {os.getcwd()}')
-                logging.info(f'command: python {main_path} --mode train --config {config_path}')
-                logging.info('-------------------------------------')
-                subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
-                logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
-            else:
-                # --- ml_main.py ---
-                dataset_path = config_data['dataset']['dataset_dir']['value']
-                command = ['python', Path('./app/machine_learning/ml_train_main.py').resolve()]
-                command += ['--sdk_path', selected_model.ai_model_sdk.ai_model_sdk_dir]
-                command += ['--dataset', Path(dataset_path, 'dataset.pkl')]
-                if Path(dataset_path, 'meta').exists():
-                    command += ['--meta_json', Path(dataset_path, 'meta', 'info.json')]
-                if Path(dataset_path, 'train').exists():
-                    command += ['--train_json', Path(dataset_path, 'train', 'info.json')]
-                if Path(dataset_path, 'validation').exists():
-                    command += ['--val_json', Path(dataset_path, 'validation', 'info.json')]
-                if Path(dataset_path, 'test').exists():
-                    command += ['--test_json', Path(dataset_path, 'test', 'info.json')]
-                command += ['--model_path', config_data['env']['result_dir']['value']]
-                web_app_ctrl_fifo_path = config_data['env']['web_app_ctrl_fifo']['value']
-                command += ['--web_app_ctrl_fifo', web_app_ctrl_fifo_path]
-                trainer_ctrl_fifo_path = config_data['env']['trainer_ctrl_fifo']['value']
-                command += ['--trainer_ctrl_fifo', trainer_ctrl_fifo_path]
-                logging.info('-------------------------------------')
-                logging.info(f'current working directory: {os.getcwd()}')
-                logging.info(f'dataset_path: {dataset_path}')
-                logging.info(f'command: {command}')
-                logging.info('-------------------------------------')
-                subproc_training = subprocess.Popen(command)
-                logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
 
-            # --- Update status and Register PID to MlModel database ---
-            selected_model.status = selected_model.STAT_TRAINING
-            selected_model.training_pid = subproc_training.pid
-            selected_model.save()
+            job = _create_training_job(selected_project, selected_model)
+            request.session['training_job_id'] = job.id
+            request.session.modified = True
+            _update_step(job, 1, OperationStep.STATUS_DONE)
+            
+            try:
+                # --- Delete model and logs directory ---
+                if (Path(selected_model.model_dir, 'models').exists()):
+                    shutil.rmtree(Path(selected_model.model_dir, 'models'))
+                if (Path(selected_model.model_dir, 'logs').exists()):
+                    shutil.rmtree(Path(selected_model.model_dir, 'logs'))
+                _update_step(job, 2, OperationStep.STATUS_DONE)
+                
+                # --- Load config ---
+                config_path = Path(selected_model.model_dir, 'config.json')
+                with open(config_path, 'r') as f:
+                    config_data = json.load(f)
+                _update_step(job, 3, OperationStep.STATUS_DONE)
+                
+                # --- Training Model ---
+                if False:
+                    # --- main.py ---
+                    main_path = Path('./app/machine_learning/main.py').resolve()
+                    logging.info('-------------------------------------')
+                    logging.info(f'main_path: {main_path}')
+                    logging.info(f'current working directory: {os.getcwd()}')
+                    logging.info(f'command: python {main_path} --mode train --config {config_path}')
+                    logging.info('-------------------------------------')
+                    subproc_training = subprocess.Popen(['python', main_path, '--mode', 'train', '--config', config_path])
+                    logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
+                else:
+                    # --- ml_main.py ---
+                    dataset_path = config_data['dataset']['dataset_dir']['value']
+                    command = ['python', Path('./app/machine_learning/ml_train_main.py').resolve()]
+                    command += ['--sdk_path', selected_model.ai_model_sdk.ai_model_sdk_dir]
+                    command += ['--dataset', Path(dataset_path, 'dataset.pkl')]
+                    if Path(dataset_path, 'meta').exists():
+                        command += ['--meta_json', Path(dataset_path, 'meta', 'info.json')]
+                    if Path(dataset_path, 'train').exists():
+                        command += ['--train_json', Path(dataset_path, 'train', 'info.json')]
+                    if Path(dataset_path, 'validation').exists():
+                        command += ['--val_json', Path(dataset_path, 'validation', 'info.json')]
+                    if Path(dataset_path, 'test').exists():
+                        command += ['--test_json', Path(dataset_path, 'test', 'info.json')]
+                    command += ['--model_path', config_data['env']['result_dir']['value']]
+                    web_app_ctrl_fifo_path = config_data['env']['web_app_ctrl_fifo']['value']
+                    command += ['--web_app_ctrl_fifo', web_app_ctrl_fifo_path]
+                    trainer_ctrl_fifo_path = config_data['env']['trainer_ctrl_fifo']['value']
+                    command += ['--trainer_ctrl_fifo', trainer_ctrl_fifo_path]
+                    logging.info('-------------------------------------')
+                    logging.info(f'current working directory: {os.getcwd()}')
+                    logging.info(f'dataset_path: {dataset_path}')
+                    logging.info(f'command: {command}')
+                    logging.info('-------------------------------------')
+                    subproc_training = subprocess.Popen(command)
+                    logging.info(f'subproc: Training worker PID: {subproc_training.pid}')
+
+                _update_step(job, 1, OperationStep.STATUS_DONE)
+                _update_step(job, 4, OperationStep.STATUS_DONE)
+                _update_step(job, 5, OperationStep.STATUS_RUNNING)
+
+                # --- Update status and Register PID to MlModel database ---
+                selected_model.status = selected_model.STAT_TRAINING
+                selected_model.training_pid = subproc_training.pid
+                selected_model.save()
+            except Exception as exc:
+                logging.exception('Failed to start training job')
+                OperationStep.objects.filter(job=job, status=OperationStep.STATUS_PENDING).update(status=OperationStep.STATUS_ERROR, detail=str(exc))
+                job.status = OperationJob.STATUS_ERROR
+                job.message = str(exc)
+                job.save()
+                return
             
         return
     
@@ -262,6 +304,10 @@ def training(request):
                 feature_importance_data = None
         else:
             feature_importance_data = None
+
+        training_job_id = request.session.get('training_job_id', None)
+        if training_job_id and (not OperationJob.objects.filter(id=training_job_id).exists()):
+            training_job_id = None
         
         context = {
             'project': project,
@@ -273,6 +319,7 @@ def training(request):
             'project_dropdown_selected': project_dropdown_selected,
             'model_dropdown_selected': model_dropdown_selected,
             'feature_importance': feature_importance_data,
+            'training_job_id': training_job_id,
         }
         return render(request, 'training.html', context)
 

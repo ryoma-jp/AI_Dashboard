@@ -98,3 +98,22 @@ body {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
 }
+
+/* Progress checklist */
+.progress-checklist .list-group-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress-checklist .list-group-item .form-check-input {
+  margin-top: 0;
+}
+
+.progress-checklist .list-group-item .small {
+  margin-left: auto;
+}
+
+.progress-job-card .job-status .badge {
+  font-weight: 600;
+}

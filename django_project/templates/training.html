@@ -119,6 +119,16 @@
           {% endif %}
         </form>
       </div>
+
+      <div class="card my-4 progress-checklist" id="training-progress-card" data-job-id="{{ training_job_id|default:'' }}">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span class="fw-bold">Progress</span>
+          <span class="text-muted small" id="training-progress-status"></span>
+        </div>
+        <ul class="list-group list-group-flush" id="training-progress-list">
+          <li class="list-group-item text-muted" id="training-progress-empty">No training job is running.</li>
+        </ul>
+      </div>
       
       {% if feature_importance %}
         <h1 class="h3">Feature Importance</h1>
@@ -145,5 +155,112 @@
     </div>
   </div>
 </div>
+
+<script>
+(function() {
+  const card = document.getElementById('training-progress-card');
+  if (!card) { return; }
+  const jobId = card.dataset.jobId;
+  if (!jobId) { return; }
+
+  const listEl = document.getElementById('training-progress-list');
+  const statusEl = document.getElementById('training-progress-status');
+  const emptyEl = document.getElementById('training-progress-empty');
+  let timerId = null;
+
+  const badge = (status) => {
+    const tone = {
+      'PENDING': 'secondary',
+      'RUNNING': 'info',
+      'DONE': 'success',
+      'ERROR': 'danger',
+      'CANCELED': 'warning',
+    }[status] || 'secondary';
+    return '<span class="badge bg-' + tone + ' ms-2">' + status + '</span>';
+  };
+
+  const renderSteps = (steps) => {
+    listEl.innerHTML = '';
+    steps.sort((a, b) => a.order - b.order).forEach((step) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex align-items-center gap-2';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.disabled = true;
+      checkbox.className = 'form-check-input';
+      checkbox.checked = step.status === 'DONE';
+      li.appendChild(checkbox);
+
+      const label = document.createElement('span');
+      label.className = 'flex-grow-1';
+      label.textContent = step.label;
+      li.appendChild(label);
+
+      if (step.status === 'RUNNING') {
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner-border spinner-border-sm text-primary';
+        spinner.setAttribute('role', 'status');
+        spinner.innerHTML = '<span class="visually-hidden">Loading...</span>';
+        li.appendChild(spinner);
+      }
+
+      const badgeWrap = document.createElement('span');
+      badgeWrap.innerHTML = badge(step.status);
+      li.appendChild(badgeWrap);
+
+      if (step.detail) {
+        const detail = document.createElement('div');
+        detail.className = 'small text-muted';
+        detail.textContent = step.detail;
+        li.appendChild(detail);
+      }
+
+      listEl.appendChild(li);
+    });
+  };
+
+  const renderJob = (job) => {
+    if (emptyEl) {
+      emptyEl.remove();
+    }
+    statusEl.textContent = job.status;
+    renderSteps(job.steps || []);
+  };
+
+  const stopPolling = () => {
+    if (timerId !== null) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  };
+
+  const fetchJob = async () => {
+    try {
+      const res = await fetch('/api/jobs/' + jobId + '/');
+      if (!res.ok) {
+        throw new Error('Failed to fetch job');
+      }
+      const data = await res.json();
+      renderJob(data);
+      if (['DONE', 'ERROR', 'CANCELED'].includes(data.status)) {
+        stopPolling();
+      }
+    } catch (err) {
+      stopPolling();
+      if (statusEl) {
+        statusEl.textContent = 'Error';
+      }
+      if (listEl) {
+        listEl.innerHTML = '<li class="list-group-item text-danger">Failed to load progress.</li>';
+      }
+      console.error(err);
+    }
+  };
+
+  fetchJob();
+  timerId = setInterval(fetchJob, 1000);
+})();
+</script>
 {% endblock %}
 
