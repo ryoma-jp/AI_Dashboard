@@ -117,3 +117,14 @@ body {
 .progress-job-card .job-status .badge {
   font-weight: 600;
 }
+
+/* Recent jobs scroll area */
+#recent-jobs .recent-jobs-scroll {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Clickable card header for collapsing job details */
+.progress-job-card .collapse-toggle {
+  cursor: pointer;
+}

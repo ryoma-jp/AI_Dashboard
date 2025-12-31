@@ -83,21 +83,28 @@
 
           <h1 class="h3">Recent Jobs</h1>
           <div class="card my-3" id="recent-jobs">
-            <div class="card-body">
+            <div class="card-body recent-jobs-scroll">
               {% if recent_jobs %}
                 {% for job in recent_jobs %}
-                  <div class="card my-2 progress-job-card" data-job-id="{{ job.id }}">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                      <div>
-                        <span class="fw-bold">{{ job.job_type }}</span>
-                        <span class="text-muted">#{{ job.id }}</span>
+                  {% with is_first=forloop.first %}
+                    <div class="card my-2 progress-job-card" data-job-id="{{ job.id }}">
+                      <div class="card-header d-flex justify-content-between align-items-center collapse-toggle" data-bs-toggle="collapse" data-bs-target="#job-steps-{{ job.id }}" aria-expanded="{{ is_first|yesno:'true,false' }}" aria-controls="job-steps-{{ job.id }}">
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="collapse-icon" aria-hidden="true">{% if is_first %}▼{% else %}▶{% endif %}</span>
+                          <div>
+                            <span class="fw-bold">{{ job.job_type }}</span>
+                            <span class="text-muted">#{{ job.id }}</span>
+                          </div>
+                        </div>
+                        <span class="text-muted small job-status">{{ job.status }}</span>
                       </div>
-                      <span class="text-muted small job-status">{{ job.status }}</span>
+                      <div id="job-steps-{{ job.id }}" class="collapse {% if is_first %}show{% endif %}">
+                        <ul class="list-group list-group-flush job-steps">
+                          <li class="list-group-item text-muted">Loading...</li>
+                        </ul>
+                      </div>
                     </div>
-                    <ul class="list-group list-group-flush job-steps">
-                      <li class="list-group-item text-muted">Loading...</li>
-                    </ul>
-                  </div>
+                  {% endwith %}
                 {% endfor %}
               {% else %}
                 <p class="text-muted">No jobs.</p>
@@ -113,6 +120,23 @@
 (function() {
   const cards = Array.from(document.querySelectorAll('.progress-job-card'));
   if (!cards.length) { return; }
+
+  // wire collapse icons to reflect open/close state
+  const wireCollapse = (card) => {
+    const collapseEl = card.querySelector('.collapse');
+    const iconEl = card.querySelector('.collapse-icon');
+    if (!collapseEl || !iconEl) { return; }
+
+    const setIcon = (expanded) => {
+      iconEl.textContent = expanded ? '▼' : '▶';
+    };
+
+    setIcon(collapseEl.classList.contains('show'));
+    collapseEl.addEventListener('show.bs.collapse', () => setIcon(true));
+    collapseEl.addEventListener('hide.bs.collapse', () => setIcon(false));
+  };
+
+  cards.forEach(wireCollapse);
 
   const badgeHtml = (status) => {
     const tone = {
