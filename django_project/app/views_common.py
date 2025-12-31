@@ -46,7 +46,10 @@ def get_recv_fifo_command(fifo):
     """ Function: get_recv_fifo_command
      * return recieved command
     """
-    fd = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+    try:
+        fd = os.open(fifo, os.O_RDONLY | os.O_NONBLOCK)
+    except OSError:
+        return None
     flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     flags &= ~os.O_NONBLOCK
     fcntl.fcntl(fd, fcntl.F_SETFL, flags)
@@ -80,11 +83,38 @@ def get_all_fifo_command():
         models = MlModel.objects.filter(project=project).order_by('-id').reverse()
         
         for model in models:
-            with open(Path(model.model_dir, 'config.json'), 'r') as f:
-                dict_config = json.load(f)
+            if not model.model_dir:
+                continue
+
+            config_path = Path(model.model_dir, 'config.json')
+            if not config_path.exists():
+                # Model creation can be asynchronous; config.json may not exist yet.
+                continue
+
+            try:
+                with open(config_path, 'r') as f:
+                    dict_config = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                # File can be created/rewritten while we poll; ignore transient states.
+                continue
+
+            fifo_path = (
+                dict_config.get('env', {})
+                .get('web_app_ctrl_fifo', {})
+                .get('value')
+            )
+            if not fifo_path:
+                continue
+
+            # FIFO can be absent depending on lifecycle; polling should be best-effort.
+            try:
+                if not Path(fifo_path).exists():
+                    continue
+            except Exception:
+                continue
             
             while (True):
-                recv_command = get_recv_fifo_command(dict_config['env']['web_app_ctrl_fifo']['value'])
+                recv_command = get_recv_fifo_command(fifo_path)
                 if (recv_command == 'trainer_done'):
                     model.training_pid = None
                     model.status = model.STAT_DONE

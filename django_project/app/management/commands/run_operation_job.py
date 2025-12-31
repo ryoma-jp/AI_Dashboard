@@ -4,6 +4,8 @@ import pickle
 import logging
 import uuid
 import shutil
+import subprocess
+import sys
 
 from pathlib import Path
 
@@ -198,6 +200,68 @@ class Command(BaseCommand):
         self._set_step(job, 7, OperationStep.STATUS_DONE)
         self._finish(job, message='Model created')
 
+    def _run_inference_run(self, job: OperationJob):
+        model = job.model
+        if model is None:
+            raise RuntimeError('INFERENCE_RUN requires model')
+
+        # Step 1: Validate
+        self._set_step(job, 1, OperationStep.STATUS_RUNNING)
+        config_path = Path(model.model_dir, 'config.json')
+        if not config_path.exists():
+            raise RuntimeError('config.json not found for model')
+        sdk_path = Path(model.ai_model_sdk.ai_model_sdk_dir)
+        if not sdk_path.exists():
+            raise RuntimeError('AI Model SDK path not found')
+        self._set_step(job, 1, OperationStep.STATUS_DONE)
+
+        # Step 2: Prepare evaluation directory (clean previous outputs)
+        self._set_step(job, 2, OperationStep.STATUS_RUNNING)
+        evaluation_dir = Path(model.model_dir, 'evaluations')
+        os.makedirs(evaluation_dir, exist_ok=True)
+        for split in ('train', 'validation', 'test'):
+            for suffix in ('prediction.json', 'prediction.csv'):
+                target = Path(evaluation_dir, f'{split}_' + suffix)
+                if target.exists():
+                    try:
+                        target.unlink()
+                    except Exception:
+                        pass
+        self._set_step(job, 2, OperationStep.STATUS_DONE)
+
+        # Step 3: Run inference worker
+        self._set_step(job, 3, OperationStep.STATUS_RUNNING)
+        command = [
+            sys.executable,
+            str(Path(settings.BASE_DIR, 'app', 'machine_learning', 'ml_inference_main.py')),
+            '--sdk_path', str(sdk_path),
+            '--config', str(config_path),
+        ]
+        result = subprocess.run(command, capture_output=True, text=True, cwd=settings.BASE_DIR)
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or '').strip()
+            self._fail(job, RuntimeError('Inference worker failed'), order=3)
+            # Record detail before exit
+            OperationStep.objects.filter(job=job, order=3).update(detail=detail)
+            return
+        self._set_step(job, 3, OperationStep.STATUS_DONE)
+
+        # Step 4: Verify outputs
+        self._set_step(job, 4, OperationStep.STATUS_RUNNING)
+        missing = []
+        for split in ('train', 'validation', 'test'):
+            expected = Path(evaluation_dir, f'{split}_prediction.json')
+            if not expected.exists():
+                missing.append(expected.name)
+        if missing:
+            self._fail(job, RuntimeError(f'Missing prediction files: {", ".join(missing)}'), order=4)
+            return
+        self._set_step(job, 4, OperationStep.STATUS_DONE)
+
+        # Step 5: Done
+        self._set_step(job, 5, OperationStep.STATUS_DONE)
+        self._finish(job, message='Inference completed')
+
     def handle(self, *args, **options):
         job_id = options['job_id']
         job = OperationJob.objects.prefetch_related('steps').select_related('project', 'model', 'dataset').get(id=job_id)
@@ -213,6 +277,8 @@ class Command(BaseCommand):
                 self._run_project_create(job)
             elif job.job_type == OperationJob.JOB_TYPE_MODEL_CREATE:
                 self._run_model_create(job)
+            elif job.job_type == OperationJob.JOB_TYPE_INFERENCE_RUN:
+                self._run_inference_run(job)
             else:
                 raise RuntimeError(f'Unsupported job_type: {job.job_type}')
         except Exception as exc:

@@ -127,7 +127,7 @@
         </form>
       
         <h1 class="h3">Prediction</h1>
-        <form method="post">
+        <form method="post" id="inference-run-form">
         {% csrf_token %}
           {% if model_dropdown_selected and model_dropdown_selected.status|stringformat:'s' == 'DONE' and dataset_dropdown_selected %}
             <button type="submit" class="btn btn-primary" id="inference_run" name="inference_run" value="inference_run">Run</button>
@@ -135,6 +135,17 @@
             <button type="submit" class="btn btn-primary" id="inference_run" name="inference_run" value="inference_run" disabled>Run</button>
           {% endif %}
         </form>
+
+        <h1 class="h4">Progress</h1>
+        <div class="card my-3" id="inference-progress" data-job-id="{{ job_id|default_if_none:'' }}">
+          <div class="card-body" id="inference-progress-body">
+            {% if job_id %}
+              <p class="text-muted">Loading job {{ job_id }}...</p>
+            {% else %}
+              <p class="text-muted">No inference job running.</p>
+            {% endif %}
+          </div>
+        </div>
         
         <h1 class="h4">Result</h1>
         
@@ -268,5 +279,177 @@
     </div>
   </div>
 </div>
+<script>
+(function() {
+  const progressCard = document.querySelector('#inference-progress');
+  const progressBody = document.querySelector('#inference-progress-body');
+  const runForm = document.querySelector('#inference-run-form');
+  const runButton = document.querySelector('#inference_run');
+  if (!progressCard || !progressBody) { return; }
+
+  const badgeHtml = (status) => {
+    const tone = {
+      'PENDING': 'secondary',
+      'RUNNING': 'info',
+      'DONE': 'success',
+      'ERROR': 'danger',
+      'CANCELED': 'warning',
+    }[status] || 'secondary';
+    return '<span class="badge bg-' + tone + '" aria-label="' + status + '">' + status + '</span>';
+  };
+
+  const renderJob = (job) => {
+    if (!job) {
+      progressBody.innerHTML = '<p class="text-muted">No inference job running.</p>';
+      return;
+    }
+
+    const steps = (job.steps || []).slice().sort((a, b) => a.order - b.order);
+    if (!steps.length) {
+      progressBody.innerHTML = '<p class="text-muted">No steps.</p>';
+      return;
+    }
+
+    const list = document.createElement('ul');
+    list.className = 'list-group list-group-flush';
+    steps.forEach((step) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex align-items-center gap-2';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.disabled = true;
+      checkbox.className = 'form-check-input';
+      checkbox.checked = step.status === 'DONE';
+      li.appendChild(checkbox);
+
+      const label = document.createElement('span');
+      label.className = 'flex-grow-1';
+      label.textContent = step.label;
+      li.appendChild(label);
+
+      if (step.status === 'RUNNING') {
+        const spinner = document.createElement('div');
+        spinner.className = 'spinner-border spinner-border-sm text-primary';
+        spinner.setAttribute('role', 'status');
+        spinner.innerHTML = '<span class="visually-hidden">Loading...</span>';
+        li.appendChild(spinner);
+      }
+
+      const state = document.createElement('span');
+      state.innerHTML = badgeHtml(step.status);
+      li.appendChild(state);
+
+      list.appendChild(li);
+
+      if (step.detail) {
+        const detailLi = document.createElement('li');
+        detailLi.className = 'list-group-item small text-muted';
+        detailLi.textContent = step.detail;
+        list.appendChild(detailLi);
+      }
+    });
+
+    progressBody.innerHTML = '';
+    progressBody.appendChild(list);
+  };
+
+  let timerId = null;
+  const stopPolling = () => {
+    if (timerId !== null) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  };
+
+  const fetchJob = async (jobId) => {
+    const res = await fetch('/api/jobs/' + jobId + '/');
+    if (!res.ok) {
+      throw new Error('Failed to fetch job ' + jobId);
+    }
+    return await res.json();
+  };
+
+  const poll = (jobId) => {
+    stopPolling();
+    timerId = setInterval(async () => {
+      try {
+        const job = await fetchJob(jobId);
+        renderJob(job);
+        const done = ['DONE', 'ERROR', 'CANCELED'].includes(job.status);
+        if (done) {
+          stopPolling();
+          if (job.status === 'DONE') {
+            setTimeout(() => window.location.reload(), 600);
+          }
+        }
+      } catch (e) {
+        stopPolling();
+        progressBody.innerHTML = '<p class="text-danger">Failed to load job.</p>';
+        console.error(e);
+      }
+    }, 1000);
+  };
+
+  const startJob = (jobId) => {
+    if (!jobId) { return; }
+    progressCard.dataset.jobId = jobId;
+    progressBody.innerHTML = '<p class="text-muted">Loading job ' + jobId + '...</p>';
+    poll(jobId);
+    if (runButton) {
+      runButton.disabled = true;
+    }
+  };
+
+  const initialJobId = (progressCard.dataset.jobId || '').trim();
+  if (initialJobId && initialJobId !== 'None' && initialJobId !== 'null' && initialJobId !== 'undefined') {
+    startJob(initialJobId);
+  }
+
+  if (runForm) {
+    runForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (runButton) {
+        runButton.disabled = true;
+      }
+      const formData = new FormData(runForm);
+      // FormData(form) does not reliably include the clicked submit button.
+      if (runButton && runButton.name) {
+        formData.set(runButton.name, runButton.value || 'inference_run');
+      }
+      try {
+        const res = await fetch(runForm.action || window.location.pathname, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+          },
+          body: formData,
+        });
+        if (!res.ok) {
+          const contentType = res.headers.get('content-type') || '';
+          const data = contentType.includes('application/json')
+            ? await res.json().catch(() => ({}))
+            : {};
+          const msg = data.error || 'Failed to start inference job.';
+          progressBody.innerHTML = '<p class="text-danger">' + msg + '</p>';
+          if (runButton) { runButton.disabled = false; }
+          return;
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('Non-JSON response from server');
+        }
+        const data = await res.json();
+        startJob(data.job_id);
+      } catch (err) {
+        progressBody.innerHTML = '<p class="text-danger">Failed to start inference job.</p>';
+        if (runButton) { runButton.disabled = false; }
+        console.error(err);
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}
 

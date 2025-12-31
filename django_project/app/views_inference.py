@@ -1,22 +1,21 @@
-import sys
+import json
+import logging
 import os
 import pickle
-import json
 import subprocess
-import logging
-
-from pathlib import Path, PurePosixPath
+import sys
 from collections import OrderedDict
+from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
-from django.shortcuts import render, redirect
 from django.conf import settings
+from django.http import FileResponse, JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
 
-from app.models import Project, MlModel, Dataset
+from app.models import Dataset, MlModel, OperationJob, OperationStep, Project
 from machine_learning.lib.utils.utils import JsonEncoder
-
-from views_common import SidebarActiveStatus, get_version, get_jupyter_nb_url, get_dataloader_obj
-from django.http import FileResponse
+from views_common import SidebarActiveStatus, get_dataloader_obj, get_jupyter_nb_url, get_version
 
 # Create your views here.
 
@@ -102,34 +101,43 @@ def inference(request):
         
         return selected_project, selected_model
     
-    def _inference_run():
+    def _enqueue_inference_job():
         selected_project, selected_model = _get_selected_object()
-        if (selected_model):
-            logging.debug(f'selected_model: {selected_model}')
+        if not selected_project or not selected_model:
+            raise RuntimeError('Please select project and model')
 
-            config_path = Path(selected_model.model_dir, 'config.json')
-            with open(config_path, 'r') as f:
-                config_data = json.load(f)
-                logging.info(config_path)
-                logging.info(config_data)
+        existing = OperationJob.objects.filter(
+            job_type=OperationJob.JOB_TYPE_INFERENCE_RUN,
+            model=selected_model,
+            status__in=[OperationJob.STATUS_PENDING, OperationJob.STATUS_RUNNING],
+        ).order_by('-created_at').first()
+        if existing:
+            return existing.id
 
-            command = [
-                'python',
-                str(Path('./app/machine_learning/ml_inference_main.py').resolve()),
-                '--sdk_path', selected_model.ai_model_sdk.ai_model_sdk_dir,
-                '--config', str(config_path.resolve()),
-            ]
+        job = OperationJob.objects.create(
+            job_type=OperationJob.JOB_TYPE_INFERENCE_RUN,
+            project=selected_project,
+            model=selected_model,
+            dataset=selected_model.dataset,
+            status=OperationJob.STATUS_RUNNING,
+        )
+        step_labels = [
+            'Validate inputs',
+            'Prepare evaluation outputs',
+            'Run inference worker',
+            'Verify predictions',
+            'Done',
+        ]
+        for idx, label in enumerate(step_labels, start=1):
+            OperationStep.objects.create(job=job, order=idx, label=label, status=OperationStep.STATUS_PENDING)
+        OperationStep.objects.filter(job=job, order=1).update(status=OperationStep.STATUS_RUNNING)
 
-            logging.info('-------------------------------------')
-            logging.info(f'current working directory: {os.getcwd()}')
-            logging.info(f'command: {command}')
-            logging.info('-------------------------------------')
-
-            result = subprocess.run(command, capture_output=True, text=True)
-            if result.returncode != 0:
-                logging.error('Inference worker failed: %s', result.stderr)
-            else:
-                logging.info('Inference worker completed successfully')
+        manage_py = Path(settings.BASE_DIR, 'manage.py')
+        subprocess.Popen(
+            [sys.executable, str(manage_py), 'run_operation_job', str(job.id)],
+            cwd=str(settings.BASE_DIR),
+        )
+        return job.id
 
     # logging.info('-------------------------------------')
     # logging.info(request.method)
@@ -153,7 +161,16 @@ def inference(request):
             # curr_dataset = Dataset.objects.get(name=request.session['inference_view_selected_dataset'], project=curr_project)
             
         elif ('inference_run' in request.POST):
-            _inference_run()
+            try:
+                job_id = _enqueue_inference_job()
+            except Exception as exc:
+                if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                    return JsonResponse({'error': str(exc)}, status=400)
+                raise
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'job_id': job_id})
+            return redirect(reverse('inference') + f'?job={job_id}')
         
         elif ('prediction_filter' in request.POST):
             request.session['prediction_filter'] = request.POST.getlist('prediction_filter')[0]
@@ -229,15 +246,28 @@ def inference(request):
         # --- Check prediction data type
         prediction_data_type_selected = request.session.get('prediction_data_type', 'Test')
         
-        # --- Load DataLoader object and prediction ---
-        if (dataset_dropdown_selected is not None):
-            # --- get DataLoader object ---
+        inference_job_id = request.GET.get('job')
+        running_job = None
+        if not inference_job_id and model_dropdown_selected:
+            running_job = OperationJob.objects.filter(
+                job_type=OperationJob.JOB_TYPE_INFERENCE_RUN,
+                model=model_dropdown_selected,
+                status__in=[OperationJob.STATUS_PENDING, OperationJob.STATUS_RUNNING],
+            ).order_by('-created_at').first()
+            if running_job:
+                inference_job_id = str(running_job.id)
+
+        # --- Load DataLoader object and prediction (skip while job is running) ---
+        prediction = None
+        dataloader_obj = None
+        if inference_job_id:
+            pass
+        elif dataset_dropdown_selected is not None and model_dropdown_selected is not None:
             dataloader_obj = get_dataloader_obj(dataset_dropdown_selected)
             id_to_name = _build_id_to_name(dataset_dropdown_selected, dataloader_obj)
-            
-            # --- get prediction ---
+
             prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')
-            if (prediction_json.exists()):
+            if prediction_json.exists():
                 with open(prediction_json, 'r') as f:
                     prediction_raw = json.load(f)
 
@@ -261,17 +291,11 @@ def inference(request):
                     record_with_thumbnail = dict(record)
                     record_with_thumbnail['thumbnail_url'] = thumbnail_url
 
-                    # Attach human-readable class names when available.
                     pred_id = record.get('prediction')
                     tgt_id = record.get('target')
                     record_with_thumbnail['prediction_name'] = id_to_name.get(pred_id)
                     record_with_thumbnail['target_name'] = id_to_name.get(tgt_id)
                     prediction.append(record_with_thumbnail)
-            else:
-                prediction = None
-        else:
-            dataloader_obj = None
-            prediction = None
         
         
         context = {
@@ -288,6 +312,7 @@ def inference(request):
             'prediction_filter_selected': prediction_filter_selected,
             'prediction_data_type_selected': prediction_data_type_selected,
             'dataloader_obj': dataloader_obj,
+            'job_id': inference_job_id,
         }
         return render(request, 'inference.html', context)
 
