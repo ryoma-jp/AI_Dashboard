@@ -402,6 +402,19 @@ class MlParams_COCO2017(MlParams):
         self.params['dataset']['norm']['value'] = 'z-score'
         self.params['inference_parameter']['model']['task']['value'] = 'img_det'
 
+class MlParams_COCO2017_Light(MlParams):
+    """Class MlParams_COCO2017_Light
+    
+    * COCO2017 Lightデータセットによる物体検知モデル学習時のパラメータ
+    """
+    
+    def __init__(self):
+        super().__init__()
+        self.params['model']['model_type']['value'] = 'YOLOv3'
+        self.params['dataset']['dataset_name']['value'] = 'COCO2017 Light'
+        self.params['dataset']['norm']['value'] = 'z-score'
+        self.params['inference_parameter']['model']['task']['value'] = 'img_det'
+
 class MlParams_PascalVOC2012(MlParams):
     """Class MlParams_PascalVOC2012
     

@@ -53,6 +53,7 @@ class Command(BaseCommand):
             ('MNIST', Dataset.DATASET_TYPE_IMAGE),
             ('CIFAR-10', Dataset.DATASET_TYPE_IMAGE),
             ('COCO2017', Dataset.DATASET_TYPE_IMAGE),
+            ('COCO2017 Light', Dataset.DATASET_TYPE_IMAGE),
             ('CaliforniaHousing', Dataset.DATASET_TYPE_TABLE),
         ]
         for name, dataset_type in defaults:
@@ -158,6 +159,8 @@ class Command(BaseCommand):
             config_file = 'config_cifar10.json'
         elif dataset.name == 'COCO2017':
             config_file = 'config_coco2017.json'
+        elif dataset.name == 'COCO2017 Light':
+            config_file = 'config_coco2017_light.json'
         elif dataset.name == 'CaliforniaHousing':
             config_file = 'config_california_housing.json'
         else:

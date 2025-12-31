@@ -995,6 +995,9 @@ class DataLoaderCOCO2017(DataLoader):
         one_hot=False,
         download=False,
         model_input_size=416,
+        light_mode=False,
+        light_total_images=10000,
+        light_sampling_seed=42,
     ):
         """Constructor
         
@@ -1006,6 +1009,9 @@ class DataLoaderCOCO2017(DataLoader):
             flatten (bool): [T.B.D] If input shape is vector([N, :]), set to True
             one_hot (bool): If the ground truth is onehot, set to True
             download (bool): If the dataset downloads from Web, set to True
+            light_mode (bool): If True, subsample train/val to a balanced 10k-ish set
+            light_total_images (int): Target total images for train+val split when light_mode is True
+            light_sampling_seed (int): RNG seed to make the Light subsampling reproducible
         """
         
         def _get_instances(instances_json):
@@ -1053,6 +1059,59 @@ class DataLoaderCOCO2017(DataLoader):
                                df_categories=df_instances_categories)
             
             return df_instances
+
+        def _select_light_image_ids(df_instances, total_images, seed):
+            """Subsample image_ids to balance category annotation counts.
+
+            Greedy-ish: shuffle once (seeded), then pick images that reduce the
+            remaining deficit of per-category annotation counts. If we still
+            need more images after the deficit-driven pass, fill from the
+            remaining shuffled pool to reach the target total.
+            """
+
+            cat_counts = (
+                df_instances
+                .groupby(['image_id', 'category_id'])
+                .size()
+                .unstack(fill_value=0)
+                .astype(np.float64)
+            )
+
+            image_ids = cat_counts.index.to_numpy()
+            if len(image_ids) <= total_images:
+                return image_ids
+
+            cat_matrix = cat_counts.to_numpy(dtype=np.float64)
+            cat_ids = cat_counts.columns.to_numpy()
+            rng = np.random.default_rng(seed)
+
+            perm = rng.permutation(len(image_ids))
+            image_ids = image_ids[perm]
+            cat_matrix = cat_matrix[perm]
+
+            # Target objects per category: approximate uniform objects across cats.
+            avg_objects_per_image = df_instances.groupby('image_id')['category_id'].count().mean()
+            target_per_cat = (avg_objects_per_image * total_images) / max(len(cat_ids), 1)
+            deficit = np.full(len(cat_ids), target_per_cat, dtype=np.float64)
+
+            selected_indices = []
+            remaining_indices = []
+            for idx, row in enumerate(cat_matrix):
+                if len(selected_indices) >= total_images:
+                    break
+                score = np.minimum(row, deficit).sum()
+                if score > 0:
+                    selected_indices.append(idx)
+                    deficit = np.maximum(deficit - row, 0.0)
+                else:
+                    remaining_indices.append(idx)
+
+            if len(selected_indices) < total_images:
+                need = min(total_images - len(selected_indices), len(remaining_indices))
+                selected_indices.extend(remaining_indices[0:need])
+
+            selected_indices = selected_indices[0:total_images]
+            return image_ids[selected_indices]
         
         # --- initialize super class ---
         super().__init__()
@@ -1096,6 +1155,24 @@ class DataLoaderCOCO2017(DataLoader):
         # --- load annotations(instances) ---
         instances_json = Path(dataset_dir, 'annotations', 'instances_train2017.json')
         df_instances_train_val = _get_instances(instances_json)
+
+        # Light mode: subsample train+validation to a balanced, smaller set.
+        if light_mode:
+            target_images = int(light_total_images)
+            available = len(df_instances_train_val['image_id'].unique())
+            target_images = min(target_images, available)
+            selected_ids = _select_light_image_ids(
+                df_instances_train_val,
+                total_images=target_images,
+                seed=light_sampling_seed,
+            )
+            df_instances_train_val = df_instances_train_val[df_instances_train_val['image_id'].isin(selected_ids)]
+
+            # Re-shuffle deterministically before the split to avoid order bias.
+            rng = np.random.default_rng(light_sampling_seed)
+            selected_ids = np.array(selected_ids)
+            rng.shuffle(selected_ids)
+            df_instances_train_val = df_instances_train_val.set_index('image_id').loc[selected_ids].reset_index()
         
         validation_split = np.clip(validation_split, 0, 0.5)
         if (validation_split == 0.0):

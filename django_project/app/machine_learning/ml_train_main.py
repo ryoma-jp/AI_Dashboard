@@ -42,11 +42,12 @@ def ArgParser():
         )
         parser.add_argument(
                 '--dataset_type', dest='dataset_type', type=str, default='', required=False,
-                choices=['CIFAR-10', 'MNIST', 'COCO2017'],
+                choices=['CIFAR-10', 'MNIST', 'COCO2017', 'COCO2017 Light'],
                 help='Type of dataset\n'
                         '  - CIFAR-10\n'
                         '  - MNIST\n'
-                        '  - COCO2017',
+                        '  - COCO2017\n'
+                        '  - COCO2017 Light',
         )
         parser.add_argument(
                 '--meta_json', dest='meta_json', type=str, default=None, required=False,
@@ -110,10 +111,18 @@ def main():
             # Backward-compat: accept old PascalVOC value, but use COCO2017.
             args.dataset_type = 'COCO2017'
 
-        if (args.dataset_type != 'COCO2017'):
-            raise ValueError(f'Unsupported dataset_type for this script: {args.dataset_type}')
+        if args.dataset_type not in ['COCO2017', 'COCO2017 Light']:
+                raise ValueError(f'Unsupported dataset_type for this script: {args.dataset_type}')
 
-        dataloader = DataLoaderCOCO2017(dataset_dir, validation_split=0.2, download=True, model_input_size=416)
+        dataloader = DataLoaderCOCO2017(
+                dataset_dir,
+                validation_split=0.2,
+                download=True,
+                model_input_size=416,
+                light_mode=(args.dataset_type == 'COCO2017 Light'),
+                light_total_images=10000,
+                light_sampling_seed=42,
+        )
 
         # --- Create meta data ---
         meta_dir = Path(dataset_dir, 'meta')
