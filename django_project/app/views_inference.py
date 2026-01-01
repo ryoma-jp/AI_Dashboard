@@ -281,6 +281,7 @@ def inference(request):
                         filename = record.get('filename')
                         image_url = None
                         overlay_url = None
+                        gt_overlay_url = None
 
                         if filename:
                             filename_path = Path(filename)
@@ -303,9 +304,19 @@ def inference(request):
                             except Exception:
                                 overlay_url = None
 
+                        gt_overlay_rel = record.get('gt_overlay_relpath')
+                        if gt_overlay_rel:
+                            try:
+                                base_rel = Path(model_dropdown_selected.model_dir).relative_to(settings.MEDIA_ROOT)
+                                gt_overlay_rel_path = PurePosixPath(base_rel, gt_overlay_rel)
+                                gt_overlay_url = f"{settings.MEDIA_URL.rstrip('/')}/{quote(str(gt_overlay_rel_path), safe='/')}"
+                            except Exception:
+                                gt_overlay_url = None
+
                         record_with_urls = dict(record)
                         record_with_urls['image_url'] = image_url
                         record_with_urls['overlay_url'] = overlay_url
+                        record_with_urls['gt_overlay_url'] = gt_overlay_url
                         prediction.append(record_with_urls)
             else:
                 prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')

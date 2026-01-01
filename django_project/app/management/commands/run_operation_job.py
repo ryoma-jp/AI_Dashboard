@@ -238,6 +238,14 @@ class Command(BaseCommand):
                             child.unlink()
                     except Exception:
                         pass
+            gt_overlay_dir = Path(evaluation_dir, 'overlays_gt', split)
+            if gt_overlay_dir.exists():
+                for child in gt_overlay_dir.glob('**/*'):
+                    try:
+                        if child.is_file():
+                            child.unlink()
+                    except Exception:
+                        pass
         self._set_step(job, 2, OperationStep.STATUS_DONE)
 
         # Step 3: Run inference worker

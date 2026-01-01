@@ -195,8 +195,9 @@
                   <th scope="col">TP数</th>
                   <th scope="col">FP数</th>
                   <th scope="col">FN数</th>
-                  <th scope="col">元画像</th>
-                  <th scope="col">検知枠頂上画像</th>
+                  <th scope="col">元画像（GT重畳）</th>
+                  <th scope="col">検知枠重畳画像</th>
+                  <th scope="col">拡大表示</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,12 +208,88 @@
                   <td>{{ prediction_.tp }}</td>
                   <td>{{ prediction_.fp }}</td>
                   <td>{{ prediction_.fn }}</td>
-                  <td>{% if prediction_.image_url %}<img src="{{ prediction_.image_url }}" alt="image" class="img-thumbnail" style="max-width: 160px; max-height: 160px;" loading="lazy">{% else %}---{% endif %}</td>
+                  <td>{% if prediction_.gt_overlay_url %}<img src="{{ prediction_.gt_overlay_url }}" alt="gt overlay" class="img-thumbnail" style="max-width: 160px; max-height: 160px;" loading="lazy">{% elif prediction_.image_url %}<img src="{{ prediction_.image_url }}" alt="image" class="img-thumbnail" style="max-width: 160px; max-height: 160px;" loading="lazy">{% else %}---{% endif %}</td>
                   <td>{% if prediction_.overlay_url %}<img src="{{ prediction_.overlay_url }}" alt="overlay" class="img-thumbnail" style="max-width: 160px; max-height: 160px;" loading="lazy">{% else %}---{% endif %}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-primary js-zoom"
+                      data-gt="{{ prediction_.gt_overlay_url|default:'' }}"
+                      data-pred="{{ prediction_.overlay_url|default:'' }}"
+                      data-filename="{{ prediction_.filename|default:'' }}"
+                      {% if not prediction_.gt_overlay_url and not prediction_.overlay_url %}disabled{% endif %}
+                    >
+                      表示
+                    </button>
+                  </td>
                 </tr>
               {% endfor %}
               </tbody>
             </table></p>
+
+            <div class="modal fade" id="overlayZoomModal" tabindex="-1" aria-labelledby="overlayZoomModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="overlayZoomModalLabel">拡大表示</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="row g-3">
+                      <div class="col-12 col-lg-6">
+                        <div class="fw-bold mb-2">GT重畳</div>
+                        <img id="zoomGtImg" alt="GT overlay" style="max-width: 100%; max-height: 80vh; width: auto; height: auto; object-fit: contain;">
+                      </div>
+                      <div class="col-12 col-lg-6">
+                        <div class="fw-bold mb-2">検知結果重畳</div>
+                        <img id="zoomPredImg" alt="Prediction overlay" style="max-width: 100%; max-height: 80vh; width: auto; height: auto; object-fit: contain;">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <script>
+            (function() {
+              // Delay until page load so that bootstrap.bundle is definitely available.
+              window.addEventListener('load', function() {
+                if (!window.bootstrap) { return; }
+
+                const buttons = document.querySelectorAll('.js-zoom');
+                const modalEl = document.getElementById('overlayZoomModal');
+                if (!modalEl || !buttons.length) { return; }
+
+                const modal = new bootstrap.Modal(modalEl);
+                const gtImg = document.getElementById('zoomGtImg');
+                const predImg = document.getElementById('zoomPredImg');
+                const title = document.getElementById('overlayZoomModalLabel');
+
+                buttons.forEach((btn) => {
+                  btn.addEventListener('click', () => {
+                    const gt = btn.getAttribute('data-gt') || '';
+                    const pred = btn.getAttribute('data-pred') || '';
+                    const filename = btn.getAttribute('data-filename') || '';
+
+                    if (title) {
+                      title.textContent = filename ? ('拡大表示: ' + filename) : '拡大表示';
+                    }
+
+                    if (gtImg) {
+                      gtImg.src = gt;
+                      gtImg.style.display = gt ? '' : 'none';
+                    }
+                    if (predImg) {
+                      predImg.src = pred;
+                      predImg.style.display = pred ? '' : 'none';
+                    }
+
+                    modal.show();
+                  });
+                });
+              });
+            })();
+            </script>
           {% else %}
             {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
               <div class="container">

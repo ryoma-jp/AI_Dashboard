@@ -304,11 +304,14 @@ def run_split_detection(
         return {f"{split_name} mAP": 0.0, f"{split_name} mAP@0.5": 0.0}, []
 
     name_to_cat_id = {cat["name"]: cat["id"] for cat in coco_gt.categories}
+    cat_id_to_name = {cat["id"]: cat["name"] for cat in coco_gt.categories}
     predictions: List[dict] = []
     summary_rows: List[dict] = []
 
     overlay_dir = evaluation_dir / "overlays" / split_name
     overlay_dir.mkdir(parents=True, exist_ok=True)
+    gt_overlay_dir = evaluation_dir / "overlays_gt" / split_name
+    gt_overlay_dir.mkdir(parents=True, exist_ok=True)
 
     for batch_id, batch in enumerate(dataset_iter):
         if len(batch) == 3:
@@ -370,16 +373,19 @@ def run_split_detection(
         img_path = dataset_root / split_name / filename
         overlay_rel = Path("evaluations", "overlays", split_name, filename)
         overlay_path = evaluation_dir / "overlays" / split_name / filename
+        gt_overlay_rel = Path("evaluations", "overlays_gt", split_name, filename)
+        gt_overlay_path = evaluation_dir / "overlays_gt" / split_name / filename
         try:
             image_np = cv2.imread(str(img_path))
             if image_np is not None:
+                image_pred = image_np.copy()
                 for pred in preds_for_image:
                     x, y, w, h = pred["bbox"]
                     pt1 = (int(x), int(y))
                     pt2 = (int(x + w), int(y + h))
-                    cv2.rectangle(image_np, pt1, pt2, (0, 255, 0), 2)
+                    cv2.rectangle(image_pred, pt1, pt2, (0, 255, 0), 2)
                     cv2.putText(
-                        image_np,
+                        image_pred,
                         f"{pred['category_id']}: {pred['score']:.2f}",
                         (pt1[0], max(0, pt1[1] - 5)),
                         cv2.FONT_HERSHEY_SIMPLEX,
@@ -389,7 +395,29 @@ def run_split_detection(
                         cv2.LINE_AA,
                     )
                 overlay_path.parent.mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(str(overlay_path), image_np)
+                cv2.imwrite(str(overlay_path), image_pred)
+
+                # GT overlay (draw only GT boxes, red)
+                image_gt = image_np.copy()
+                for gt in gt_boxes:
+                    x, y, w, h = gt["bbox"]
+                    pt1 = (int(x), int(y))
+                    pt2 = (int(x + w), int(y + h))
+                    cv2.rectangle(image_gt, pt1, pt2, (0, 0, 255), 2)
+                    class_name = cat_id_to_name.get(int(gt.get("category_id", -1)), "")
+                    if class_name:
+                        cv2.putText(
+                            image_gt,
+                            str(class_name),
+                            (pt1[0], max(0, pt1[1] - 5)),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            (0, 0, 255),
+                            1,
+                            cv2.LINE_AA,
+                        )
+                gt_overlay_path.parent.mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(str(gt_overlay_path), image_gt)
         except Exception:
             logging.exception("Failed to create overlay for %s", filename)
 
@@ -401,6 +429,7 @@ def run_split_detection(
                 "fp": int(fp),
                 "fn": int(fn),
                 "overlay_relpath": str(overlay_rel),
+                "gt_overlay_relpath": str(gt_overlay_rel),
             }
         )
 
