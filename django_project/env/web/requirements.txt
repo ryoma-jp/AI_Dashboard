@@ -14,6 +14,7 @@ scikit-learn==1.1.2
 lightgbm==3.3.5
 tensorflow-hub==0.12.0
 tensorflow-datasets==4.9.4
+pycocotools==2.0.7
 lxml==4.9.2
 tzdata==2023.3
 protobuf==3.20.3 

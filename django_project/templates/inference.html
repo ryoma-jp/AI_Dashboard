@@ -157,8 +157,9 @@
               {% endfor %}
             {% endwith %}
           </ul>
-
-          <p><a href="{% url 'download_prediction' %}">Download prediction as csv</a></p>
+          {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
+            <p><a href="{% url 'download_prediction' %}">Download prediction as csv</a></p>
+          {% endif %}
           
           <div class="container">
             <div class="row">
@@ -185,90 +186,119 @@
           </div>
         
         
-          {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
-            <div class="container">
-              <div class="row">
-                <div class="col-1">
-                  <h1 class="h5">Filter: </h1>
-                </div>
-                <div class="col-1">
-                  <form method="post">
-                  {% csrf_token %}
-                    <div class="btn-group">
-                      <!-- select filter -->
-                      <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        {{ prediction_filter_selected }}
-                      </button>
-                      <ul class="dropdown-menu">
-                        <li><button class="dropdown-item" type="submit" name="prediction_filter" value="All">All</button></li>
-                        <li><button class="dropdown-item" type="submit" name="prediction_filter" value="Correct">Correct</button></li>
-                        <li><button class="dropdown-item" type="submit" name="prediction_filter" value="Wrong">Wrong</button></li>
-                      </ul>
-                    </div>
-                  </form>
+          {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_det' %}
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">データID</th>
+                  <th scope="col">ファイル名</th>
+                  <th scope="col">TP数</th>
+                  <th scope="col">FP数</th>
+                  <th scope="col">FN数</th>
+                  <th scope="col">元画像</th>
+                  <th scope="col">検知枠頂上画像</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for prediction_ in prediction %}
+                <tr>
+                  <td>{{ prediction_.data_id }}</td>
+                  <td>{{ prediction_.filename }}</td>
+                  <td>{{ prediction_.tp }}</td>
+                  <td>{{ prediction_.fp }}</td>
+                  <td>{{ prediction_.fn }}</td>
+                  <td>{% if prediction_.image_url %}<img src="{{ prediction_.image_url }}" alt="image" class="img-thumbnail" style="max-width: 160px; max-height: 160px;" loading="lazy">{% else %}---{% endif %}</td>
+                  <td>{% if prediction_.overlay_url %}<img src="{{ prediction_.overlay_url }}" alt="overlay" class="img-thumbnail" style="max-width: 160px; max-height: 160px;" loading="lazy">{% else %}---{% endif %}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table></p>
+          {% else %}
+            {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
+              <div class="container">
+                <div class="row">
+                  <div class="col-1">
+                    <h1 class="h5">Filter: </h1>
+                  </div>
+                  <div class="col-1">
+                    <form method="post">
+                    {% csrf_token %}
+                      <div class="btn-group">
+                        <!-- select filter -->
+                        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                          {{ prediction_filter_selected }}
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><button class="dropdown-item" type="submit" name="prediction_filter" value="All">All</button></li>
+                          <li><button class="dropdown-item" type="submit" name="prediction_filter" value="Correct">Correct</button></li>
+                          <li><button class="dropdown-item" type="submit" name="prediction_filter" value="Wrong">Wrong</button></li>
+                        </ul>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
-            </div>
-          {% endif %}
-          
-          <p><table class="table table-bordered border-primary table-hover ms-4">
-            <thead class="table-dark">
-              <tr>
-                <th scope="col">ID</th>
-                <th scope="col">Thumbnail</th>
-                <th scope="col">Prediction</th>
-                <th scope="col">Target</th>
-              </tr>
-            </thead>
-            <tbody>
-            {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
-              {% for prediction_ in prediction %}
-                {% if prediction_filter_selected|stringformat:'s' == 'All' %}
+            {% endif %}
+
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">ID</th>
+                  <th scope="col">Thumbnail</th>
+                  <th scope="col">Prediction</th>
+                  <th scope="col">Target</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_clf' or dataloader_obj.dataset_type|stringformat:'s' == 'table_clf' %}
+                {% for prediction_ in prediction %}
+                  {% if prediction_filter_selected|stringformat:'s' == 'All' %}
+                    <tr>
+                      <td>{{ prediction_.id }}</td>
+                      <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
+                      <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                      <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
+                    </tr>
+                  {% elif prediction_filter_selected|stringformat:'s' == 'Correct' %}
+                    {% if prediction_.prediction == prediction_.target %}
+                      <tr>
+                        <td>{{ prediction_.id }}</td>
+                        <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
+                        <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                        <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
+                      </tr>
+                    {% endif %}
+                  {% elif prediction_filter_selected|stringformat:'s' == 'Wrong' %}
+                    {% if prediction_.prediction != prediction_.target %}
+                      <tr>
+                        <td>{{ prediction_.id }}</td>
+                        <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
+                        <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
+                        <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
+                      </tr>
+                    {% endif %}
+                  {% else %}
+                    <tr>
+                      <td>---</td>
+                      <td>---</td>
+                      <td>---</td>
+                      <td>---</td>
+                    </tr>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {% for prediction_ in prediction %}
                   <tr>
                     <td>{{ prediction_.id }}</td>
                     <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
                     <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
                     <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
                   </tr>
-                {% elif prediction_filter_selected|stringformat:'s' == 'Correct' %}
-                  {% if prediction_.prediction == prediction_.target %}
-                    <tr>
-                      <td>{{ prediction_.id }}</td>
-                      <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                      <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
-                      <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
-                    </tr>
-                  {% endif %}
-                {% elif prediction_filter_selected|stringformat:'s' == 'Wrong' %}
-                  {% if prediction_.prediction != prediction_.target %}
-                    <tr>
-                      <td>{{ prediction_.id }}</td>
-                      <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                      <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
-                      <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
-                    </tr>
-                  {% endif %}
-                {% else %}
-                  <tr>
-                    <td>---</td>
-                    <td>---</td>
-                    <td>---</td>
-                    <td>---</td>
-                  </tr>
-                {% endif %}
-              {% endfor %}
-            {% else %}
-              {% for prediction_ in prediction %}
-                <tr>
-                  <td>{{ prediction_.id }}</td>
-                  <td>{% if prediction_.thumbnail_url %}<img src="{{ prediction_.thumbnail_url }}" alt="thumbnail" class="img-thumbnail" style="max-width: 120px; max-height: 120px;" loading="lazy">{% else %}---{% endif %}</td>
-                  <td>{{ prediction_.prediction }}{% if prediction_.prediction_name %} ({{ prediction_.prediction_name }}){% endif %}</td>
-                  <td>{{ prediction_.target }}{% if prediction_.target_name %} ({{ prediction_.target_name }}){% endif %}</td>
-                </tr>
-              {% endfor %}
-            {% endif %}
-            </tbody>
-          </table></p>
+                {% endfor %}
+              {% endif %}
+              </tbody>
+            </table></p>
+          {% endif %}
         {% else %}
           <p>No Result</p>
         {% endif %}

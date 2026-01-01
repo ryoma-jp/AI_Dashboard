@@ -266,36 +266,78 @@ def inference(request):
             dataloader_obj = get_dataloader_obj(dataset_dropdown_selected)
             id_to_name = _build_id_to_name(dataset_dropdown_selected, dataloader_obj)
 
-            prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')
-            if prediction_json.exists():
-                with open(prediction_json, 'r') as f:
-                    prediction_raw = json.load(f)
+            if dataloader_obj.dataset_type == 'img_det':
+                summary_path = Path(
+                    model_dropdown_selected.model_dir,
+                    'evaluations',
+                    f'{prediction_data_type_selected.lower()}_detection_summary.json',
+                )
+                if summary_path.exists():
+                    with open(summary_path, 'r') as f:
+                        prediction_raw = json.load(f)
 
-                prediction = []
-                for record in prediction_raw:
-                    filename = record.get('filename')
-                    thumbnail_url = None
+                    prediction = []
+                    for record in prediction_raw:
+                        filename = record.get('filename')
+                        image_url = None
+                        overlay_url = None
 
-                    if filename:
-                        filename_path = Path(filename)
-                        if '..' not in filename_path.parts:
-                            rel_path = PurePosixPath(
-                                settings.DATASET_DIR,
-                                dataset_dropdown_selected.project.hash,
-                                f'dataset_{dataset_dropdown_selected.id}',
-                                prediction_data_type_selected.lower(),
-                                filename_path.as_posix(),
-                            )
-                            thumbnail_url = f"{settings.MEDIA_URL.rstrip('/')}/{quote(str(rel_path), safe='/')}"
+                        if filename:
+                            filename_path = Path(filename)
+                            if '..' not in filename_path.parts:
+                                rel_path = PurePosixPath(
+                                    settings.DATASET_DIR,
+                                    dataset_dropdown_selected.project.hash,
+                                    f'dataset_{dataset_dropdown_selected.id}',
+                                    prediction_data_type_selected.lower(),
+                                    filename_path.as_posix(),
+                                )
+                                image_url = f"{settings.MEDIA_URL.rstrip('/')}/{quote(str(rel_path), safe='/')}"
 
-                    record_with_thumbnail = dict(record)
-                    record_with_thumbnail['thumbnail_url'] = thumbnail_url
+                        overlay_rel = record.get('overlay_relpath')
+                        if overlay_rel:
+                            try:
+                                base_rel = Path(model_dropdown_selected.model_dir).relative_to(settings.MEDIA_ROOT)
+                                overlay_rel_path = PurePosixPath(base_rel, overlay_rel)
+                                overlay_url = f"{settings.MEDIA_URL.rstrip('/')}/{quote(str(overlay_rel_path), safe='/')}"
+                            except Exception:
+                                overlay_url = None
 
-                    pred_id = record.get('prediction')
-                    tgt_id = record.get('target')
-                    record_with_thumbnail['prediction_name'] = id_to_name.get(pred_id)
-                    record_with_thumbnail['target_name'] = id_to_name.get(tgt_id)
-                    prediction.append(record_with_thumbnail)
+                        record_with_urls = dict(record)
+                        record_with_urls['image_url'] = image_url
+                        record_with_urls['overlay_url'] = overlay_url
+                        prediction.append(record_with_urls)
+            else:
+                prediction_json = Path(model_dropdown_selected.model_dir, 'evaluations', f'{prediction_data_type_selected.lower()}_prediction.json')
+                if prediction_json.exists():
+                    with open(prediction_json, 'r') as f:
+                        prediction_raw = json.load(f)
+
+                    prediction = []
+                    for record in prediction_raw:
+                        filename = record.get('filename')
+                        thumbnail_url = None
+
+                        if filename:
+                            filename_path = Path(filename)
+                            if '..' not in filename_path.parts:
+                                rel_path = PurePosixPath(
+                                    settings.DATASET_DIR,
+                                    dataset_dropdown_selected.project.hash,
+                                    f'dataset_{dataset_dropdown_selected.id}',
+                                    prediction_data_type_selected.lower(),
+                                    filename_path.as_posix(),
+                                )
+                                thumbnail_url = f"{settings.MEDIA_URL.rstrip('/')}/{quote(str(rel_path), safe='/')}"
+
+                        record_with_thumbnail = dict(record)
+                        record_with_thumbnail['thumbnail_url'] = thumbnail_url
+
+                        pred_id = record.get('prediction')
+                        tgt_id = record.get('target')
+                        record_with_thumbnail['prediction_name'] = id_to_name.get(pred_id)
+                        record_with_thumbnail['target_name'] = id_to_name.get(tgt_id)
+                        prediction.append(record_with_thumbnail)
         
         
         context = {

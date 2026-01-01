@@ -223,11 +223,19 @@ class Command(BaseCommand):
         evaluation_dir = Path(model.model_dir, 'evaluations')
         os.makedirs(evaluation_dir, exist_ok=True)
         for split in ('train', 'validation', 'test'):
-            for suffix in ('prediction.json', 'prediction.csv'):
+            for suffix in ('prediction.json', 'prediction.csv', 'detection_summary.json', 'detection_predictions.json'):
                 target = Path(evaluation_dir, f'{split}_' + suffix)
                 if target.exists():
                     try:
                         target.unlink()
+                    except Exception:
+                        pass
+            overlay_dir = Path(evaluation_dir, 'overlays', split)
+            if overlay_dir.exists():
+                for child in overlay_dir.glob('**/*'):
+                    try:
+                        if child.is_file():
+                            child.unlink()
                     except Exception:
                         pass
         self._set_step(job, 2, OperationStep.STATUS_DONE)
@@ -251,11 +259,27 @@ class Command(BaseCommand):
 
         # Step 4: Verify outputs
         self._set_step(job, 4, OperationStep.STATUS_RUNNING)
+        try:
+            with open(config_path, 'r') as f:
+                _cfg = json.load(f)
+            task_value = _cfg.get('inference_parameter', {}).get('model', {}).get('task', {}).get('value', '')
+        except Exception:
+            task_value = ''
+
+        is_detection = 'det' in str(task_value)
         missing = []
         for split in ('train', 'validation', 'test'):
-            expected = Path(evaluation_dir, f'{split}_prediction.json')
-            if not expected.exists():
-                missing.append(expected.name)
+            if is_detection:
+                candidates = [
+                    Path(evaluation_dir, f'{split}_detection_summary.json'),
+                    Path(evaluation_dir, f'{split}_detection_predictions.json'),
+                ]
+            else:
+                candidates = [Path(evaluation_dir, f'{split}_prediction.json')]
+
+            if not any(p.exists() for p in candidates):
+                missing.append('/'.join([p.name for p in candidates]))
+
         if missing:
             self._fail(job, RuntimeError(f'Missing prediction files: {", ".join(missing)}'), order=4)
             return
