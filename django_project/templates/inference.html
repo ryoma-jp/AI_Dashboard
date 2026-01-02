@@ -208,6 +208,47 @@
               </div>
             </div>
           </div>
+
+          {% if class_distribution %}
+            <div class="card mb-3 ms-4">
+              <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span>Analysis ({{ prediction_data_type_selected }})</span>
+                <span class="small">
+                  TP {{ class_distribution.totals.tp|default:0 }} /
+                  FP {{ class_distribution.totals.fp|default:0 }}
+                  {% if class_distribution.has_fn %}/ FN {{ class_distribution.totals.fn|default:0 }}{% endif %}
+                </span>
+              </div>
+              <div class="prediction-table-scroll">
+                <table class="table table-bordered border-primary table-hover mb-0">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">Class</th>
+                      <th scope="col" class="text-end">TP</th>
+                      <th scope="col" class="text-end">FP</th>
+                      {% if class_distribution.has_fn %}<th scope="col" class="text-end">FN</th>{% endif %}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if class_distribution.by_class %}
+                      {% for cls in class_distribution.by_class %}
+                        <tr>
+                          <td>{{ cls.class_name|default:cls.class_id }}</td>
+                          <td class="text-end">{{ cls.tp }}</td>
+                          <td class="text-end">{{ cls.fp }}</td>
+                          {% if class_distribution.has_fn %}<td class="text-end">{{ cls.fn }}</td>{% endif %}
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="{% if class_distribution.has_fn %}4{% else %}3{% endif %}" class="text-muted">No distribution data.</td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {% endif %}
         
         
           {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_det' %}

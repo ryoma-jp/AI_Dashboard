@@ -260,6 +260,8 @@ def inference(request):
         # --- Load DataLoader object and prediction (skip while job is running) ---
         prediction = None
         dataloader_obj = None
+        class_distribution = None
+        id_to_name = {}
         if inference_job_id:
             pass
         elif dataset_dropdown_selected is not None and model_dropdown_selected is not None:
@@ -349,6 +351,43 @@ def inference(request):
                         record_with_thumbnail['prediction_name'] = id_to_name.get(pred_id)
                         record_with_thumbnail['target_name'] = id_to_name.get(tgt_id)
                         prediction.append(record_with_thumbnail)
+
+            # Load per-class distribution when available
+            if dataloader_obj:
+                if dataloader_obj.dataset_type == 'img_det':
+                    dist_filename = f"{prediction_data_type_selected.lower()}_detection_distribution.json"
+                else:
+                    dist_filename = f"{prediction_data_type_selected.lower()}_class_distribution.json"
+
+                dist_path = Path(model_dropdown_selected.model_dir, 'evaluations', dist_filename)
+                if dist_path.exists():
+                    try:
+                        with open(dist_path, 'r') as f:
+                            dist_data = json.load(f)
+
+                        by_class = dist_data.get('by_class', []) or []
+                        for entry in by_class:
+                            cid = entry.get('class_id')
+                            entry['tp'] = int(entry.get('tp', 0) or 0)
+                            entry['fp'] = int(entry.get('fp', 0) or 0)
+                            entry['fn'] = int(entry.get('fn', 0) or 0)
+                            if ('class_name' not in entry or entry.get('class_name') is None) and cid is not None:
+                                try:
+                                    entry['class_name'] = id_to_name.get(int(cid))
+                                except Exception:
+                                    entry['class_name'] = None
+
+                        dist_data['by_class'] = sorted(by_class, key=lambda x: (x.get('fn', 0), x.get('fp', 0)), reverse=True)
+                        totals = dist_data.get('totals', {}) or {}
+                        dist_data['totals'] = {
+                            'tp': int(totals.get('tp', 0) or 0),
+                            'fp': int(totals.get('fp', 0) or 0),
+                            'fn': int(totals.get('fn', 0) or 0),
+                        }
+                        dist_data['has_fn'] = any(item.get('fn', 0) > 0 for item in dist_data['by_class'])
+                        class_distribution = dist_data
+                    except Exception:
+                        logging.exception('failed to load class distribution from %s', dist_path)
         
         
         context = {
@@ -365,6 +404,7 @@ def inference(request):
             'prediction_filter_selected': prediction_filter_selected,
             'prediction_data_type_selected': prediction_data_type_selected,
             'dataloader_obj': dataloader_obj,
+            'class_distribution': class_distribution,
             'job_id': inference_job_id,
         }
         return render(request, 'inference.html', context)

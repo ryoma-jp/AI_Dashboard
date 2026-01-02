@@ -14,6 +14,7 @@ import logging
 import os
 import pickle
 import sys
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -183,6 +184,46 @@ def _match_tp_fp_fn(gt_boxes: List[dict], pred_boxes: List[dict], iou_thr: float
     return tp, fp, fn
 
 
+def _match_tp_fp_fn_by_class(gt_boxes: List[dict], pred_boxes: List[dict], iou_thr: float) -> Dict[int, dict]:
+    """Greedy match with per-class TP/FP/FN counts."""
+
+    if not gt_boxes and not pred_boxes:
+        return {}
+
+    matched_gt = set()
+    counts: Dict[int, dict] = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
+
+    pred_sorted = sorted(pred_boxes, key=lambda x: x["score"], reverse=True)
+
+    for pred in pred_sorted:
+        best_iou = 0.0
+        best_gt_idx = None
+        for idx, gt in enumerate(gt_boxes):
+            if idx in matched_gt:
+                continue
+            if gt.get("category_id") != pred.get("category_id"):
+                continue
+            iou = _compute_iou(np.array(gt["bbox"], dtype=float), np.array(pred["bbox"], dtype=float))
+            if iou > best_iou:
+                best_iou = iou
+                best_gt_idx = idx
+
+        cid = int(pred.get("category_id", -1))
+        if best_gt_idx is not None and best_iou >= iou_thr:
+            counts[cid]["tp"] += 1
+            matched_gt.add(best_gt_idx)
+        else:
+            counts[cid]["fp"] += 1
+
+    for idx, gt in enumerate(gt_boxes):
+        if idx in matched_gt:
+            continue
+        cid = int(gt.get("category_id", -1))
+        counts[cid]["fn"] += 1
+
+    return counts
+
+
 def _boxes_to_xywh(boxes_yxyx: np.ndarray, img_w: int, img_h: int, model_input_size: int) -> np.ndarray:
     """Convert YOLO decoded boxes [y1, x1, y2, x2] to xywh in original image scale."""
 
@@ -238,7 +279,14 @@ def _save_classification_predictions(split_name: str, rows: List[dict], evaluati
     pd.DataFrame(rows).to_csv(csv_path, index=False)
 
 
-def run_split_classification(ai_model_sdk, dataset_iter, split_name, evaluation_dir):
+def _save_distribution_json(split_name: str, payload: dict, evaluation_dir: Path, filename: str) -> None:
+    evaluation_dir.mkdir(parents=True, exist_ok=True)
+    out_path = evaluation_dir / filename
+    with open(out_path, "w") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
+
+
+def run_split_classification(ai_model_sdk, dataset_iter, split_name, evaluation_dir, class_names: List[str]):
     predictions = []
     targets = []
     filenames = []
@@ -279,6 +327,40 @@ def run_split_classification(ai_model_sdk, dataset_iter, split_name, evaluation_
 
     _save_classification_predictions(split_name, rows, evaluation_dir)
 
+    per_class = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
+    for pred, tgt in zip(predictions, targets):
+        cid = int(tgt)
+        if pred == tgt:
+            per_class[cid]["tp"] += 1
+        else:
+            per_class[cid]["fp"] += 1
+
+    totals = {"tp": 0, "fp": 0, "fn": 0}
+    by_class = []
+    for cid, counts in per_class.items():
+        name = class_names[cid] if 0 <= cid < len(class_names) else str(cid)
+        by_class.append(
+            {
+                "class_id": cid,
+                "class_name": name,
+                "tp": int(counts["tp"]),
+                "fp": int(counts["fp"]),
+                "fn": 0,
+            }
+        )
+        totals["tp"] += counts["tp"]
+        totals["fp"] += counts["fp"]
+
+    by_class_sorted = sorted(by_class, key=lambda x: (x.get("fp", 0), x.get("fn", 0)), reverse=True)
+    class_dist = {
+        "split": split_name,
+        "task": "classification",
+        "totals": {k: int(v) for k, v in totals.items()},
+        "by_class": by_class_sorted,
+    }
+
+    _save_distribution_json(split_name, class_dist, evaluation_dir, f"{split_name}_class_distribution.json")
+
     scores = ai_model_sdk.eval_model(np.array(predictions), np.array(targets))
     logging.info("%s scores: %s", split_name, scores)
     return {f"{split_name} {k}": v for k, v in scores.items()}
@@ -307,6 +389,7 @@ def run_split_detection(
     cat_id_to_name = {cat["id"]: cat["name"] for cat in coco_gt.categories}
     predictions: List[dict] = []
     summary_rows: List[dict] = []
+    by_class_counts: Dict[int, dict] = defaultdict(lambda: {"tp": 0, "fp": 0, "fn": 0})
 
     overlay_dir = evaluation_dir / "overlays" / split_name
     overlay_dir.mkdir(parents=True, exist_ok=True)
@@ -368,6 +451,11 @@ def run_split_detection(
         # TP/FP/FN per image
         gt_boxes = coco_gt.gt_lookup.get(int(image_info["id"]), [])
         tp, fp, fn = _match_tp_fp_fn(gt_boxes, preds_for_image, iou_thr)
+        class_counts = _match_tp_fp_fn_by_class(gt_boxes, preds_for_image, iou_thr)
+        for cid, counts in class_counts.items():
+            by_class_counts[cid]["tp"] += counts.get("tp", 0)
+            by_class_counts[cid]["fp"] += counts.get("fp", 0)
+            by_class_counts[cid]["fn"] += counts.get("fn", 0)
 
         # Overlay image
         img_path = dataset_root / split_name / filename
@@ -435,6 +523,31 @@ def run_split_detection(
 
     _save_detection_predictions(split_name, predictions, evaluation_dir)
     _save_detection_summary(split_name, summary_rows, evaluation_dir)
+
+    totals = {"tp": 0, "fp": 0, "fn": 0}
+    by_class_rows = []
+    for cid, counts in by_class_counts.items():
+        totals["tp"] += counts.get("tp", 0)
+        totals["fp"] += counts.get("fp", 0)
+        totals["fn"] += counts.get("fn", 0)
+        by_class_rows.append(
+            {
+                "class_id": int(cid),
+                "class_name": cat_id_to_name.get(int(cid), str(cid)),
+                "tp": int(counts.get("tp", 0)),
+                "fp": int(counts.get("fp", 0)),
+                "fn": int(counts.get("fn", 0)),
+            }
+        )
+
+    by_class_sorted = sorted(by_class_rows, key=lambda x: (x.get("fn", 0), x.get("fp", 0)), reverse=True)
+    detection_dist = {
+        "split": split_name,
+        "task": "detection",
+        "totals": {k: int(v) for k, v in totals.items()},
+        "by_class": by_class_sorted,
+    }
+    _save_distribution_json(split_name, detection_dist, evaluation_dir, f"{split_name}_detection_distribution.json")
 
     metrics = {f"{split_name} mAP": 0.0, f"{split_name} mAP@0.5": 0.0}
     try:
@@ -551,9 +664,9 @@ def main():
                 )
                 evaluations.update(metrics)
         else:
-            evaluations.update(run_split_classification(ai_model_sdk, train_ds, "train", evaluation_dir))
-            evaluations.update(run_split_classification(ai_model_sdk, val_ds, "validation", evaluation_dir))
-            evaluations.update(run_split_classification(ai_model_sdk, test_ds, "test", evaluation_dir))
+            evaluations.update(run_split_classification(ai_model_sdk, train_ds, "train", evaluation_dir, class_names))
+            evaluations.update(run_split_classification(ai_model_sdk, val_ds, "validation", evaluation_dir, class_names))
+            evaluations.update(run_split_classification(ai_model_sdk, test_ds, "test", evaluation_dir, class_names))
     finally:
         with open(evaluation_dir / "evaluations.json", "w") as f:
             json.dump(evaluations, f, ensure_ascii=False, indent=4, cls=JsonEncoder)
