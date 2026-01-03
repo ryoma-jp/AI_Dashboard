@@ -532,6 +532,14 @@ class DataLoader():
                         'validation': None,
                         'test': None,
                     }
+            elif (self.dataset_type == 'img_clf'):
+                # --- Image classification: build the same by_class format ---
+                _calc = getattr(self, '_calculate_classification_target_distributions', None)
+                if callable(_calc):
+                    self.target_distributions = _calc()
+                else:
+                    logging.warning('[data_analysis] _calculate_classification_target_distributions is missing; falling back to histogram')
+                    self.target_distributions = {}
             else:
                 # --- Initialize ---
                 self.target_distributions = {}
@@ -717,6 +725,89 @@ class DataLoader():
                 'hist_y': merged['test'].tolist(),
             },
         }
+
+    def _calculate_classification_target_distributions(self):
+        """Calculate class-count distributions for classification datasets."""
+
+        def _to_index(y):
+            if y is None:
+                return None
+            arr = np.array(y)
+            if arr.size == 0:
+                return None
+            if arr.ndim > 1:
+                try:
+                    arr = np.argmax(arr, axis=1)
+                except Exception:
+                    arr = arr.reshape(arr.shape[0], -1).argmax(axis=1)
+            return arr.astype(int)
+
+        train_idx = _to_index(self.train_y)
+        validation_idx = _to_index(self.validation_y)
+        test_idx = _to_index(self.test_y)
+
+        # Determine number of classes.
+        num_classes = 0
+        if getattr(self, 'class_names', None):
+            num_classes = len(self.class_names)
+        all_labels = []
+        for arr in [train_idx, validation_idx, test_idx]:
+            if arr is not None and arr.size > 0:
+                all_labels.append(int(arr.max()))
+        if all_labels:
+            num_classes = max(num_classes, max(all_labels) + 1)
+        if (num_classes == 0) and (self.output_dims is not None):
+            num_classes = int(self.output_dims)
+
+        if num_classes <= 0:
+            return {
+                'by_class': [],
+                'class_names': [],
+                'train': None,
+                'validation': None,
+                'test': None,
+            }
+
+        def _count(arr):
+            if arr is None:
+                return np.zeros(num_classes, dtype=int)
+            return np.bincount(arr, minlength=num_classes).astype(int)
+
+        train_counts = _count(train_idx)
+        validation_counts = _count(validation_idx)
+        test_counts = _count(test_idx)
+
+        class_names = list(getattr(self, 'class_names', []))
+        if len(class_names) != num_classes:
+            class_names = [str(i) for i in range(num_classes)]
+
+        by_class = []
+        for class_id in range(num_classes):
+            by_class.append({
+                'class_id': int(class_id),
+                'class_name': class_names[class_id],
+                'train': int(train_counts[class_id]),
+                'validation': int(validation_counts[class_id]),
+                'test': int(test_counts[class_id]),
+                'total': int(train_counts[class_id] + validation_counts[class_id] + test_counts[class_id]),
+            })
+
+        return {
+            'by_class': by_class,
+            'class_names': class_names,
+            'train': {
+                'hist_x': class_names,
+                'hist_y': train_counts.tolist(),
+            },
+            'validation': {
+                'hist_x': class_names,
+                'hist_y': validation_counts.tolist(),
+            },
+            'test': {
+                'hist_x': class_names,
+                'hist_y': test_counts.tolist(),
+            },
+        }
             
 class DataLoaderCIFAR10(DataLoader):
     """DataLoaderCIFAR10
@@ -843,6 +934,7 @@ class DataLoaderCIFAR10(DataLoader):
 
         # --- create tfrecord ---
         class_list = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+        self.class_names = class_list
         class_map = {
             'airplane': 0,
             'automobile': 1,
@@ -1037,6 +1129,7 @@ class DataLoaderMNIST(DataLoader):
         
         # --- create tfrecord ---
         class_list = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        self.class_names = class_list
         class_map = {
             '0': 0,
             '1': 1,

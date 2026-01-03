@@ -286,7 +286,7 @@
               </script>
             {% endif %}
           {% elif statistic_selected_item|stringformat:'s' == 'Target Distributions' %}
-            {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_det' %}
+            {% if dataloader_obj.target_distributions.by_class %}
               <div class="card mb-3">
                 <div class="card-header">Target Distributions (Object Count)</div>
                 <div class="card-body p-0">
