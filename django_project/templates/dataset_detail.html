@@ -3,6 +3,29 @@
 {% load custom_filter %}
 
 {% block main %}
+<style>
+  .scrollable-card-table {
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .sticky-table-header th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .scrollable-chart-area {
+    height: 520px;
+    overflow-y: auto;
+  }
+  .scrollable-chart-inner {
+    position: relative;
+    width: 100%;
+  }
+  .scrollable-chart-inner canvas {
+    display: block;
+    width: 100% !important;
+  }
+</style>
 <div class="container-fluid">
   <h2>{{ dataset_name }} Details</h2>
   
@@ -263,71 +286,193 @@
               </script>
             {% endif %}
           {% elif statistic_selected_item|stringformat:'s' == 'Target Distributions' %}
-            <canvas id="chart_target_distributions" width="900" height="380"></canvas>
-            <script type="text/javascript">
-              var ctx = document.getElementById('chart_target_distributions')
-              
-              var datasets = []
-              {% if dataloader_obj.target_distributions.train %}
-                datasets.push({
-                    data: {{ dataloader_obj.target_distributions.train.hist_y }},
-                    label: "Train",
-                    backgroundColor: '#007bff',
-                })
-              {% endif %}
-              {% if dataloader_obj.target_distributions.validation %}
-                datasets.push({
-                    data: {{ dataloader_obj.target_distributions.validation.hist_y }},
-                    label: "Validation",
-                    backgroundColor: '#7bff00',
-                })
-              {% endif %}
-              {% if dataloader_obj.target_distributions.test %}
-                datasets.push({
-                    data: {{ dataloader_obj.target_distributions.test.hist_y }},
-                    label: "Test",
-                    backgroundColor: '#ff007b',
-                })
-              {% endif %}
-              
-              var myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                  labels: {{ dataloader_obj.target_distributions.train.hist_x }},
-                  datasets: datasets
-                },
-                options: {
-                  plugins: {
-                    title: {
-                      display: true,
-                      text: 'Target Distribution (relative frequency)'
-                    }
+            {% if dataloader_obj.dataset_type|stringformat:'s' == 'img_det' %}
+              <div class="card mb-3">
+                <div class="card-header">Target Distributions (Object Count)</div>
+                <div class="card-body p-0">
+                  <div class="table-responsive scrollable-card-table">
+                    <table class="table table-striped mb-0">
+                      <thead class="table-dark sticky-table-header">
+                        <tr>
+                          <th scope="col">Class ID</th>
+                          <th scope="col">Class Name</th>
+                          <th scope="col">Train</th>
+                          <th scope="col">Validation</th>
+                          <th scope="col">Test</th>
+                          <th scope="col">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for row in dataloader_obj.target_distributions.by_class %}
+                        <tr>
+                          <td>{{ row.class_id }}</td>
+                          <td>{{ row.class_name }}</td>
+                          <td>{{ row.train }}</td>
+                          <td>{{ row.validation }}</td>
+                          <td>{{ row.test }}</td>
+                          <td>{{ row.total }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-body">
+                  <div class="scrollable-chart-area">
+                    <div id="chart_target_distributions_container" class="scrollable-chart-inner">
+                      <canvas id="chart_target_distributions"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <script type="text/javascript">
+                var ctx = document.getElementById('chart_target_distributions')
+                var labels = {{ dataloader_obj.target_distributions.class_names|safe }}
+
+                // Make the chart vertically scrollable by sizing an inner container
+                // based on the number of classes. The outer container has fixed height.
+                var rowHeight = 22;
+                var minHeight = 380;
+                var computedHeight = Math.max(minHeight, labels.length * rowHeight + 120);
+                var chartContainer = document.getElementById('chart_target_distributions_container');
+                if (chartContainer) {
+                  chartContainer.style.height = computedHeight + 'px';
+                }
+                
+                var datasets = []
+                {% if dataloader_obj.target_distributions.train %}
+                  datasets.push({
+                      data: {{ dataloader_obj.target_distributions.train.hist_y|safe }},
+                      label: "Train",
+                      backgroundColor: '#007bff',
+                  })
+                {% endif %}
+                {% if dataloader_obj.target_distributions.validation %}
+                  datasets.push({
+                      data: {{ dataloader_obj.target_distributions.validation.hist_y|safe }},
+                      label: "Validation",
+                      backgroundColor: '#7bff00',
+                  })
+                {% endif %}
+                {% if dataloader_obj.target_distributions.test %}
+                  datasets.push({
+                      data: {{ dataloader_obj.target_distributions.test.hist_y|safe }},
+                      label: "Test",
+                      backgroundColor: '#ff007b',
+                  })
+                {% endif %}
+                
+                var myChart = new Chart(ctx, {
+                  type: 'bar',
+                  data: {
+                    labels: labels,
+                    datasets: datasets
                   },
-                  scales: {
-                    x: {
-                      display: true,
+                  options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
                       title: {
                         display: true,
-                        text: 'Target value'
+                        text: 'Target Distribution (object count)'
                       }
                     },
-                    y: {
-                      display: true,
+                    scales: {
+                      x: {
+                        display: true,
+                        title: {
+                          display: true,
+                          text: 'Object count'
+                        },
+                        ticks: {
+                          beginAtZero: true,
+                          precision: 0
+                        }
+                      },
+                      y: {
+                        display: true,
+                        title: {
+                          display: true,
+                          text: 'Class'
+                        }
+                      }
+                    },
+                    legend: {
+                      display: true
+                    }
+                  }
+                })
+              </script>
+            {% else %}
+              <canvas id="chart_target_distributions" width="900" height="380"></canvas>
+              <script type="text/javascript">
+                var ctx = document.getElementById('chart_target_distributions')
+                
+                var datasets = []
+                {% if dataloader_obj.target_distributions.train %}
+                  datasets.push({
+                      data: {{ dataloader_obj.target_distributions.train.hist_y }},
+                      label: "Train",
+                      backgroundColor: '#007bff',
+                  })
+                {% endif %}
+                {% if dataloader_obj.target_distributions.validation %}
+                  datasets.push({
+                      data: {{ dataloader_obj.target_distributions.validation.hist_y }},
+                      label: "Validation",
+                      backgroundColor: '#7bff00',
+                  })
+                {% endif %}
+                {% if dataloader_obj.target_distributions.test %}
+                  datasets.push({
+                      data: {{ dataloader_obj.target_distributions.test.hist_y }},
+                      label: "Test",
+                      backgroundColor: '#ff007b',
+                  })
+                {% endif %}
+                
+                var myChart = new Chart(ctx, {
+                  type: 'bar',
+                  data: {
+                    labels: {{ dataloader_obj.target_distributions.train.hist_x }},
+                    datasets: datasets
+                  },
+                  options: {
+                    plugins: {
                       title: {
                         display: true,
-                        text: 'Relative frequency'
-                      },
-                      ticks: {
-                        beginAtZero: false
+                        text: 'Target Distribution (relative frequency)'
                       }
+                    },
+                    scales: {
+                      x: {
+                        display: true,
+                        title: {
+                          display: true,
+                          text: 'Target value'
+                        }
+                      },
+                      y: {
+                        display: true,
+                        title: {
+                          display: true,
+                          text: 'Relative frequency'
+                        },
+                        ticks: {
+                          beginAtZero: false
+                        }
+                      }
+                    },
+                    legend: {
+                      display: true
                     }
-                  },
-                  legend: {
-                    display: true
                   }
-                }
-              })
-            </script>
+                })
+              </script>
+            {% endif %}
           {% endif %}
           
       {% endif %}

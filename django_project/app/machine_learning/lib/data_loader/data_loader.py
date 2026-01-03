@@ -508,58 +508,215 @@ class DataLoader():
             self.input_distributions = None
         
         # --- Calculate target distribution ---
-        if (self.target_distributions is None):
-            # --- Initialize ---
-            self.target_distributions = {}
+        should_calc_target = (self.target_distributions is None)
+        if (self.dataset_type == 'img_det') and (not should_calc_target):
+            try:
+                should_calc_target = (len(self.target_distributions.get('by_class', [])) == 0)
+            except Exception:
+                should_calc_target = True
+
+        if should_calc_target:
             self.statistic_keys.append("Target Distributions")
-            
-            # --- Set bins ---
-            if (self.dataset_type in ['img_clf', 'table_clf']):
-                # --- Set sequence of scalars to bins if dataset is the classification task ---
-                bins = np.unique(self.train_y)
+
+            if (self.dataset_type == 'img_det'):
+                # --- Object detection: count objects per class per split ---
+                _calc = getattr(self, '_calculate_detection_target_distributions', None)
+                if callable(_calc):
+                    self.target_distributions = _calc()
+                else:
+                    logging.warning('[data_analysis] _calculate_detection_target_distributions is missing; returning empty distributions')
+                    self.target_distributions = {
+                        'by_class': [],
+                        'class_names': [],
+                        'train': None,
+                        'validation': None,
+                        'test': None,
+                    }
+            else:
+                # --- Initialize ---
+                self.target_distributions = {}
+                
+                # --- Set bins ---
+                if (self.dataset_type in ['img_clf', 'table_clf']):
+                    # --- Set sequence of scalars to bins if dataset is the classification task ---
+                    bins = np.unique(self.train_y)
+                    if (self.validation_y is not None):
+                        _targets = np.unique(self.validation_y)
+                        _targets = np.hstack((_targets, max(_targets)+1))
+                        if (len(bins) < len(_targets)):
+                            bins = _targets
+                    if (self.test_y is not None):
+                        _targets = np.unique(self.test_y)
+                        if (len(bins) < len(_targets)):
+                            bins = _targets
+                else:
+                    # --- Set scalar to bins if dataset is the regression task ---
+                    bins = 20
+                
+                # --- Create histograms ---
+                if (self.train_y is not None):
+                    self.target_distributions['train'] = {}
+                    hist_y, hist_x = np.histogram(self.train_y, bins=bins)
+                    if (self.dataset_type in ['img_reg', 'table_reg']):
+                        hist_x = np.round(hist_x, decimals=2)
+                    self.target_distributions['train']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
+                    self.target_distributions['train']['hist_x'] = hist_x.tolist()[:-1]
+                else:
+                    self.target_distributions['train'] = None
+                
                 if (self.validation_y is not None):
-                    _targets = np.unique(self.validation_y)
-                    _targets = np.hstack((_targets, max(_targets)+1))
-                    if (len(bins) < len(_targets)):
-                        bins = _targets
+                    self.target_distributions['validation'] = {}
+                    hist_y, hist_x = np.histogram(self.validation_y, bins=bins)
+                    if (self.dataset_type in ['img_reg', 'table_reg']):
+                        hist_x = np.round(hist_x, decimals=2)
+                    self.target_distributions['validation']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
+                    self.target_distributions['validation']['hist_x'] = hist_x.tolist()[:-1]
+                else:
+                    self.target_distributions['validation'] = None
+                
                 if (self.test_y is not None):
-                    _targets = np.unique(self.test_y)
-                    if (len(bins) < len(_targets)):
-                        bins = _targets
-            else:
-                # --- Set scalar to bins if dataset is the regression task ---
-                bins = 20
-            
-            # --- Create histograms ---
-            if (self.train_y is not None):
-                self.target_distributions['train'] = {}
-                hist_y, hist_x = np.histogram(self.train_y, bins=bins)
-                if (self.dataset_type in ['img_reg', 'table_reg']):
-                    hist_x = np.round(hist_x, decimals=2)
-                self.target_distributions['train']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
-                self.target_distributions['train']['hist_x'] = hist_x.tolist()[:-1]
-            else:
-                self.target_distributions['train'] = None
-            
-            if (self.validation_y is not None):
-                self.target_distributions['validation'] = {}
-                hist_y, hist_x = np.histogram(self.validation_y, bins=bins)
-                if (self.dataset_type in ['img_reg', 'table_reg']):
-                    hist_x = np.round(hist_x, decimals=2)
-                self.target_distributions['validation']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
-                self.target_distributions['validation']['hist_x'] = hist_x.tolist()[:-1]
-            else:
-                self.target_distributions['validation'] = None
-            
-            if (self.test_y is not None):
-                self.target_distributions['test'] = {}
-                hist_y, hist_x = np.histogram(self.test_y, bins=bins)
-                if (self.dataset_type in ['img_reg', 'table_reg']):
-                    hist_x = np.round(hist_x, decimals=2)
-                self.target_distributions['test']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
-                self.target_distributions['test']['hist_x'] = hist_x.tolist()[:-1]
-            else:
-                self.target_distributions['test'] = None
+                    self.target_distributions['test'] = {}
+                    hist_y, hist_x = np.histogram(self.test_y, bins=bins)
+                    if (self.dataset_type in ['img_reg', 'table_reg']):
+                        hist_x = np.round(hist_x, decimals=2)
+                    self.target_distributions['test']['hist_y'] = (hist_y / np.sum(hist_y)).tolist()
+                    self.target_distributions['test']['hist_x'] = hist_x.tolist()[:-1]
+                else:
+                    self.target_distributions['test'] = None
+
+    def _calculate_detection_target_distributions(self):
+        """Calculate object-count distributions for detection datasets."""
+
+        def _infer_dataset_dir():
+            # For older pickles, DataLoaderCOCO2017.__init__ is not re-run, so
+            # dataset_dir may be missing. Infer it from saved dataset paths.
+            if getattr(self, 'dataset_dir', None) is not None:
+                return self.dataset_dir
+
+            candidate_paths = []
+            for ds in [getattr(self, 'train_dataset', None), getattr(self, 'validation_dataset', None), getattr(self, 'test_dataset', None)]:
+                if isinstance(ds, dict):
+                    for key in ['tfrecord_path', 'class_name_file_path']:
+                        path = ds.get(key)
+                        if path:
+                            candidate_paths.append(Path(path))
+
+            for p in candidate_paths:
+                # Usually <dataset_dir>/train.tfrecord etc.
+                if p.exists():
+                    inferred = p.parent
+                    self.dataset_dir = inferred
+                    logging.info(f'[detection stats] inferred dataset_dir = {inferred}')
+                    return inferred
+
+            # Best-effort: parent even if file doesn't exist (container mount differences)
+            if candidate_paths:
+                inferred = candidate_paths[0].parent
+                self.dataset_dir = inferred
+                logging.info(f'[detection stats] inferred dataset_dir (best-effort) = {inferred}')
+                return inferred
+
+            return None
+
+        def _load_instances(split_name, current_df):
+            """Reload instances from CSV if missing/empty (post-pickle safety)."""
+            if (current_df is not None) and (len(current_df) > 0):
+                return current_df
+            if _infer_dataset_dir() is None:
+                return current_df
+            csv_path = Path(self.dataset_dir, f'instances_{split_name}.csv')
+            if not csv_path.exists():
+                return current_df
+            try:
+                reloaded = pd.read_csv(csv_path)
+                # Keep only columns we use to avoid surprises.
+                for col in ['category_id', 'category_name']:
+                    if col not in reloaded.columns:
+                        logging.warning(f'[detection stats] {csv_path} missing column: {col}')
+                        return current_df
+                logging.info(f'[detection stats] reloaded {split_name} instances from {csv_path} ({len(reloaded)} rows)')
+                return reloaded
+            except Exception as exc:  # noqa: BLE001
+                logging.warning(f'[detection stats] failed to reload {split_name} from {csv_path}: {exc}')
+                return current_df
+
+        def _count_instances(df_instances):
+            if (df_instances is None) or (len(df_instances) == 0):
+                return pd.DataFrame(columns=['category_id', 'category_name', 'count'])
+            grouped = (
+                df_instances
+                .groupby(['category_id', 'category_name'])
+                .size()
+                .reset_index(name='count')
+                .sort_values('category_id')
+            )
+            grouped['category_id'] = grouped['category_id'].astype(int)
+            grouped['count'] = grouped['count'].astype(int)
+            return grouped
+
+        # Reload instances if they were lost after pickling/unpickling.
+        self.df_instances_train = _load_instances('train', getattr(self, 'df_instances_train', None))
+        self.df_instances_validation = _load_instances('validation', getattr(self, 'df_instances_validation', None))
+        self.df_instances_test = _load_instances('test', getattr(self, 'df_instances_test', None))
+
+        train_counts = _count_instances(self.df_instances_train)
+        validation_counts = _count_instances(self.df_instances_validation)
+        test_counts = _count_instances(self.df_instances_test)
+
+        class_index = pd.concat(
+            [
+                train_counts[['category_id', 'category_name']],
+                validation_counts[['category_id', 'category_name']],
+                test_counts[['category_id', 'category_name']],
+            ],
+            axis=0,
+            ignore_index=True,
+        ).drop_duplicates(subset=['category_id', 'category_name']).sort_values('category_id')
+
+        if class_index.empty:
+            return {
+                'by_class': [],
+                'train': None,
+                'validation': None,
+                'test': None,
+                'class_names': [],
+            }
+
+        merged = class_index.copy()
+        merged['train'] = merged['category_id'].map(train_counts.set_index('category_id')['count']).fillna(0).astype(int)
+        merged['validation'] = merged['category_id'].map(validation_counts.set_index('category_id')['count']).fillna(0).astype(int)
+        merged['test'] = merged['category_id'].map(test_counts.set_index('category_id')['count']).fillna(0).astype(int)
+        merged['total'] = merged[['train', 'validation', 'test']].sum(axis=1)
+
+        class_names = merged['category_name'].tolist()
+
+        by_class = []
+        for _, row in merged.iterrows():
+            by_class.append({
+                'class_id': int(row['category_id']),
+                'class_name': row['category_name'],
+                'train': int(row['train']),
+                'validation': int(row['validation']),
+                'test': int(row['test']),
+                'total': int(row['total']),
+            })
+
+        return {
+            'by_class': by_class,
+            'class_names': class_names,
+            'train': {
+                'hist_x': class_names,
+                'hist_y': merged['train'].tolist(),
+            },
+            'validation': {
+                'hist_x': class_names,
+                'hist_y': merged['validation'].tolist(),
+            },
+            'test': {
+                'hist_x': class_names,
+                'hist_y': merged['test'].tolist(),
+            },
+        }
             
 class DataLoaderCIFAR10(DataLoader):
     """DataLoaderCIFAR10
@@ -1117,6 +1274,7 @@ class DataLoaderCOCO2017(DataLoader):
         super().__init__()
         self.one_hot = one_hot
         self.verified = True
+        self.dataset_dir = Path(dataset_dir)
         
         # --- download dataset and extract ---
         if (download):
