@@ -46,7 +46,27 @@
     {% if download_status|stringformat:'s' == 'Done' %}
       {% if dataloader_obj %}
         {% if dataloader_obj.verified %}
-          {% if dataloader_obj.train_x.shape.2 %}
+          {% if dataloader_obj.dataset_type == 'img_det' %}
+            <!-- Detection datasets: show real split counts from info.json -->
+            <p><table class="table table-bordered border-primary table-hover ms-4">
+              <thead class="table-dark">
+                <tr>
+                  <th scope="col">Image Shape(H, W, C)</th>
+                  <th scope="col">Train data num</th>
+                  <th scope="col">Validation data num</th>
+                  <th scope="col">Test data num</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{% if detection_image_shape %}({{ detection_image_shape.0 }}, {{ detection_image_shape.1 }}, {{ detection_image_shape.2 }}){% else %}-{% endif %}</td>
+                  <td>{{ split_counts.train }}</td>
+                  <td>{{ split_counts.validation }}</td>
+                  <td>{{ split_counts.test }}</td>
+                </tr>
+              </tbody>
+            </table></p>
+          {% elif dataloader_obj.train_x.shape.2 %}
             <!-- Image data -->
             <p><table class="table table-bordered border-primary table-hover ms-4">
               <thead class="table-dark">

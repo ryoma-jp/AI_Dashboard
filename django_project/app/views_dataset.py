@@ -191,6 +191,9 @@ def dataset_detail(request, project_id, dataset_id):
             request.session['input_key_selected_item'] = input_key_selected_item
         
     # --- check dataset download ---
+    split_counts = None
+    detection_image_shape = None
+
     if (dataset.download_status == dataset.STATUS_PREPARING):
         # --- load dataest and dataloader objects
         load_dataset(dataset)
@@ -207,6 +210,35 @@ def dataset_detail(request, project_id, dataset_id):
         download_button_state = ""
         if (Path(download_dir, 'dataset.pkl').exists()):
             download_button_state = "disabled"
+
+        # --- calculate split counts for detection datasets without loading all images ---
+        def _count_info_json(split_name: str) -> int:
+            info_path = Path(download_dir, split_name, 'info.json')
+            if (not info_path.exists()):
+                return 0
+            try:
+                with open(info_path, 'r') as f:
+                    data = json.load(f)
+                return len(data) if isinstance(data, list) else 0
+            except Exception:
+                return 0
+
+        split_counts = {
+            'train': _count_info_json('train'),
+            'validation': _count_info_json('validation'),
+            'test': _count_info_json('test'),
+        }
+
+        # --- infer detection input shape from dataset metadata ---
+        train_dataset_meta = getattr(dataloader_obj, 'train_dataset', None)
+        if isinstance(train_dataset_meta, dict):
+            model_input_size = train_dataset_meta.get('model_input_size', None)
+            try:
+                if model_input_size is not None:
+                    size_int = int(model_input_size)
+                    detection_image_shape = (size_int, size_int, 3)
+            except (TypeError, ValueError):
+                detection_image_shape = None
         
         selected_dataset_info = request.session.get('dropdown_dataset_info', None)
         selected_dataset_type = request.session.get('selected_dataset_type', None)
@@ -318,6 +350,8 @@ def dataset_detail(request, project_id, dataset_id):
                 'jupyter_nb_url': get_jupyter_nb_url(),
                 'dataset_name': dataset.name,
                 'dataloader_obj': dataloader_obj,
+                'split_counts': split_counts,
+                'detection_image_shape': detection_image_shape,
                 'download_status': dataset.download_status,
                 'download_button_state': download_button_state,
                 'dataset_info': dataset_info,
@@ -341,6 +375,8 @@ def dataset_detail(request, project_id, dataset_id):
                 'jupyter_nb_url': get_jupyter_nb_url(),
                 'dataset_name': dataset.name,
                 'dataloader_obj': dataloader_obj,
+                'split_counts': split_counts,
+                'detection_image_shape': detection_image_shape,
                 'download_status': dataset.download_status,
                 'download_button_state': download_button_state,
                 'dataset_info': dataset_info,
@@ -354,6 +390,8 @@ def dataset_detail(request, project_id, dataset_id):
                 'jupyter_nb_url': get_jupyter_nb_url(),
                 'dataset_name': dataset.name,
                 'dataloader_obj': dataloader_obj,
+                'split_counts': split_counts,
+                'detection_image_shape': detection_image_shape,
                 'download_status': dataset.download_status,
                 'download_button_state': download_button_state,
                 'dataset_info': dataset_info,
