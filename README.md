@@ -19,6 +19,34 @@
 WebサーバにはダウンしにくいといわれるNginxを，Djangoとの接続には推奨されている(らしい)Gunicornを使用する．  
 機械学習ではデータセットやモデルの学習結果，試行錯誤のパターンなど複雑で大量のデータ管理が必要となることから，PostgreSQLを使用する．
 
+## GitHub Copilotエージェント構成
+
+本プロジェクトのCopilot運用は，次の2層構造で構成する．
+
+* カスタマエージェント層: ユーザー要求を受け取り，要求整理と受け渡しを行う窓口
+* エージェントチーム層: `project-manager`を中心に，実装担当の専門エージェントへ順次委譲する実行チーム
+
+実行方式はPM主導のシーケンシャル運用とし，並列で複数タスクを同時進行させず，`in_progress`は常に1件のみとする．  
+専門エージェントは以下の6種を使用する．
+
+* backend-developer
+* frontend-developer
+* ml-engineer
+* infra-qa
+* documentation
+* performance
+
+タスク管理の単一ソースは`.github/tasks/current.md`とし，要求分解，担当，進捗状態（`todo`/`in_progress`/`blocked`/`done`），受け渡し先（`handoff_to`）を記録する．
+
+主要設定ファイル:
+
+* `.github/copilot-instructions.md` : プロジェクト全体の運用方針とガイドライン
+* `.github/agents/project-manager.agent.md` : PMエージェントの責務と実行手順
+* `.github/agents/customer.agent.md` : カスタマエージェントの役割定義
+* `.github/agents/documentation.agent.md` : ドキュメント担当の責務定義
+* `.github/skills/task-management/SKILL.md` : タスク分解と状態遷移ルール
+* `.github/tasks/current.md` : 現在の逐次タスクキュー
+
 # ToDo
 
 ToDoのメモ．思いついたら順次追加する．
