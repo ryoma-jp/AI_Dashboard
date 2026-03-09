@@ -1,6 +1,6 @@
 ---
 name: task-management
-description: 'Manage sequential engineering tasks in .github/tasks/current.md. Use for decomposition, assignment, status transitions, and handoff control in this project.'
+description: 'Manage sequential engineering tasks in .github/tasks/current.md with completed history in .github/tasks/archive/. Use for decomposition, assignment, status transitions, and handoff control in this project.'
 argument-hint: 'Describe the request, current queue state, and desired next owner'
 user-invocable: true
 ---
@@ -15,9 +15,10 @@ user-invocable: true
 
 ## Procedure
 1. Read `.github/tasks/current.md` and identify the active queue state.
-2. Convert the incoming request into small tasks with clear `done_criteria`.
-3. Ensure only one task is `in_progress`.
-4. Assign each task to one owner from:
+2. If done tasks have been rotated, read `.github/tasks/archive/*.md` for history lookup.
+3. Convert the incoming request into small tasks with clear `done_criteria`.
+4. Ensure only one task is `in_progress`.
+5. Assign each task to one owner from:
    - `customer`
    - `project-manager`
    - `backend-developer`
@@ -26,9 +27,10 @@ user-invocable: true
    - `infra-qa`
    - `documentation`
    - `performance`
-5. Set `handoff_to` for the next owner after completion.
-6. Write concise blocker notes when status is `blocked`.
-7. Keep tasks in strict sequence and avoid parallel execution unless explicitly requested.
+6. Set `handoff_to` for the next owner after completion.
+7. Write concise blocker notes when status is `blocked`.
+8. Keep tasks in strict sequence and avoid parallel execution unless explicitly requested.
+9. Rotate old done tasks from `current.md` to `archive/YYYY-MM.md` when queue size grows, and leave migration trace in `current.md` metadata.
 
 ## Output Contract
 Return a concise report with:

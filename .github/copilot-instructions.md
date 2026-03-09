@@ -18,10 +18,12 @@
 - If a task crosses multiple scopes, execute in this order unless explicitly changed: backend -> frontend -> ml -> infra/qa -> documentation -> performance.
 
 ## Task Management Rules
-- Source of truth is `.github/tasks/current.md`.
+- Source of truth for active queue execution is `.github/tasks/current.md`.
+- Completed task history is stored in `.github/tasks/archive/*.md`.
 - Every task entry must include: `id`, `title`, `owner`, `status`, `inputs`, `done_criteria`.
 - Allowed status values: `todo`, `in_progress`, `blocked`, `done`.
 - Only one task may be `in_progress` at a time for sequential execution.
+- When `current.md` grows with done tasks, rotate them into archive files and keep migration trace in `current.md` metadata.
 
 ## Coding Conventions
 - Follow existing project style in each file; avoid unrelated formatting changes.
